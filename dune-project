@@ -21,7 +21,8 @@
  (description "A longer description")
  (depends ocaml dune
   (containers (>= 3.12))
-  (containers-data (>= 3.12)))
+  (containers-data (>= 3.12))
+  (iter (>= 1.7)))
  (tags
   (topics "to describe" your project)))
 

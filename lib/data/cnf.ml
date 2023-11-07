@@ -17,7 +17,9 @@ end
 module Literal = struct
   include Int
 
+  let var = abs
   let negated l = l < 0
+  let invalid = 0
 end
 
 module OccurrenceMap = struct
@@ -32,6 +34,8 @@ module OccurrenceMap = struct
       else (Pair.map_fst, fst, (l, (IntSet.singleton n, IntSet.empty)))
     in
     add_list_with ~f:(fun _ o -> map (IntSet.union (select o))) m [ occurrence ]
+
+  let add_occurrences = List.fold_left (fun m (l, c) -> add_occurrence l c m)
 end
 
 type assignment =
@@ -41,24 +45,24 @@ type assignment =
 type formula = {
   clauses : ClauseMap.t;
   original_clauses : ClauseMap.t;
-  unit_clauses : ClauseMap.t;
-  two_literal_clauses : ClauseMap.t;
-  occurrence_map : OccurrenceMap.t;
+  occurrence_map_1 : OccurrenceMap.t;
+  occurrence_map_2 : OccurrenceMap.t;
+  occurrence_map_n : OccurrenceMap.t;
   decision_level : int;
   assignments : assignment IntMap.t;
   trail : (assignment * formula) list;
   database : IntSet.t list;
 }
 
-let rec combine_const c = List.map (fun x -> (c, x))
+let combine_const ls c = List.map (fun x -> (x, c)) ls
 
 let of_list =
   let rec aux
       ({
          clauses;
-         unit_clauses = uc;
-         two_literal_clauses = tlc;
-         occurrence_map = om;
+         occurrence_map_1 = uc;
+         occurrence_map_2 = tlc;
+         occurrence_map_n = om;
          _;
        } as f) n = function
     | [] -> f
@@ -66,21 +70,19 @@ let of_list =
         let clauses' = ClauseMap.add_clause n (Clause.of_list c) clauses in
         let uc', tlc' =
           match List.length c with
-          | 1 -> (ClauseMap.add_clause n (Clause.of_list c) uc, tlc)
-          | 2 -> (uc, ClauseMap.add_clause n (Clause.of_list c) tlc)
+          | 1 -> (OccurrenceMap.add_occurrences uc (combine_const c n), tlc)
+          | 2 -> (uc, OccurrenceMap.add_occurrences tlc (combine_const c n))
           | _ -> (uc, tlc)
         in
-        let om' =
-          List.fold_left (fun m l -> OccurrenceMap.add_occurrence l n m) om c
-        in
+        let om' = OccurrenceMap.add_occurrences om (combine_const c n) in
         let f' =
           {
             f with
             clauses = clauses';
             original_clauses = clauses';
-            unit_clauses = uc';
-            two_literal_clauses = tlc';
-            occurrence_map = om';
+            occurrence_map_1 = uc';
+            occurrence_map_2 = tlc';
+            occurrence_map_n = om';
           }
         in
         aux f' (n + 1) cs
@@ -89,9 +91,9 @@ let of_list =
     {
       clauses = ClauseMap.empty;
       original_clauses = ClauseMap.empty;
-      unit_clauses = ClauseMap.empty;
-      two_literal_clauses = ClauseMap.empty;
-      occurrence_map = OccurrenceMap.empty;
+      occurrence_map_1 = OccurrenceMap.empty;
+      occurrence_map_2 = OccurrenceMap.empty;
+      occurrence_map_n = OccurrenceMap.empty;
       decision_level = 0;
       assignments = IntMap.empty;
       trail = [];
@@ -100,5 +102,16 @@ let of_list =
 
 let is_empty { clauses; _ } = IntMap.is_empty clauses
 
-(* let choose_literal {occurrence_map_2;occurrence_map_n;  _} = *)
-(*   let v = fst *)
+let choose_literal { occurrence_map_2 = tlc; occurrence_map_n = om; _ } =
+  let m = if OccurrenceMap.is_empty tlc then om else tlc in
+  OccurrenceMap.fold
+    (fun l (pos, neg) (l', m) ->
+      let size_pos = IntSet.cardinal pos in
+      let size_neg = IntSet.cardinal neg in
+      let occurrences = size_pos + size_neg in
+      let l =
+        if size_pos < size_neg then Literal.(neg (var l)) else Literal.var l
+      in
+      if occurrences > m then (l, occurrences) else (l', m))
+    m (Literal.invalid, 0)
+  |> fst
