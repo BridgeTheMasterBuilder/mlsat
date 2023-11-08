@@ -171,11 +171,15 @@ let choose_literal { occurrence_map_2 = tlc; occurrence_map_n = om; _ } =
     m (Literal.invalid, 0)
   |> fst
 
+let delete_literal f l = Ok f
+let raw_delete_literal l f = f
+let delete_clauses f c = f
+
 let simplify ({ occurrence_map_n = om; _ } as f) l =
   delete_literal f (Literal.neg l)
   |> Result.map (fun f' ->
          match OccurrenceMap.get l om with
-         | None -> Ok f'
+         | None -> f'
          | Some cs -> delete_clauses f' cs |> raw_delete_literal l)
 
 let rec unit_propagate
