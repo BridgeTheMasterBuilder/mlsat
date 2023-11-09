@@ -41,16 +41,21 @@ module ClauseMap : sig
   type t
   type key = int
 
-  val add_clause : key -> Clause.t -> t -> t
+  val add : Clause.t -> t -> t
   val empty : t
   val find : key -> t -> Clause.t
   val is_empty : t -> bool
 end = struct
   include IntMap
 
-  type t = Clause.t IntMap.t
+  let count = ref 0
+  (* TODO *)
 
-  let add_clause = add
+  let add =
+    incr count;
+    add !count
+
+  type t = Clause.t IntMap.t
 end
 
 module OccurrenceMap : sig
@@ -60,17 +65,18 @@ module OccurrenceMap : sig
   val add_occurrences : t -> (key * int) list -> t
   val choose_opt : t -> (key * int) option
   val empty : t
+  val fold : (key -> IntSet.t * IntSet.t -> 'a -> 'a) -> t -> 'a -> 'a
   val get : key -> t -> IntSet.t option
   val is_empty : t -> bool
-  val fold : (key -> IntSet.t * IntSet.t -> 'a -> 'a) -> t -> 'a -> 'a
 end = struct
   module S = Map.Make (Literal)
   include S
 
   type key = Literal.t
-  type t = (IntSet.t * IntSet.t) S.t
+  type map = (IntSet.t * IntSet.t) S.t
+  type t = { occur1 : map; occur2 : map; occur_many : map }
 
-  let add_occurrence l n m =
+  let add_occurrence l n { occur1; occur2; occur_many = m } =
     let map, select, occurrence =
       if Literal.is_negated l then
         (Pair.map_snd, snd, (Literal.var l, (IntSet.empty, IntSet.singleton n)))
@@ -79,13 +85,20 @@ end = struct
     in
     add_list_with ~f:(fun _ o -> map (IntSet.union (select o))) m [ occurrence ]
 
-  let add_occurrences = List.fold_left (fun m (l, c) -> add_occurrence l c m)
+  let add_occurrences =
+    List.fold_left (fun m (l, c) ->
+        { m with occur_many = add_occurrence l c m })
 
-  let get l m =
+  let empty = { occur1 = empty; occur2 = empty; occur_many = empty }
+  let fold f { occur_many = m; _ } = fold f m
+
+  let get l { occur1; occur2; occur_many = m } =
     get l m
     |> Option.map (fun (pos, neg) -> if Literal.is_negated l then neg else pos)
 
-  let choose_opt m =
+  let is_empty { occur_many = m; _ } = is_empty m
+
+  let choose_opt { occur1; occur2; occur_many = m } =
     choose_opt m
     |> Option.map (fun (l, (pos, neg)) ->
            if IntSet.cardinal pos > 1 then (Literal.neg l, IntSet.choose neg)
@@ -101,9 +114,10 @@ module LiteralMap = Map.Make (Literal)
 type formula = {
   clauses : ClauseMap.t;
   original_clauses : ClauseMap.t;
-  occurrence_map_1 : OccurrenceMap.t;
-  occurrence_map_2 : OccurrenceMap.t;
-  occurrence_map_n : OccurrenceMap.t;
+  occurrence_map : OccurrenceMap.t;
+  (* occur1 : OccurrenceMap.t; *)
+  (* occur2 : OccurrenceMap.t; *)
+  (* occur_many : OccurrenceMap.t; *)
   decision_level : int;
   assignments : assignment LiteralMap.t;
   trail : (assignment * formula) list;
@@ -114,31 +128,32 @@ let of_list =
   let rec aux
       ({
          clauses;
-         occurrence_map_1 = uc;
-         occurrence_map_2 = tlc;
-         occurrence_map_n = om;
-         _;
+         occurrence_map = om;
+
+         (* occur1 = uc; occur2 = tlc; occur_many = om;*)
+       _;
        } as f) n = function
     | [] -> f
     | c :: cs ->
         let c = Clause.of_list c in
-        let clauses' = ClauseMap.add_clause n c clauses in
+        let clauses' = ClauseMap.add c clauses in
         let occurrences = Clause.make_occurrences c n in
-        let uc', tlc' =
-          match Clause.size c with
-          | 1 -> (OccurrenceMap.add_occurrences uc occurrences, tlc)
-          | 2 -> (uc, OccurrenceMap.add_occurrences tlc occurrences)
-          | _ -> (uc, tlc)
-        in
+        (* let uc', tlc' = *)
+        (*   match Clause.size c with *)
+        (*   | 1 -> (OccurrenceMap.add_occurrences uc occurrences, tlc) *)
+        (*   | 2 -> (uc, OccurrenceMap.add_occurrences tlc occurrences) *)
+        (*   | _ -> (uc, tlc) *)
+        (* in *)
         let om' = OccurrenceMap.add_occurrences om occurrences in
         let f' =
           {
             f with
             clauses = clauses';
             original_clauses = clauses';
-            occurrence_map_1 = uc';
-            occurrence_map_2 = tlc';
-            occurrence_map_n = om';
+            occurrence_map = om';
+            (* occur1 = uc'; *)
+            (* occur2 = tlc'; *)
+            (* occur_many = om'; *)
           }
         in
         aux f' (n + 1) cs
@@ -147,9 +162,10 @@ let of_list =
     {
       clauses = ClauseMap.empty;
       original_clauses = ClauseMap.empty;
-      occurrence_map_1 = OccurrenceMap.empty;
-      occurrence_map_2 = OccurrenceMap.empty;
-      occurrence_map_n = OccurrenceMap.empty;
+      occurrence_map = OccurrenceMap.empty;
+      (* occur1 = OccurrenceMap.empty; *)
+      (* occur2 = OccurrenceMap.empty; *)
+      (* occur_many = OccurrenceMap.empty; *)
       decision_level = 0;
       assignments = LiteralMap.empty;
       trail = [];
@@ -159,8 +175,10 @@ let of_list =
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
-let choose_literal { occurrence_map_2 = tlc; occurrence_map_n = om; _ } =
-  let m = if OccurrenceMap.is_empty tlc then om else tlc in
+let choose_literal
+    { occurrence_map = om;  (* occur2 = tlc; occur_many = om;*) _ } =
+  (* let m = if OccurrenceMap.is_empty tlc then om else tlc in *)
+  let m = OccurrenceMap.occur2 om in
   OccurrenceMap.fold
     (fun l (pos, neg) (l', m) ->
       let size_pos = IntSet.cardinal pos in
@@ -175,7 +193,7 @@ let delete_literal f l = Ok f
 let raw_delete_literal l f = f
 let delete_clauses f c = f
 
-let simplify ({ occurrence_map_n = om; _ } as f) l =
+let simplify ({ occurrence_map = om;  (*occur_many = om;*) _ } as f) l =
   delete_literal f (Literal.neg l)
   |> Result.map (fun f' ->
          match OccurrenceMap.get l om with
@@ -187,13 +205,17 @@ let rec unit_propagate
        assignments = a;
        original_clauses = oc;
        trail = t;
-       occurrence_map_1 = uc;
-       _;
+       occurrence_map = om;
+
+       (*occur1 = uc;*)
+     _;
      } as f) =
-  match OccurrenceMap.choose_opt uc with
+  let m = OccurrenceMap.occur1 om in
+  match OccurrenceMap.choose_opt m with
   | Some (l, c) ->
       let ls = ClauseMap.find c oc in
       let d = 0 in
+      (* TODO *)
       let i = Implication { literal = l; implicant = ls; level = d } in
       let a' = LiteralMap.add (Literal.var l) i a in
       let t' = (i, f) :: t in
