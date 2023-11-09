@@ -39,6 +39,7 @@ end = struct
 end
 
 module IntMap = Map.Make (Int)
+module IntSet = Iter.Set.Make (Int)
 
 module ClauseMap : sig
   type t
@@ -48,7 +49,9 @@ module ClauseMap : sig
   val empty : t
   val find : key -> t -> Clause.t
   val is_empty : t -> bool
-  val remove_literal : Clause.elt -> t -> (t, Clause.t) result
+
+  val remove_literal_from_clauses :
+    Clause.elt -> IntSet.t -> t -> (t, Clause.t) result
 end = struct
   include IntMap
 
@@ -61,10 +64,8 @@ end = struct
     incr count;
     add !count
 
-  let remove_literal l m = Ok m
+  let remove_literal_from_clauses l cs m = Ok m
 end
-
-module IntSet = Iter.Set.Make (Int)
 
 module OccurrenceMap : sig
   type t
