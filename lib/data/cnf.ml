@@ -1,148 +1,4 @@
-open Containers
-
-module Literal : sig
-  type t
-
-  val compare : t -> t -> int
-  val invalid : t
-  val is_negated : t -> bool
-  val neg : t -> t
-  val of_int : int -> t
-  val var : t -> t
-end = struct
-  include Int
-
-  let invalid = 0
-  let is_negated l = l < 0
-  let of_int i = if i = 0 then failwith "Invalid literal" else i
-  let var = abs
-end
-
-module IntSet = Iter.Set.Make (Int)
-
-type occurrence =
-  | Occur1 of (Literal.t * IntSet.t)
-  | Occur2 of (Literal.t * IntSet.t)
-  | OccurMany of (Literal.t * IntSet.t)
-
-module OccurrenceMap : sig
-  type t
-  type occurrences = { occur1 : t; occur2 : t; occur_many : t }
-  type key = Literal.t
-
-  (* val add_occurrences : t -> (key * int) list -> t *)
-  val add_occurrences : occurrences -> occurrence list -> occurrences
-  val choose_opt : t -> (key * int) option
-  val empty : t
-  val fold : (key -> IntSet.t * IntSet.t -> 'a -> 'a) -> t -> 'a -> 'a
-  val get : key -> t -> IntSet.t option
-  val is_empty : t -> bool
-end = struct
-  module S = Map.Make (Literal)
-  include S
-
-  type key = Literal.t
-  type t = (IntSet.t * IntSet.t) S.t
-  type occurrences = { occur1 : t; occur2 : t; occur_many : t }
-
-  let add_occurrence l cs m =
-    let map, select, occurrence =
-      if Literal.is_negated l then
-        (Pair.map_snd, snd, (Literal.var l, (IntSet.empty, cs)))
-      else (Pair.map_fst, fst, (Literal.var l, (cs, IntSet.empty)))
-    in
-    add_list_with ~f:(fun _ o -> map (IntSet.union (select o))) m [ occurrence ]
-
-  (* let add_occurrences = List.fold_left (fun m (l, c) -> add_occurrence l c m) *)
-  let add_occurrences =
-    List.fold_left (fun ({ occur1; occur2; occur_many } as m) o ->
-        match o with
-        | Occur1 (l, cs) -> { m with occur1 = add_occurrence l cs occur1 }
-        | Occur2 (l, cs) -> { m with occur2 = add_occurrence l cs occur2 }
-        | OccurMany (l, cs) ->
-            { m with occur_many = add_occurrence l cs occur_many })
-  (* TODO inline add_occurrence *)
-
-  let choose_opt m =
-    choose_opt m
-    |> Option.map (fun (l, (pos, neg)) ->
-           if IntSet.cardinal pos > 1 then (Literal.neg l, IntSet.choose neg)
-           else (l, IntSet.choose pos))
-
-  let get l m =
-    get l m
-    |> Option.map (fun (pos, neg) -> if Literal.is_negated l then neg else pos)
-end
-
-module LiteralSet = Iter.Set.Make (Literal)
-
-module Clause : sig
-  type t
-  type elt = Literal.t
-
-  val make_occurrences : t -> int -> occurrence list
-  val of_list : int list -> t
-  val remove : elt -> t -> t
-  val size : t -> int
-end = struct
-  include LiteralSet
-
-  let make_occurrences ls c =
-    Iter.(
-      to_iter ls
-      |> map (fun l ->
-             match cardinal ls with
-             | 1 -> Occur1 (l, IntSet.singleton c)
-             | 2 -> Occur2 (l, IntSet.singleton c)
-             | _ -> OccurMany (l, IntSet.singleton c))
-      |> to_list)
-
-  let of_list ls = Iter.(of_list ls |> map Literal.of_int |> of_iter)
-  let size = cardinal
-end
-
-module IntMap = Map.Make (Int)
-
-module ClauseMap : sig
-  type t
-  type key = int
-
-  val add : Clause.t -> t -> t
-  val empty : t
-  val find : key -> t -> Clause.t
-  val is_empty : t -> bool
-
-  val remove_literal_from_clauses :
-    Clause.elt -> IntSet.t -> t -> (t, Clause.t) result
-end = struct
-  include IntMap
-
-  type t = Clause.t IntMap.t
-
-  let count = ref 0
-  (* TODO *)
-
-  let add =
-    incr count;
-    add !count
-
-  (* TODO return list of occurrences in order to update occurrence map *)
-  let remove_literal_from_clauses l cs m =
-    let exception Empty_clause of Clause.t in
-    try
-      Ok
-        (IntSet.fold
-           (fun c m' ->
-             match get c m' with
-             | None -> m'
-             | Some ls -> (
-                 let diff = Clause.remove l ls in
-                 match Clause.size diff with
-                 | 0 -> raise_notrace (Empty_clause ls)
-                 | _ -> IntMap.add c diff m'))
-           cs m)
-    with Empty_clause ls -> Error ls
-end
+open Common
 
 type assignment =
   | Decision of { literal : Literal.t; level : int }
@@ -153,7 +9,6 @@ module LiteralMap = Map.Make (Literal)
 type formula = {
   clauses : ClauseMap.t;
   original_clauses : ClauseMap.t;
-  (* occur : occurrence_map; *)
   occur : OccurrenceMap.occurrences;
   decision_level : int;
   assignments : assignment LiteralMap.t;
@@ -162,28 +17,18 @@ type formula = {
 }
 
 let of_list =
-  let rec aux
-      (* ({ clauses; occur = { occur1 = o1; occur2 = o2; occur_many = om }; _ } as *)
-        ({ clauses; occur; _ } as f) n = function
+  let rec aux ({ clauses; occur; _ } as f) n = function
     | [] -> f
     | c :: cs ->
         let c = Clause.of_list c in
         let clauses' = ClauseMap.add c clauses in
         let occurrences = Clause.make_occurrences c n in
-        (* let o1', o2' = *)
-        (*   match Clause.size c with *)
-        (*   | 1 -> (OccurrenceMap.add_occurrences o1 occurrences, o2) *)
-        (*   | 2 -> (o1, OccurrenceMap.add_occurrences o2 occurrences) *)
-        (*   | _ -> (o1, o2) *)
-        (* in *)
-        (* let om' = OccurrenceMap.add_occurrences om occurrences in *)
         let occur' = OccurrenceMap.add_occurrences occur occurrences in
         let f' =
           {
             f with
             clauses = clauses';
             original_clauses = clauses';
-            (* occur = { occur1 = o1'; occur2 = o2'; occur_many = om' }; *)
             occur = occur';
           }
         in
