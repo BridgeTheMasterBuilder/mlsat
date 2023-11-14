@@ -1,2 +1,3 @@
 (library
- (name mlsat))
+ (name mlsat)
+ (libraries data))

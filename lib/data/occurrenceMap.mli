@@ -1,7 +1,7 @@
 open Common
 
 type t
-type occurrences = { occur1 : t; occur2 : t; occur_many : t }
+type occurrences = { occur1 : t; occur2 : t; occur_n : t }
 type key = Literal.t
 
 val add_occurrences : occurrences -> Occurrence.t list -> occurrences
@@ -13,3 +13,4 @@ val is_empty : t -> bool
 
 (* val remove_occurrences : occurrences -> Occurrence.t list -> occurrences *)
 val remove : key -> occurrences -> occurrences
+val update_occurrences : occurrences -> Occurrence.t list -> occurrences

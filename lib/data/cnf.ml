@@ -42,7 +42,7 @@ let of_list =
         {
           occur1 = OccurrenceMap.empty;
           occur2 = OccurrenceMap.empty;
-          occur_many = OccurrenceMap.empty;
+          occur_n = OccurrenceMap.empty;
         };
       decision_level = 0;
       assignments = LiteralMap.empty;
@@ -53,7 +53,7 @@ let of_list =
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
-let choose_literal { occur = { occur2 = o2; occur_many = om; _ }; _ } =
+let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
   let m = if OccurrenceMap.is_empty o2 then om else o2 in
   OccurrenceMap.fold
     (fun l (pos, neg) (l', m) ->
@@ -65,10 +65,7 @@ let choose_literal { occur = { occur2 = o2; occur_many = om; _ }; _ } =
     m (Literal.invalid, 0)
   |> fst
 
-let raw_delete_literal l f = f
-let delete_clauses f c = f
-
-let simplify ({ clauses; occur = { occur_many = om; _ } as occur; _ } as f) l =
+let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
   match OccurrenceMap.get l om with
   | None ->
       (* f *) failwith "Attempt to simplify clause by non-existent literal"
@@ -77,7 +74,7 @@ let simplify ({ clauses; occur = { occur_many = om; _ } as occur; _ } as f) l =
       |> Result.map (fun (clauses', os) ->
              let clauses' = ClauseMap.remove_many cs clauses' in
              let occur' = OccurrenceMap.remove l occur in
-             let occur' = OccurrenceMap.update_occurrences os occur' in
+             let occur' = OccurrenceMap.update_occurrences occur' os in
              { f with clauses = clauses'; occur = occur' })
 
 let rec unit_propagate

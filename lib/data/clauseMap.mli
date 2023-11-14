@@ -10,3 +10,5 @@ val is_empty : t -> bool
 
 val remove_literal_from_clauses :
   Clause.elt -> IntSet.t -> t -> (t * Occurrence.t list, Clause.t) result
+
+val remove_many : IntSet.t -> t -> t
