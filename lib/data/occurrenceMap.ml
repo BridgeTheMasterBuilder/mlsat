@@ -31,5 +31,11 @@ let choose_opt m =
          else (l, IntSet.choose pos))
 
 let get l m =
-  get l m
+  get (Literal.var l) m
   |> Option.map (fun (pos, neg) -> if Literal.is_negated l then neg else pos)
+
+let remove l { occur1; occur2; occur_many } =
+  let occur1' = remove l occur1 in
+  let occur2' = remove l occur2 in
+  let occur_many' = remove l occur_many in
+  { occur1 = occur1'; occur2 = occur2'; occur_many = occur_many' }

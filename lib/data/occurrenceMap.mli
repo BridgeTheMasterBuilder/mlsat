@@ -10,3 +10,6 @@ val empty : t
 val fold : (key -> IntSet.t * IntSet.t -> 'a -> 'a) -> t -> 'a -> 'a
 val get : key -> t -> IntSet.t option
 val is_empty : t -> bool
+
+(* val remove_occurrences : occurrences -> Occurrence.t list -> occurrences *)
+val remove : key -> occurrences -> occurrences

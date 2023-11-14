@@ -65,16 +65,20 @@ let choose_literal { occur = { occur2 = o2; occur_many = om; _ }; _ } =
     m (Literal.invalid, 0)
   |> fst
 
-let delete_literal f l = Ok f
 let raw_delete_literal l f = f
 let delete_clauses f c = f
 
-let simplify ({ occur = { occur_many = om; _ }; _ } as f) l =
-  delete_literal f (Literal.neg l)
-  |> Result.map (fun f' ->
-         match OccurrenceMap.get l om with
-         | None -> f'
-         | Some cs -> delete_clauses f' cs |> raw_delete_literal l)
+let simplify ({ clauses; occur = { occur_many = om; _ } as occur; _ } as f) l =
+  match OccurrenceMap.get l om with
+  | None ->
+      (* f *) failwith "Attempt to simplify clause by non-existent literal"
+  | Some cs ->
+      ClauseMap.remove_literal_from_clauses (Literal.neg l) cs clauses
+      |> Result.map (fun (clauses', os) ->
+             let clauses' = ClauseMap.remove_many cs clauses' in
+             let occur' = OccurrenceMap.remove l occur in
+             let occur' = OccurrenceMap.update_occurrences os occur' in
+             { f with clauses = clauses'; occur = occur' })
 
 let rec unit_propagate
     ({
