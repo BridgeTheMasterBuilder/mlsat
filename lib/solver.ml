@@ -12,13 +12,13 @@ let rec cdcl max_conflicts grow =
       cdcl (max_conflicts * grow) grow f'
     else
       match unit_propagate f with
-      | Error (clause, f') ->
+      | Error clause ->
           if d = 0 then Unsat
           else
-            let learned_clause = analyze_conflict f' clause in
-            let f'', d' = backtrack f' learned_clause in
+            let learned_clause = analyze_conflict f clause in
+            let f', d' = backtrack f learned_clause in
             aux d' max_conflicts (conflicts + 1)
-              (add_clause f'' learned_clause learned_clause)
+              (add_clause f' learned_clause learned_clause)
       | Ok f' ->
           if is_empty f' then Sat
           else
@@ -28,5 +28,8 @@ let rec cdcl max_conflicts grow =
   in
   aux 0 max_conflicts 0
 
-let solve ({ formula = f } : Problem.t) =
-  match unit_propagate f with Error _ -> Unsat | Ok f -> cdcl 0 0 f
+let solve
+    ({ formula = f; time_limit; base_num_conflicts; grow_factor } : Problem.t) =
+  match unit_propagate f with
+  | Error _ -> Unsat
+  | Ok f -> cdcl base_num_conflicts grow_factor f
