@@ -4,14 +4,12 @@ type assignment =
   | Decision of { literal : Literal.t; level : int }
   | Implication of { literal : Literal.t; level : int; implicant : Clause.t }
 
-module LiteralMap = Map.Make (Literal)
-
 type formula = {
   clauses : ClauseMap.t;
   original_clauses : ClauseMap.t;
   occur : OccurrenceMap.occurrences;
   decision_level : int;
-  assignments : assignment LiteralMap.t;
+  assignments : assignment Literal.Map.t;
   trail : (assignment * formula) list;
   database : IntSet.t list;
 }
@@ -45,13 +43,17 @@ let of_list =
           occur_n = OccurrenceMap.empty;
         };
       decision_level = 0;
-      assignments = LiteralMap.empty;
+      assignments = Literal.Map.empty;
       trail = [];
       database = [];
     }
     1
 
-let is_empty { clauses; _ } = ClauseMap.is_empty clauses
+let analyze_conflict { assignments = a; decision_level = d; _ } clause =
+  let aux q c history = () in
+  let ls = Clause.to_list clause in
+  aux (CCFQueue.of_list ls) IntSet.empty
+    (Literal.Set.map Literal.var (Clause.to_set clause))
 
 let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
   let m = if OccurrenceMap.is_empty o2 then om else o2 in
@@ -64,6 +66,8 @@ let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
       if occurrences > m then (l, occurrences) else (l', m))
     m (Literal.invalid, 0)
   |> fst
+
+let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
 let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
   match OccurrenceMap.get l om with
@@ -91,7 +95,7 @@ let rec unit_propagate
       let d = 0 in
       (* TODO *)
       let i = Implication { literal = l; implicant = ls; level = d } in
-      let a' = LiteralMap.add (Literal.var l) i a in
+      let a' = Literal.Map.add (Literal.var l) i a in
       let t' = (i, f) :: t in
       let f' = { f with assignments = a'; trail = t' } in
       simplify f' l |> Result.flat_map (fun f'' -> unit_propagate f'')

@@ -1,7 +1,6 @@
 open Common
 open Occurrence
-module S = Iter.Set.Make (Literal)
-include S
+include Literal.Set
 
 let make_occurrences ls c =
   Iter.(
@@ -15,3 +14,4 @@ let make_occurrences ls c =
 
 let of_list ls = Iter.(of_list ls |> map Literal.of_int |> of_iter)
 let size = cardinal
+let to_set = Fun.id
