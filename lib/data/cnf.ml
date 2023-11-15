@@ -49,11 +49,17 @@ let of_list =
     }
     1
 
+let add_clause f clause original_clause = f
+
 let analyze_conflict { assignments = a; decision_level = d; _ } clause =
   let aux q c history = () in
   let ls = Clause.to_list clause in
   aux (CCFQueue.of_list ls) IntSet.empty
     (Literal.Set.map Literal.var (Clause.to_set clause))
+
+let backtrack ({ assignments = a; decision_level = d; database = db; _ } as f)
+    learned_clause =
+  (f, 0)
 
 let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
   let m = if OccurrenceMap.is_empty o2 then om else o2 in
@@ -68,6 +74,7 @@ let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
   |> fst
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
+let rewrite f l = f
 
 let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
   match OccurrenceMap.get l om with
