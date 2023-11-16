@@ -3,6 +3,7 @@ type elt = Literal.t
 
 val add : elt -> t -> t
 val empty : t
+val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
 val make_occurrences : t -> int -> Occurrence.t list
 val of_list : int list -> t
 val remove : elt -> t -> t

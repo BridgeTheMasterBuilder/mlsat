@@ -11,7 +11,7 @@ type formula = {
   decision_level : int;
   assignments : assignment Literal.Map.t;
   trail : (assignment * formula) list;
-  database : IntSet.t list;
+  database : Clause.t list;
 }
 
 let of_list =
@@ -19,7 +19,8 @@ let of_list =
     | [] -> f
     | c :: cs ->
         let c = Clause.of_list c in
-        let clauses' = ClauseMap.add c clauses in
+        (* let clauses' = ClauseMap.add c clauses in *)
+        let clauses' = ClauseMap.add n c clauses in
         let occurrences = Clause.make_occurrences c n in
         let occur' = OccurrenceMap.add_occurrences occur occurrences in
         let f' =
@@ -49,8 +50,46 @@ let of_list =
     }
     1
 
-let add_clause f clause original_clause = f (* TODO *)
-let add_learned_clauses f lc = f (* TODO *)
+let add_clause ({ clauses; original_clauses; occur; _ } as f) clause
+    original_clause =
+  let n = ClauseMap.size clauses in
+  let clauses' = ClauseMap.add (n + 1) clause clauses in
+  let original_clauses' =
+    ClauseMap.add (n + 1) original_clause original_clauses
+  in
+  let occurrences = Clause.make_occurrences clause (n + 1) in
+  let occur' = OccurrenceMap.update_occurrences occur occurrences in
+  {
+    f with
+    clauses = clauses';
+    original_clauses = original_clauses';
+    occur = occur';
+  }
+
+let add_learned_clauses ({ assignments = a; _ } as f) db =
+  let clauses =
+    List.map
+      (fun c ->
+        let c' =
+          Clause.fold
+            (fun l c ->
+              Literal.(Map.get (var l) a)
+              |> Option.map (function
+                     | Decision { literal = l'; _ }
+                     | Implication { literal = l'; _ }
+                     ->
+                     if
+                       Bool.equal (Literal.is_negated l') (Literal.is_negated l)
+                     then Clause.remove l c
+                     else c)
+              |> Option.get_exn_or "foo")
+            c c
+        in
+        (c', c))
+      db
+  in
+  let f' = List.fold_left (fun f (c, oc) -> add_clause f c oc) f clauses in
+  { f' with database = db }
 
 let analyze_conflict { assignments = a; decision_level = d; _ } clause =
   let rec aux q c history =
@@ -79,23 +118,37 @@ let analyze_conflict { assignments = a; decision_level = d; _ } clause =
   aux (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.map Literal.var (Clause.to_set clause))
 
-let backtrack { assignments = a; decision_level = d; database = db; _ }
+let backtrack
+    { assignments = a; trail = t; decision_level = d; database = db; _ }
     learned_clause =
-  (* let d' = d (\* TODO *\) in *)
-  (* let ds = *)
-  (* Clause.to_list learned_clause *)
-  (* |> List.filter_map (fun l -> *)
-  (*        Literal.(Map.get (var l) a) *)
-  (*        |> Option.map (function *)
-  (*               | Decision { level; _ } | Implication { level; _ } -> level)) *)
   let d' =
+    (* Clause.to_iter learned_clause *)
+    (* |> Iter.filter_map (fun l -> *)
+    (*        Literal.(Map.get (var l) a) *)
+    (*        |> Option.flat_map (function *)
+    (*               | Decision { level; _ } | Implication { level; _ } -> *)
+    (*               level < d |> Bool.if_then (Fun.const level))) *)
+    let open Iter in
     Clause.to_iter learned_clause
-    |> Iter.filter_map (fun l ->
-           Literal.(Map.get (var l) a)
-           |> Option.map (function
-                  | Decision { level; _ } | Implication { level; _ } ->
-                  Bool.map Fun.id (level < d)))
-    |> Iter.max |> Option.get_or ~default:0
+    |> filter_map (fun l -> Literal.(Map.get (var l) a))
+    |> map (function Decision { level; _ } | Implication { level; _ } -> level)
+    |> filter (fun level -> level < d)
+    |> max |> Option.get_or ~default:0
+  in
+  let _, f =
+    if d' = 0 then
+      List.last_opt t
+      |> Option.get_exn_or "Attempt to backtrack when trail is empty"
+    else
+      List.find_map
+        (fun ((ass, _) as result) ->
+          match ass with
+          | Decision { level = d''; _ } ->
+              (* d'' = d' |> Bool.if_then (Fun.const result) *)
+              if d'' = d' then Some result else None
+          | _ -> None)
+        t
+      |> Option.get_exn_or "Attempt to backtrack when trail is empty"
   in
   let f' = add_learned_clauses f (learned_clause :: db) in
   (f', d')
@@ -113,8 +166,14 @@ let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
   |> fst
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
-let restart f = f (* TODO *)
-let rewrite f l = f (* TODO *)
+
+let restart ({ trail = t; database = db; _ } as f) =
+  if List.is_empty t then f
+  else
+    let f' =
+      List.last_opt t |> Option.map snd |> Option.get_exn_or "Impossible"
+    in
+    add_learned_clauses f' db
 
 let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
   match OccurrenceMap.get l om with
@@ -127,6 +186,14 @@ let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
              let occur' = OccurrenceMap.remove l occur in
              let occur' = OccurrenceMap.update_occurrences occur' os in
              { f with clauses = clauses'; occur = occur' })
+
+let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
+  let f' = simplify f l |> Result.get_exn in
+  let a' =
+    Literal.(Map.add (var l) (Decision { literal = l; level = d + 1 }) a)
+  in
+  let t' = (Decision { literal = l; level = d + 1 }, f) :: t in
+  { f' with decision_level = d + 1; assignments = a'; trail = t' }
 
 let rec unit_propagate
     ({
@@ -142,7 +209,7 @@ let rec unit_propagate
       let d = 0 in
       (* TODO *)
       let i = Implication { literal = l; implicant = ls; level = d } in
-      let a' = Literal.Map.add (Literal.var l) i a in
+      let a' = Literal.(Map.add (var l) i a) in
       let t' = (i, f) :: t in
       let f' = { f with assignments = a'; trail = t' } in
       simplify f' l |> Result.flat_map (fun f'' -> unit_propagate f'')
