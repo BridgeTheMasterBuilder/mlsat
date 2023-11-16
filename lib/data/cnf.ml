@@ -49,17 +49,56 @@ let of_list =
     }
     1
 
-let add_clause f clause original_clause = f
+let add_clause f clause original_clause = f (* TODO *)
+let add_learned_clauses f lc = f (* TODO *)
 
 let analyze_conflict { assignments = a; decision_level = d; _ } clause =
-  let aux q c history = () in
+  let rec aux q c history =
+    match CCFQueue.take_front q with
+    | None -> c
+    | Some (l, q') -> (
+        if CCFQueue.size q = 1 then Clause.add l c
+        else
+          match Literal.Map.get l a with
+          | Some (Decision _) -> aux q' (Clause.add l c) history
+          | Some (Implication { implicant = ls; level = d'; _ }) ->
+              if d' < d then aux q' (Clause.add l c) history
+              else
+                let ls = Clause.to_set ls in
+                let ls' =
+                  Literal.Set.filter
+                    (fun l -> not Literal.(Set.mem (var l) history))
+                    ls
+                in
+                let q'' = Literal.Set.to_iter ls |> CCFQueue.add_iter_back q' in
+                let history' = Literal.(Set.union history (Set.map var ls')) in
+                aux q'' c history'
+          | _ -> aux q' c history)
+  in
   let ls = Clause.to_list clause in
-  aux (CCFQueue.of_list ls) IntSet.empty
+  aux (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.map Literal.var (Clause.to_set clause))
 
-let backtrack ({ assignments = a; decision_level = d; database = db; _ } as f)
+let backtrack { assignments = a; decision_level = d; database = db; _ }
     learned_clause =
-  (f, 0)
+  (* let d' = d (\* TODO *\) in *)
+  (* let ds = *)
+  (* Clause.to_list learned_clause *)
+  (* |> List.filter_map (fun l -> *)
+  (*        Literal.(Map.get (var l) a) *)
+  (*        |> Option.map (function *)
+  (*               | Decision { level; _ } | Implication { level; _ } -> level)) *)
+  let d' =
+    Clause.to_iter learned_clause
+    |> Iter.filter_map (fun l ->
+           Literal.(Map.get (var l) a)
+           |> Option.map (function
+                  | Decision { level; _ } | Implication { level; _ } ->
+                  Bool.map Fun.id (level < d)))
+    |> Iter.max |> Option.get_or ~default:0
+  in
+  let f' = add_learned_clauses f (learned_clause :: db) in
+  (f', d')
 
 let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
   let m = if OccurrenceMap.is_empty o2 then om else o2 in
@@ -74,7 +113,8 @@ let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
   |> fst
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
-let rewrite f l = f
+let restart f = f (* TODO *)
+let rewrite f l = f (* TODO *)
 
 let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
   match OccurrenceMap.get l om with
