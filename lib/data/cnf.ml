@@ -122,12 +122,6 @@ let backtrack
     { assignments = a; trail = t; decision_level = d; database = db; _ }
     learned_clause =
   let d' =
-    (* Clause.to_iter learned_clause *)
-    (* |> Iter.filter_map (fun l -> *)
-    (*        Literal.(Map.get (var l) a) *)
-    (*        |> Option.flat_map (function *)
-    (*               | Decision { level; _ } | Implication { level; _ } -> *)
-    (*               level < d |> Bool.if_then (Fun.const level))) *)
     let open Iter in
     Clause.to_iter learned_clause
     |> filter_map (fun l -> Literal.(Map.get (var l) a))
@@ -144,7 +138,6 @@ let backtrack
         (fun ((ass, _) as result) ->
           match ass with
           | Decision { level = d''; _ } ->
-              (* d'' = d' |> Bool.if_then (Fun.const result) *)
               if d'' = d' then Some result else None
           | _ -> None)
         t
@@ -206,8 +199,16 @@ let rec unit_propagate
   match OccurrenceMap.choose_opt o1 with
   | Some (l, c) ->
       let ls = ClauseMap.find c oc in
-      let d = 0 in
-      (* TODO *)
+      let d =
+        let open Iter in
+        Clause.remove l ls |> Clause.to_iter
+        |> map (fun l ->
+               Literal.(Map.get (var l) a)
+               |> Option.map_or ~default:0 (function
+                      | Decision { level; _ } | Implication { level; _ } ->
+                      level))
+        |> max |> Option.get_or ~default:0
+      in
       let i = Implication { literal = l; implicant = ls; level = d } in
       let a' = Literal.(Map.add (var l) i a) in
       let t' = (i, f) :: t in
