@@ -8,4 +8,5 @@ val invalid : t
 val is_negated : t -> bool
 val neg : t -> t
 val of_int : int -> t
+val show : t -> string
 val var : t -> t

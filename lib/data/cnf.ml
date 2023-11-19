@@ -50,6 +50,29 @@ let of_list =
     }
     1
 
+let check_invariants
+    {
+      clauses;
+      original_clauses;
+      occur = { occur1; occur2; occur_n };
+      decision_level;
+      assignments;
+      trail;
+      database;
+    } =
+  let clauses_occurrences_eq =
+    ClauseMap.for_all
+      (fun c ls ->
+        Clause.for_all
+          (fun l ->
+            let cs = OccurrenceMap.find l occur_n in
+            IntSet.for_all (fun c -> Clause.mem l (ClauseMap.find c clauses)) cs
+            && IntSet.mem c cs)
+          ls)
+      clauses
+  in
+  assert clauses_occurrences_eq
+
 let add_clause ({ clauses; original_clauses; occur; _ } as f) clause
     original_clause =
   let n = ClauseMap.size clauses in
@@ -168,6 +191,10 @@ let restart ({ trail = t; database = db; _ } as f) =
     in
     add_learned_clauses f' db
 
+let show { clauses; occur; _ } =
+  "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:"
+  ^ OccurrenceMap.show_occurrences occur
+
 let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
   match OccurrenceMap.get l om with
   | None ->
@@ -196,6 +223,8 @@ let rec unit_propagate
        occur = { occur1 = o1; _ };
        _;
      } as f) =
+  print_endline ("Unit propagating: " ^ show f);
+
   match OccurrenceMap.choose_opt o1 with
   | Some (l, c) ->
       let ls = ClauseMap.find c oc in

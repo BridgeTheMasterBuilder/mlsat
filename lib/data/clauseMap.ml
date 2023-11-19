@@ -14,7 +14,6 @@ let add n c m =
   add n c m
 
 let remove_literal_from_clauses l cs m =
-  assert (Literal.is_negated l);
   let exception Empty_clause of Clause.t in
   try
     Ok
@@ -33,3 +32,8 @@ let remove_literal_from_clauses l cs m =
 
 let remove_many = IntSet.fold (fun c m' -> remove c m')
 let size m = max_binding_opt m |> Option.map_or ~default:0 fst
+
+let show m =
+  fold
+    (fun _ v s -> (if String.equal s "" then "" else s ^ "/\\") ^ Clause.show v)
+    m ""

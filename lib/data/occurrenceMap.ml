@@ -39,6 +39,10 @@ let choose_opt m =
          if IntSet.cardinal pos > 1 then (Literal.neg l, IntSet.choose neg)
          else (l, IntSet.choose pos))
 
+let find l m =
+  let pos, neg = find (Literal.var l) m in
+  if Literal.is_negated l then neg else pos
+
 let get l m =
   get (Literal.var l) m
   |> Option.map (fun (pos, neg) -> if Literal.is_negated l then neg else pos)
@@ -48,6 +52,17 @@ let remove l { occur1; occur2; occur_n } =
   let occur2' = remove l occur2 in
   let occur_n' = remove l occur_n in
   { occur1 = occur1'; occur2 = occur2'; occur_n = occur_n' }
+
+let show m =
+  fold
+    (fun l (pos, neg) s ->
+      s ^ Literal.show l ^ " -> (" ^ IntSet.show pos ^ ", " ^ IntSet.show neg
+      ^ ")\n")
+    m ""
+
+let show_occurrences { occur1; occur2; occur_n } =
+  "1-occurrences:" ^ show occur1 ^ "\n2-occurrences: " ^ show occur2
+  ^ "\nMany occurrences: " ^ show occur_n
 
 let update_occurrence l cs m =
   let map, select, occurrence =
