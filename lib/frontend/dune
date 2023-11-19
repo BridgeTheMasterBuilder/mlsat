@@ -1,2 +1,8 @@
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
+
 (library
- (name frontend))
+ (name frontend)
+ (libraries data))

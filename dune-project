@@ -1,5 +1,7 @@
 (lang dune 3.11)
 
+(using menhir 2.1)
+
 (name mlsat)
 
 (generate_opam_files true)
@@ -22,7 +24,8 @@
  (depends ocaml dune
   (containers (>= 3.12))
   (containers-data (>= 3.12))
-  (iter (>= 1.7)))
+  (iter (>= 1.7))
+  (cmdliner (>= 1.2.0)))
  (tags
   (topics "to describe" your project)))
 
