@@ -28,9 +28,9 @@ let rec cdcl max_conflicts grow =
           if is_empty f' then Sat
           else
             let l = choose_literal f' in
+            print_endline ("making decision: " ^ Literal.show l);
             let f'' = rewrite f' l in
             check_invariants f'';
-            print_endline ("making decision: " ^ Literal.show l);
             aux (d + 1) max_conflicts conflicts f''
   in
   aux 0 max_conflicts 0

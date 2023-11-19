@@ -54,7 +54,7 @@ let check_invariants
     {
       clauses;
       original_clauses;
-      occur = { occur1; occur2; occur_n };
+      occur = { occur1; occur2; occur_n } as occur;
       decision_level;
       assignments;
       trail;
@@ -71,7 +71,10 @@ let check_invariants
           ls)
       clauses
   in
-  assert clauses_occurrences_eq
+  if not clauses_occurrences_eq then (
+    print_endline
+      (ClauseMap.show clauses ^ "\n" ^ OccurrenceMap.show_occurrences occur);
+    assert false)
 
 let add_clause ({ clauses; original_clauses; occur; _ } as f) clause
     original_clause =
@@ -196,6 +199,7 @@ let show { clauses; occur; _ } =
   ^ OccurrenceMap.show_occurrences occur
 
 let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
+  print_endline ("Simplifying by : " ^ Literal.show l);
   match OccurrenceMap.get l om with
   | None ->
       (* f *) failwith "Attempt to simplify clause by non-existent literal"
@@ -208,6 +212,7 @@ let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
              { f with clauses = clauses'; occur = occur' })
 
 let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
+  print_endline ("Rewriting by : " ^ Literal.show l);
   let f' = simplify f l |> Result.get_exn in
   let a' =
     Literal.(Map.add (var l) (Decision { literal = l; level = d + 1 }) a)
@@ -242,5 +247,11 @@ let rec unit_propagate
       let a' = Literal.(Map.add (var l) i a) in
       let t' = (i, f) :: t in
       let f' = { f with assignments = a'; trail = t' } in
-      simplify f' l |> Result.flat_map (fun f'' -> unit_propagate f'')
-  | None -> Ok f
+      simplify f' l
+      |> Result.flat_map (fun f'' ->
+             print_endline (show f'');
+             check_invariants f'';
+             unit_propagate f'')
+  | None ->
+      print_endline "Nothing to propagate";
+      Ok f
