@@ -204,9 +204,12 @@ let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
   | None ->
       (* f *) failwith "Attempt to simplify clause by non-existent literal"
   | Some cs ->
+      print_endline
+        ("Clauses that " ^ Literal.show l ^ " appears in: " ^ IntSet.show cs);
       ClauseMap.remove_literal_from_clauses (Literal.neg l) cs clauses
       |> Result.map (fun (clauses', os) ->
              let clauses' = ClauseMap.remove_many cs clauses' in
+             (* TODO generate occurrence map here too *)
              let occur' = OccurrenceMap.remove l occur in
              let occur' = OccurrenceMap.update_occurrences occur' os in
              { f with clauses = clauses'; occur = occur' })

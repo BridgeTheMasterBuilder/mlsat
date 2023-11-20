@@ -43,9 +43,12 @@ let find l m =
   let pos, neg = find (Literal.var l) m in
   if Literal.is_negated l then neg else pos
 
+(* let get l m = *)
+(*   get (Literal.var l) m *)
+(*   |> Option.map (fun (pos, neg) -> if Literal.is_negated l then neg else pos) *)
+(* TODO get_pos get_neg *)
 let get l m =
-  get (Literal.var l) m
-  |> Option.map (fun (pos, neg) -> if Literal.is_negated l then neg else pos)
+  get (Literal.var l) m |> Option.map (fun (pos, neg) -> IntSet.union pos neg)
 
 let remove l { occur1; occur2; occur_n } =
   let occur1' = remove l occur1 in
@@ -61,8 +64,8 @@ let show m =
     m ""
 
 let show_occurrences { occur1; occur2; occur_n } =
-  "1-occurrences:" ^ show occur1 ^ "\n2-occurrences: " ^ show occur2
-  ^ "\nMany occurrences: " ^ show occur_n
+  "1-occurrences:\n" ^ show occur1 ^ "\n2-occurrences:\n" ^ show occur2
+  ^ "\nMany occurrences:\n" ^ show occur_n
 
 let update_occurrence l cs m =
   let map, select, occurrence =

@@ -2,7 +2,7 @@
     open Parser
 }
 
-let literal= '-'? ['1'-'9']+
+let literal= '-'? ['1'-'9']['0'-'9']*
 let ws=['\t' '\n' ' ']
 
 rule initial = parse

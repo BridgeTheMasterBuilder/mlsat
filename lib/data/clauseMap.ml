@@ -23,6 +23,7 @@ let remove_literal_from_clauses l cs m =
            | None -> (m', os)
            | Some ls -> (
                let diff = Clause.remove l ls in
+               (* print_endline ("Diff:" ^ Clause.show diff); *)
                let occurrences = Clause.make_occurrences diff c in
                match Clause.size diff with
                | 0 -> raise_notrace (Empty_clause ls)

@@ -1,7 +1,8 @@
 (ocamllex lexer)
 
 (menhir
- (modules parser))
+ (modules parser)
+ (flags --trace))
 
 (library
  (name frontend)
