@@ -16,8 +16,11 @@ let of_list ls = Iter.(of_list ls |> map Literal.of_int |> of_iter)
 let size = cardinal
 
 let show c =
-  fold
-    (fun l s -> (if String.equal s "" then "" else s ^ "\\/") ^ Literal.show l)
-    c ""
+  "("
+  ^ fold
+      (fun l s ->
+        (if String.equal s "" then "" else s ^ "\\/") ^ Literal.show l)
+      c ""
+  ^ ")"
 
 let to_set = Fun.id

@@ -60,21 +60,84 @@ let check_invariants
       trail;
       database;
     } =
-  let clauses_occurrences_eq =
-    ClauseMap.for_all
-      (fun c ls ->
-        Clause.for_all
-          (fun l ->
-            let cs = OccurrenceMap.find l occur_n in
-            IntSet.for_all (fun c -> Clause.mem l (ClauseMap.find c clauses)) cs
-            && IntSet.mem c cs)
-          ls)
-      clauses
-  in
-  if not clauses_occurrences_eq then (
+  try
+    let clauses_occurrences_eq =
+      ClauseMap.for_all
+        (fun c ls ->
+          Clause.for_all
+            (fun l ->
+              let cs = OccurrenceMap.find l occur_n in
+              IntSet.for_all
+                (fun c ->
+                  assert (Clause.mem l (ClauseMap.find c clauses));
+                  true)
+                cs
+              &&
+              (if not (IntSet.mem c cs) then
+                 print_endline
+                   ("Clause " ^ string_of_int c ^ " not in occurrence of "
+                  ^ Literal.show l);
+               assert (IntSet.mem c cs);
+               true))
+            ls)
+        clauses
+    in
+    let occurrences_clauses_eq =
+      OccurrenceMap.for_all
+        (fun l (pos, neg) ->
+          IntSet.for_all
+            (fun c ->
+              (* let ls = ClauseMap.find c clauses in *)
+              match ClauseMap.get c clauses with
+              | None -> assert false
+              | Some ls ->
+                  Clause.for_all
+                    (fun l ->
+                      match OccurrenceMap.get l occur_n with
+                      | None -> assert false
+                      | Some (pos, neg) ->
+                          if Literal.is_negated l then (
+                            assert (IntSet.mem c neg);
+                            true)
+                          else (
+                            assert (IntSet.mem c pos);
+                            true))
+                    ls
+                  &&
+                  (assert (Literal.is_negated l || Clause.mem l ls);
+                   true))
+            pos
+          && IntSet.for_all
+               (fun c ->
+                 (* let ls = ClauseMap.find c clauses in *)
+                 match ClauseMap.get c clauses with
+                 | None -> assert false
+                 | Some ls ->
+                     Clause.for_all
+                       (fun l ->
+                         match OccurrenceMap.get l occur_n with
+                         | None -> assert false
+                         | Some (pos, neg) ->
+                             if Literal.is_negated l then (
+                               assert (IntSet.mem c neg);
+                               true)
+                             else (
+                               assert (IntSet.mem c pos);
+                               true))
+                       ls
+                     &&
+                     (assert ((not (Literal.is_negated l)) || Clause.mem l ls);
+                      true))
+               neg)
+        occur_n
+    in
+    assert (clauses_occurrences_eq && occurrences_clauses_eq)
+  with Assert_failure (s, l, c) ->
     print_endline
-      (ClauseMap.show clauses ^ "\n" ^ OccurrenceMap.show_occurrences occur);
-    assert false)
+      (s ^ ": Error at line " ^ string_of_int l ^ " column " ^ string_of_int c
+     ^ "\nClauses:" ^ ClauseMap.show clauses ^ "\n"
+      ^ OccurrenceMap.show_occurrences occur);
+    assert false
 
 let add_clause ({ clauses; original_clauses; occur; _ } as f) clause
     original_clause =
@@ -203,19 +266,23 @@ let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
   match OccurrenceMap.get l om with
   | None ->
       (* f *) failwith "Attempt to simplify clause by non-existent literal"
-  | Some cs ->
+  | Some (pos, neg) ->
       print_endline
-        ("Clauses that " ^ Literal.show l ^ " appears in: " ^ IntSet.show cs);
-      ClauseMap.remove_literal_from_clauses (Literal.neg l) cs clauses
+        ("Clauses that " ^ Literal.show l ^ " appears in: "
+        ^ IntSet.show (IntSet.union pos neg));
+      let pos, neg = if Literal.is_negated l then (neg, pos) else (pos, neg) in
+      ClauseMap.remove_literal_from_clauses (Literal.neg l) neg clauses
       |> Result.map (fun (clauses', os) ->
-             let clauses' = ClauseMap.remove_many cs clauses' in
+             let clauses', rem = ClauseMap.remove_many pos clauses' in
              (* TODO generate occurrence map here too *)
-             let occur' = OccurrenceMap.remove l occur in
+             let occur' = OccurrenceMap.remove_occurrences occur rem in
+             let occur' = OccurrenceMap.remove l occur' in
              let occur' = OccurrenceMap.update_occurrences occur' os in
              { f with clauses = clauses'; occur = occur' })
 
 let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
   print_endline ("Rewriting by : " ^ Literal.show l);
+  (* let f' = simplify f l |> Result.get_exn in *)
   let f' = simplify f l |> Result.get_exn in
   let a' =
     Literal.(Map.add (var l) (Decision { literal = l; level = d + 1 }) a)
