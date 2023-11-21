@@ -4,10 +4,26 @@ type assignment =
   | Decision of { literal : Literal.t; level : int }
   | Implication of { literal : Literal.t; level : int; implicant : Clause.t }
 
+module ClauseMap = struct
+  include IntMap
+
+  type t = Clause.t IntMap.t
+
+  let size = cardinal
+end
+
+module OccurrenceMap = struct
+  include Literal.Map
+
+  type t = IntSet.t Literal.Map.t
+end
+
 type formula = {
   clauses : ClauseMap.t;
   original_clauses : ClauseMap.t;
-  occur : OccurrenceMap.occurrences;
+  unit_clauses : ClauseMap.t;
+  two_literal_clauses : ClauseMap.t;
+  occur : OccurrenceMap.t;
   decision_level : int;
   assignments : assignment Literal.Map.t;
   trail : (assignment * formula) list;
@@ -19,10 +35,12 @@ let of_list =
     | [] -> f
     | c :: cs ->
         let c = Clause.of_list c in
-        (* let clauses' = ClauseMap.add c clauses in *)
         let clauses' = ClauseMap.add n c clauses in
-        let occurrences = Clause.make_occurrences c n in
-        let occur' = OccurrenceMap.add_occurrences occur occurrences in
+        let occur' =
+          Clause.fold
+            (fun l m -> OccurrenceMap.add l (IntSet.singleton n) m)
+            c occur
+        in
         let f' =
           {
             f with
@@ -37,107 +55,15 @@ let of_list =
     {
       clauses = ClauseMap.empty;
       original_clauses = ClauseMap.empty;
-      occur =
-        {
-          occur1 = OccurrenceMap.empty;
-          occur2 = OccurrenceMap.empty;
-          occur_n = OccurrenceMap.empty;
-        };
+      unit_clauses = ClauseMap.empty;
+      two_literal_clauses = ClauseMap.empty;
+      occur = OccurrenceMap.empty;
       decision_level = 0;
       assignments = Literal.Map.empty;
       trail = [];
       database = [];
     }
     1
-
-let check_invariants
-    {
-      clauses;
-      original_clauses;
-      occur = { occur1; occur2; occur_n } as occur;
-      decision_level;
-      assignments;
-      trail;
-      database;
-    } =
-  try
-    let clauses_occurrences_eq =
-      ClauseMap.for_all
-        (fun c ls ->
-          Clause.for_all
-            (fun l ->
-              let cs = OccurrenceMap.find l occur_n in
-              IntSet.for_all
-                (fun c ->
-                  assert (Clause.mem l (ClauseMap.find c clauses));
-                  true)
-                cs
-              &&
-              (if not (IntSet.mem c cs) then
-                 print_endline
-                   ("Clause " ^ string_of_int c ^ " not in occurrence of "
-                  ^ Literal.show l);
-               assert (IntSet.mem c cs);
-               true))
-            ls)
-        clauses
-    in
-    let occurrences_clauses_eq =
-      OccurrenceMap.for_all
-        (fun l (pos, neg) ->
-          IntSet.for_all
-            (fun c ->
-              (* let ls = ClauseMap.find c clauses in *)
-              match ClauseMap.get c clauses with
-              | None -> assert false
-              | Some ls ->
-                  Clause.for_all
-                    (fun l ->
-                      match OccurrenceMap.get l occur_n with
-                      | None -> assert false
-                      | Some (pos, neg) ->
-                          if Literal.is_negated l then (
-                            assert (IntSet.mem c neg);
-                            true)
-                          else (
-                            assert (IntSet.mem c pos);
-                            true))
-                    ls
-                  &&
-                  (assert (Literal.is_negated l || Clause.mem l ls);
-                   true))
-            pos
-          && IntSet.for_all
-               (fun c ->
-                 (* let ls = ClauseMap.find c clauses in *)
-                 match ClauseMap.get c clauses with
-                 | None -> assert false
-                 | Some ls ->
-                     Clause.for_all
-                       (fun l ->
-                         match OccurrenceMap.get l occur_n with
-                         | None -> assert false
-                         | Some (pos, neg) ->
-                             if Literal.is_negated l then (
-                               assert (IntSet.mem c neg);
-                               true)
-                             else (
-                               assert (IntSet.mem c pos);
-                               true))
-                       ls
-                     &&
-                     (assert ((not (Literal.is_negated l)) || Clause.mem l ls);
-                      true))
-               neg)
-        occur_n
-    in
-    assert (clauses_occurrences_eq && occurrences_clauses_eq)
-  with Assert_failure (s, l, c) ->
-    print_endline
-      (s ^ ": Error at line " ^ string_of_int l ^ " column " ^ string_of_int c
-     ^ "\nClauses:" ^ ClauseMap.show clauses ^ "\n"
-      ^ OccurrenceMap.show_occurrences occur);
-    assert false
 
 let add_clause ({ clauses; original_clauses; occur; _ } as f) clause
     original_clause =
@@ -146,8 +72,8 @@ let add_clause ({ clauses; original_clauses; occur; _ } as f) clause
   let original_clauses' =
     ClauseMap.add (n + 1) original_clause original_clauses
   in
-  let occurrences = Clause.make_occurrences clause (n + 1) in
-  let occur' = OccurrenceMap.update_occurrences occur occurrences in
+  let occur' = occur in
+  (* TODO occurrences *)
   {
     f with
     clauses = clauses';
@@ -235,17 +161,8 @@ let backtrack
   let f' = add_learned_clauses f (learned_clause :: db) in
   (f', d')
 
-let choose_literal { occur = { occur2 = o2; occur_n = om; _ }; _ } =
-  let m = if OccurrenceMap.is_empty o2 then om else o2 in
-  OccurrenceMap.fold
-    (fun l (pos, neg) (l', m) ->
-      let size_pos = IntSet.cardinal pos in
-      let size_neg = IntSet.cardinal neg in
-      let occurrences = size_pos + size_neg in
-      let l = if size_pos < size_neg then Literal.(neg l) else l in
-      if occurrences > m then (l, occurrences) else (l', m))
-    m (Literal.invalid, 0)
-  |> fst
+let choose_literal { clauses; two_literal_clauses = tlc; _ } =
+  Literal.of_int 1 (* TODO *)
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
@@ -257,28 +174,28 @@ let restart ({ trail = t; database = db; _ } as f) =
     in
     add_learned_clauses f' db
 
-let show { clauses; occur; _ } =
-  "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:"
-  ^ OccurrenceMap.show_occurrences occur
+(* let show { clauses; occur; _ } = *)
+(*   "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:" *)
+(*   ^ OccurrenceMap.show_occurrences occur *)
 
-let simplify ({ clauses; occur = { occur_n = om; _ } as occur; _ } as f) l =
-  print_endline ("Simplifying by : " ^ Literal.show l);
-  match OccurrenceMap.get l om with
-  | None ->
-      (* f *) failwith "Attempt to simplify clause by non-existent literal"
-  | Some (pos, neg) ->
-      print_endline
-        ("Clauses that " ^ Literal.show l ^ " appears in: "
-        ^ IntSet.show (IntSet.union pos neg));
-      let pos, neg = if Literal.is_negated l then (neg, pos) else (pos, neg) in
-      ClauseMap.remove_literal_from_clauses (Literal.neg l) neg clauses
-      |> Result.map (fun (clauses', os) ->
-             let clauses', rem = ClauseMap.remove_many pos clauses' in
-             (* TODO generate occurrence map here too *)
-             let occur' = OccurrenceMap.remove_occurrences occur rem in
-             let occur' = OccurrenceMap.remove l occur' in
-             let occur' = OccurrenceMap.update_occurrences occur' os in
-             { f with clauses = clauses'; occur = occur' })
+let simplify ({ clauses; occur; _ } as f) l = Ok f
+(* print_endline ("Simplifying by : " ^ Literal.show l); *)
+(* match OccurrenceMap.get l om with *)
+(* | None -> *)
+(*     (\* f *\) failwith "Attempt to simplify clause by non-existent literal" *)
+(* | Some (pos, neg) -> *)
+(*     print_endline *)
+(*       ("Clauses that " ^ Literal.show l ^ " appears in: " *)
+(*       ^ IntSet.show (IntSet.union pos neg)); *)
+(*     let pos, neg = if Literal.is_negated l then (neg, pos) else (pos, neg) in *)
+(*     ClauseMap.remove_literal_from_clauses (Literal.neg l) neg clauses *)
+(*     |> Result.map (fun (clauses', os) -> *)
+(*            let clauses', rem = ClauseMap.remove_many pos clauses' in *)
+(*            (\* TODO generate occurrence map here too *\) *)
+(*            let occur' = OccurrenceMap.remove_occurrences occur rem in *)
+(*            let occur' = OccurrenceMap.remove l occur' in *)
+(*            let occur' = OccurrenceMap.update_occurrences occur' os in *)
+(*            { f with clauses = clauses'; occur = occur' }) *)
 
 let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
   print_endline ("Rewriting by : " ^ Literal.show l);
@@ -290,38 +207,33 @@ let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
   let t' = (Decision { literal = l; level = d + 1 }, f) :: t in
   { f' with decision_level = d + 1; assignments = a'; trail = t' }
 
-let rec unit_propagate
-    ({
-       assignments = a;
-       original_clauses = oc;
-       trail = t;
-       occur = { occur1 = o1; _ };
-       _;
-     } as f) =
-  print_endline ("Unit propagating: " ^ show f);
+let unit_propagate
+    ({ assignments = a; original_clauses = oc; trail = t; occur; _ } as f) =
+  Ok f
+(* print_endline ("Unit propagating: " ^ show f); *)
 
-  match OccurrenceMap.choose_opt o1 with
-  | Some (l, c) ->
-      let ls = ClauseMap.find c oc in
-      let d =
-        let open Iter in
-        Clause.remove l ls |> Clause.to_iter
-        |> map (fun l ->
-               Literal.(Map.get (var l) a)
-               |> Option.map_or ~default:0 (function
-                      | Decision { level; _ } | Implication { level; _ } ->
-                      level))
-        |> max |> Option.get_or ~default:0
-      in
-      let i = Implication { literal = l; implicant = ls; level = d } in
-      let a' = Literal.(Map.add (var l) i a) in
-      let t' = (i, f) :: t in
-      let f' = { f with assignments = a'; trail = t' } in
-      simplify f' l
-      |> Result.flat_map (fun f'' ->
-             print_endline (show f'');
-             check_invariants f'';
-             unit_propagate f'')
-  | None ->
-      print_endline "Nothing to propagate";
-      Ok f
+(* match OccurrenceMap.choose_opt o1 with *)
+(* | Some (l, c) -> *)
+(*     let ls = ClauseMap.find c oc in *)
+(*     let d = *)
+(*       let open Iter in *)
+(*       Clause.remove l ls |> Clause.to_iter *)
+(*       |> map (fun l -> *)
+(*              Literal.(Map.get (var l) a) *)
+(*              |> Option.map_or ~default:0 (function *)
+(*                     | Decision { level; _ } | Implication { level; _ } -> *)
+(*                     level)) *)
+(*       |> max |> Option.get_or ~default:0 *)
+(*     in *)
+(*     let i = Implication { literal = l; implicant = ls; level = d } in *)
+(*     let a' = Literal.(Map.add (var l) i a) in *)
+(*     let t' = (i, f) :: t in *)
+(*     let f' = { f with assignments = a'; trail = t' } in *)
+(*     simplify f' l *)
+(*     |> Result.flat_map (fun f'' -> *)
+(*            print_endline (show f''); *)
+(*            check_invariants f''; *)
+(*            unit_propagate f'') *)
+(* | None -> *)
+(*     print_endline "Nothing to propagate"; *)
+(*     Ok f *)
