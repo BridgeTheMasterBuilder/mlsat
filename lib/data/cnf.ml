@@ -72,8 +72,11 @@ let add_clause ({ clauses; original_clauses; occur; _ } as f) clause
   let original_clauses' =
     ClauseMap.add (n + 1) original_clause original_clauses
   in
-  let occur' = occur in
-  (* TODO occurrences *)
+  let occur' =
+    Clause.fold
+      (fun l m -> OccurrenceMap.add l (IntSet.singleton (n + 1)) m)
+      clause occur
+  in
   {
     f with
     clauses = clauses';
@@ -162,6 +165,16 @@ let backtrack
   (f', d')
 
 let choose_literal { clauses; two_literal_clauses = tlc; _ } =
+  (* let m = if OccurrenceMap.is_empty o2 then om else o2 in *)
+  (* OccurrenceMap.fold *)
+  (*   (fun l (pos, neg) (l', m) -> *)
+  (*     let size_pos = IntSet.cardinal pos in *)
+  (*     let size_neg = IntSet.cardinal neg in *)
+  (*     let occurrences = size_pos + size_neg in *)
+  (*     let l = if size_pos < size_neg then Literal.(neg l) else l in *)
+  (*     if occurrences > m then (l, occurrences) else (l', m)) *)
+  (*   m (Literal.invalid, 0) *)
+  (* |> fst *)
   Literal.of_int 1 (* TODO *)
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
@@ -173,10 +186,6 @@ let restart ({ trail = t; database = db; _ } as f) =
       List.last_opt t |> Option.map snd |> Option.get_exn_or "Impossible"
     in
     add_learned_clauses f' db
-
-(* let show { clauses; occur; _ } = *)
-(*   "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:" *)
-(*   ^ OccurrenceMap.show_occurrences occur *)
 
 let simplify ({ clauses; occur; _ } as f) l = Ok f
 (* print_endline ("Simplifying by : " ^ Literal.show l); *)
@@ -199,7 +208,6 @@ let simplify ({ clauses; occur; _ } as f) l = Ok f
 
 let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
   print_endline ("Rewriting by : " ^ Literal.show l);
-  (* let f' = simplify f l |> Result.get_exn in *)
   let f' = simplify f l |> Result.get_exn in
   let a' =
     Literal.(Map.add (var l) (Decision { literal = l; level = d + 1 }) a)
