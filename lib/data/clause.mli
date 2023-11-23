@@ -2,6 +2,7 @@ type t
 type elt = Literal.t
 
 val add : elt -> t -> t
+val choose : t -> elt
 val empty : t
 val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
 val for_all : (elt -> bool) -> t -> bool

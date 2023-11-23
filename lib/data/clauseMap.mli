@@ -3,6 +3,8 @@ open Common
 type t
 type key = int
 
+exception Empty_clause of Clause.t
+
 (* val add : Clause.t -> t -> t *)
 val add : int -> Clause.t -> t -> t
 val empty : t

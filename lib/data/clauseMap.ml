@@ -3,6 +3,8 @@ include IntMap
 
 type t = Clause.t IntMap.t
 
+exception Empty_clause of Clause.t
+
 (* let count = ref 0 *)
 (* TODO *)
 
@@ -14,7 +16,6 @@ let add n c m =
   add n c m
 
 let remove_literal_from_clauses l cs m =
-  let exception Empty_clause of Clause.t in
   try
     Ok
       (IntSet.fold
