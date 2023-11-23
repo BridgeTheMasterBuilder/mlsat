@@ -1,5 +1,4 @@
 (library
  (name data)
  (libraries containers containers-data iter)
- (preprocess (pps ppx_deriving.show))
  (flags :standard -open Containers))
