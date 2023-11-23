@@ -18,9 +18,12 @@ let rec cdcl max_conflicts grow f =
             recur d' max_conflicts' (conflicts + 1)
               (add_clause f'' learned_clause learned_clause)
       | Ok f' ->
-          if Cnf.null f' then Sat
-          else recur (d + 1) max_conflicts' conflicts l_true
-  and l_true = choose_literal f in
+          if null f' then Sat
+          else
+            let l = choose_literal f' in
+            let l_true = rewrite f' l in
+            recur (d + 1) max_conflicts' conflicts l_true
+  in
   recur 0 max_conflicts 0 f
 
 let solve

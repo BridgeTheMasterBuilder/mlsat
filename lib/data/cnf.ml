@@ -74,7 +74,7 @@ let null { clauseLiterals = cm; literalClauses = lm; _ } =
   IntMap.is_empty cm || IntMap.is_empty lm
 
 let choose_literal { literalClauses = lm; twoLiteralClauses = tlc; _ } =
-  IntMap.choose lm
+  IntMap.choose lm |> fst
 
 (* let v = *)
 (*   fst *)
@@ -168,8 +168,14 @@ let delete_clauses f clauses =
       })
     clauses f
 
-let simplify ({ literalClauses = lm; _ } as f) l =
-  match delete_literal f (-l) with Error x -> Error x | Ok f'' -> Ok f''
+(* let simplify ({ literalClauses = lm; _ } as f) l = *)
+(*   match delete_literal f (-l) with Error x -> Error x | Ok f'' -> Ok f'' *)
+let simplify f l =
+  delete_literal f (-l)
+  |> Result.map (fun f' ->
+         match IntMap.find_opt l f.literalClauses with
+         | None -> f'
+         | Some clauses -> raw_delete_literal (delete_clauses f' clauses) l)
 
 let rec unit_propagate
     ({ assignments = a; originalClauses = oc; trail = t; unitClauses = uc; _ }
