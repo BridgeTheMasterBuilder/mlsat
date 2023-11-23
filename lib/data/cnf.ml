@@ -175,7 +175,9 @@ let add_clause
        occur;
        _;
      } as f) clause original_clause =
-  let n = ClauseMap.size clauses in
+  (* let n = ClauseMap.size clauses in *)
+  let n = ClauseMap.max_binding clauses |> fst in
+  print_endline ("Adding clause: " ^ string_of_int (n + 1) ^ Clause.show clause);
   let clauses' = ClauseMap.add (n + 1) clause clauses in
   let original_clauses' =
     ClauseMap.add (n + 1) original_clause original_clauses
@@ -204,6 +206,11 @@ let add_clause
     occur = occur';
   }
 
+let show { clauses; occur; database; _ } =
+  "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:"
+  ^ OccurrenceMap.show occur ^ "\nDatabase:"
+  ^ List.fold_left (fun s x -> s ^ " " ^ Clause.show x) "" database
+
 let add_learned_clauses ({ assignments = a; _ } as f) db =
   let clauses =
     List.filter_map
@@ -217,8 +224,9 @@ let add_learned_clauses ({ assignments = a; _ } as f) db =
                   | Decision { literal = l'; _ }
                   | Implication { literal = l'; _ } ->
                       if
-                        Bool.equal (Literal.is_negated l')
-                          (Literal.is_negated l)
+                        not
+                          (Bool.equal (Literal.is_negated l')
+                             (Literal.is_negated l))
                       then Option.map (fun c -> Clause.remove l c) c
                       else None)
               | None -> c)
@@ -282,7 +290,10 @@ let backtrack
         t
       |> Option.get_exn_or "Attempt to backtrack when trail is empty"
   in
+  print_endline "Adding database to formula:";
+  List.iter (fun x -> print_string (Clause.show x ^ " ")) (learned_clause :: db);
   let f' = add_learned_clauses f (learned_clause :: db) in
+  print_endline ("Result after adding: " ^ show f');
   (f', d')
 
 let choose_literal { occur; two_literal_clauses = tlc; _ } =
@@ -327,10 +338,6 @@ let restart ({ trail = t; database = db; _ } as f) =
       List.last_opt t |> Option.map snd |> Option.get_exn_or "Impossible"
     in
     add_learned_clauses f' db
-
-let show { clauses; occur; _ } =
-  "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:"
-  ^ OccurrenceMap.show occur
 
 let simplify ({ occur; _ } as f) l =
   let delete_literal l ({ occur; original_clauses = oc; _ } as f) =

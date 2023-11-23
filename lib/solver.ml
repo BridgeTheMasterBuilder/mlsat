@@ -20,6 +20,7 @@ let rec cdcl max_conflicts grow =
           if d = 0 then Unsat
           else
             let learned_clause = analyze_conflict f clause in
+            print_endline ("Learning clause: " ^ Clause.show learned_clause);
             let f', d' = backtrack f learned_clause in
             print_endline "Checking invariant after backtracking";
             check_invariants f';
