@@ -3,8 +3,6 @@ open Cnf
 
 type result = Sat | Unsat | Timeout
 
-let restart f = f
-
 let rec cdcl max_conflicts grow =
   let rec aux d max_conflicts conflicts f =
     print_endline "Checking invariant in recursive call";
