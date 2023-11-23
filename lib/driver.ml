@@ -11,11 +11,11 @@ let run filename config =
         ^ ": " ^ Lexing.lexeme lexbuf)
   in
   let p = { p with config } in
-  try
-    match solve p with
-    | Sat -> print_endline "SAT"
-    | Unsat -> print_endline "UNSAT"
-    | Timeout -> print_endline "Solver timed out"
-  with _ ->
-    print_endline "ERROR";
-    flush stdout
+  (* try *)
+  match solve p with
+  | Sat -> print_endline "SAT"
+  | Unsat -> print_endline "UNSAT"
+  | Timeout -> print_endline "Solver timed out"
+(* with _ -> *)
+(*   print_endline "ERROR"; *)
+(*   flush stdout *)

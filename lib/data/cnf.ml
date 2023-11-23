@@ -56,6 +56,7 @@ let check_invariants
       _;
     } =
   try
+    print_endline "Checking invariants";
     let clauses_occurrences_eq =
       ClauseMap.for_all
         (fun c ls ->
@@ -64,8 +65,17 @@ let check_invariants
               let cs = OccurrenceMap.find l occur in
               IntSet.for_all
                 (fun c ->
-                  assert (Clause.mem l (ClauseMap.find c clauses));
-                  true)
+                  match ClauseMap.get c clauses with
+                  | None ->
+                      print_endline ("No such clause: " ^ string_of_int c);
+                      assert false
+                  | Some clauses ->
+                      if not (Clause.mem l clauses) then
+                        print_endline
+                          ("Literal " ^ Literal.show l ^ " not in clause "
+                         ^ string_of_int c);
+                      assert (Clause.mem l clauses);
+                      true)
                 cs
               &&
               (if not (IntSet.mem c cs) then
@@ -117,7 +127,11 @@ let of_list =
         let clauses' = ClauseMap.add n c clauses in
         let occur' =
           Clause.fold
-            (fun l m -> OccurrenceMap.add l (IntSet.singleton n) m)
+            (fun l m ->
+              OccurrenceMap.add_list_with
+                ~f:(fun _ -> IntSet.union)
+                m
+                [ (l, IntSet.singleton n) ])
             c occur
         in
         let uc', tlc' =
@@ -168,7 +182,11 @@ let add_clause
   in
   let occur' =
     Clause.fold
-      (fun l m -> OccurrenceMap.add l (IntSet.singleton (n + 1)) m)
+      (fun l m ->
+        OccurrenceMap.add_list_with
+          ~f:(fun _ -> IntSet.union)
+          m
+          [ (l, IntSet.singleton (n + 1)) ])
       clause occur
   in
   let uc', tlc' =
@@ -188,24 +206,25 @@ let add_clause
 
 let add_learned_clauses ({ assignments = a; _ } as f) db =
   let clauses =
-    List.map
+    List.filter_map
       (fun c ->
         let c' =
           Clause.fold
             (fun l c ->
-              Literal.(Map.get (var l) a)
-              |> Option.map (function
-                     | Decision { literal = l'; _ }
-                     | Implication { literal = l'; _ }
-                     ->
-                     if
-                       Bool.equal (Literal.is_negated l') (Literal.is_negated l)
-                     then Clause.remove l c
-                     else c)
-              |> Option.get_exn_or "foo")
-            c c
+              match Literal.(Map.get (var l) a) with
+              | Some x -> (
+                  match x with
+                  | Decision { literal = l'; _ }
+                  | Implication { literal = l'; _ } ->
+                      if
+                        Bool.equal (Literal.is_negated l')
+                          (Literal.is_negated l)
+                      then Option.map (fun c -> Clause.remove l c) c
+                      else None)
+              | None -> c)
+            c (Some c)
         in
-        (c', c))
+        match c' with None -> None | Some c' -> Some (c', c))
       db
   in
   let f' = List.fold_left (fun f (c, oc) -> add_clause f c oc) f clauses in
@@ -309,6 +328,10 @@ let restart ({ trail = t; database = db; _ } as f) =
     in
     add_learned_clauses f' db
 
+let show { clauses; occur; _ } =
+  "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:"
+  ^ OccurrenceMap.show occur
+
 let simplify ({ occur; _ } as f) l =
   let delete_literal l ({ occur; original_clauses = oc; _ } as f) =
     try
@@ -375,16 +398,33 @@ let simplify ({ occur; _ } as f) l =
           two_literal_clauses = tlc';
         })
   in
+  print_endline ("Simplifying by : " ^ Literal.show l);
   delete_literal (Literal.neg l) f
   |> Result.map (fun f' ->
+         print_endline
+           ("Result after removing "
+           ^ Literal.show (Literal.neg l)
+           ^ ": " ^ show f');
          match OccurrenceMap.get l occur with
-         | None -> f'
+         | None ->
+             print_endline
+               ("Literal " ^ Literal.show l
+              ^ "not present, returning formula unchanged");
+             f'
          | Some cs ->
-             let f'' = delete_clauses cs f' in
+             print_endline
+               ("Clauses that " ^ Literal.show l ^ " appears in: "
+              ^ IntSet.show cs);
+             let ({ occur; _ } as f'') = delete_clauses cs f' in
+             print_endline
+               ("Result after removing clauses: " ^ IntSet.show cs ^ ": "
+              ^ show f'');
              { f'' with occur = OccurrenceMap.remove l occur })
 
 let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
+  print_endline ("Rewriting by : " ^ Literal.show l);
   let f' = simplify f l |> Result.get_exn in
+  print_endline ("Result after simplifying: " ^ show f');
   let a' =
     Literal.(Map.add (var l) (Decision { literal = l; level = d + 1 }) a)
   in
@@ -394,9 +434,13 @@ let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
 let rec unit_propagate
     ({ assignments = a; unit_clauses = uc; original_clauses = oc; trail = t; _ }
     as f) =
+  print_endline "Unit propagating: ";
   match ClauseMap.choose_opt uc with
-  | None -> Ok f
+  | None ->
+      print_endline "Nothing to propagate";
+      Ok f
   | Some (c, ls) ->
+      print_endline (show f);
       let l = Clause.choose ls in
       let ls = ClauseMap.find c oc in
       let d =
