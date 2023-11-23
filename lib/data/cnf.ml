@@ -183,7 +183,7 @@ let add_clause
        _;
      } as f) clause original_clause =
   (* let n = ClauseMap.size clauses in *)
-  let n = ClauseMap.max_binding clauses |> fst in
+  let n = ClauseMap.max_binding original_clauses |> fst in
   print_endline ("Adding clause: " ^ string_of_int (n + 1) ^ Clause.show clause);
   let clauses' = ClauseMap.add (n + 1) clause clauses in
   let original_clauses' =
@@ -213,10 +213,38 @@ let add_clause
     occur = occur';
   }
 
-let show { clauses; occur; database; _ } =
-  "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:"
+let show { clauses; occur; database; decision_level; trail; assignments; _ } =
+  "Level: "
+  ^ string_of_int decision_level
+  ^ "\n" ^ "Clauses:" ^ ClauseMap.show clauses ^ "\nOccurrence map:"
   ^ OccurrenceMap.show occur ^ "\nDatabase:"
   ^ List.fold_left (fun s x -> s ^ " " ^ Clause.show x) "" database
+  ^ "\nTrail:"
+  ^ List.fold_left
+      (fun s x ->
+        s ^ " "
+        ^
+        match x with
+        | Decision { literal = l; level = lv } ->
+            "\t" ^ Literal.show l ^ " because of decision on level "
+            ^ string_of_int lv ^ "\n"
+        | Implication { literal = l; level = lv; implicant = i } ->
+            "\t" ^ Literal.show l ^ " because of clause " ^ Clause.show i
+            ^ " - implied at level " ^ string_of_int lv ^ "\n")
+      "" (List.map fst trail)
+  ^ "\nAssignments"
+  ^ Literal.Map.fold
+      (fun _ x s ->
+        s ^ " "
+        ^
+        match x with
+        | Decision { literal = l; level = lv } ->
+            "\t" ^ Literal.show l ^ " because of decision on level "
+            ^ string_of_int lv ^ "\n"
+        | Implication { literal = l; level = lv; implicant = i } ->
+            "\t" ^ Literal.show l ^ " because of clause " ^ Clause.show i
+            ^ " - implied at level " ^ string_of_int lv ^ "\n")
+      assignments ""
 
 let add_learned_clauses ({ assignments = a; _ } as f) db =
   let clauses =
@@ -247,15 +275,30 @@ let add_learned_clauses ({ assignments = a; _ } as f) db =
 
 let analyze_conflict { assignments = a; decision_level = d; _ } clause =
   let rec aux q c history =
+    print_endline "State of queue: ";
+    CCFQueue.iter (fun x -> print_string (Literal.show x ^ " ")) q;
+    print_newline ();
+    print_endline "History: ";
+    Literal.Set.iter (fun x -> print_string (Literal.show x ^ " ")) history;
+    print_newline ();
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
+        print_endline
+          ("Seeing if " ^ Literal.show (Literal.var l) ^ " is assigned");
         if CCFQueue.size q = 1 then Clause.add l c
         else
-          match Literal.Map.get l a with
-          | Some (Decision _) -> aux q' (Clause.add l c) history
+          match Literal.Map.get (Literal.var l) a with
+          | Some (Decision _) ->
+              print_endline ("Adding " ^ Literal.show l ^ " to learned clause");
+              aux q' (Clause.add l c) history
           | Some (Implication { implicant = ls; level = d'; _ }) ->
-              if d' < d then aux q' (Clause.add l c) history
+              if d' < d then (
+                print_endline
+                  ("Decision level " ^ string_of_int d' ^ " is less than "
+                 ^ string_of_int d);
+                print_endline ("Adding " ^ Literal.show l ^ " to learned clause");
+                aux q' (Clause.add l c) history)
               else
                 let ls = Clause.to_set ls in
                 let ls' =
@@ -263,11 +306,42 @@ let analyze_conflict { assignments = a; decision_level = d; _ } clause =
                     (fun l -> not Literal.(Set.mem (var l) history))
                     ls
                 in
-                let q'' = Literal.Set.to_iter ls |> CCFQueue.add_iter_back q' in
+                let q'' =
+                  Literal.Set.to_iter ls' |> CCFQueue.add_iter_back q'
+                in
                 let history' = Literal.(Set.union history (Set.map var ls')) in
+                print_endline "Analyzing antecedents of variables: ";
+                Literal.Set.iter
+                  (fun x -> print_string (Literal.show x ^ " "))
+                  ls;
+                print_newline ();
                 aux q'' c history'
-          | _ -> aux q' c history)
+          | _ ->
+              print_endline
+                ("fuck you: "
+                ^ string_of_bool (Literal.Map.mem (Literal.var l) a));
+              print_endline
+                ("\nAssignments"
+                ^ Literal.Map.fold
+                    (fun _ x s ->
+                      s ^ " "
+                      ^
+                      match x with
+                      | Decision { literal = l; level = lv } ->
+                          "\t" ^ Literal.show l
+                          ^ " because of decision on level " ^ string_of_int lv
+                          ^ "\n"
+                      | Implication { literal = l; level = lv; implicant = i }
+                        ->
+                          "\t" ^ Literal.show l ^ " because of clause "
+                          ^ Clause.show i ^ " - implied at level "
+                          ^ string_of_int lv ^ "\n")
+                    a "");
+              aux q' c history)
   in
+  print_endline
+    ("Analyzing conflict for clause: " ^ Clause.show clause
+   ^ " at decision level " ^ string_of_int d);
   let ls = Clause.to_list clause in
   aux (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.map Literal.var (Clause.to_set clause))
@@ -304,7 +378,7 @@ let backtrack
   (f', d')
 
 let choose_literal { occur; two_literal_clauses = tlc; _ } =
-  OccurrenceMap.choose occur |> fst
+  ClauseMap.choose tlc |> snd |> Clause.choose
 (* let vs = *)
 (*   ClauseMap.fold *)
 (*     (fun _ ls x -> Literal.Set.union x (Clause.to_set ls)) *)
@@ -384,7 +458,7 @@ let simplify ({ occur; _ } as f) l =
               cs f
           in
           Ok { f' with occur = OccurrenceMap.remove l occur }
-    with ClauseMap.Empty_clause ls -> Error ls
+    with ClauseMap.Empty_clause ls -> Error (ls, f)
   in
   let delete_clauses =
     IntSet.fold
@@ -460,7 +534,7 @@ let rec unit_propagate
       let ls = ClauseMap.find c oc in
       let d =
         let open Iter in
-        Clause.to_iter ls
+        Clause.remove l ls |> Clause.to_iter
         |> filter_map (fun l -> Literal.(Map.get (var l) a))
         |> map (function Decision { level; _ } | Implication { level; _ } ->
                level)
