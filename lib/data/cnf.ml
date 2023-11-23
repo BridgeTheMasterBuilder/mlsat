@@ -177,7 +177,6 @@ let add_clause
      } as f) clause original_clause =
   (* let n = ClauseMap.size clauses in *)
   let n = ClauseMap.max_binding clauses |> fst in
-  print_endline ("Adding clause: " ^ string_of_int (n + 1) ^ Clause.show clause);
   let clauses' = ClauseMap.add (n + 1) clause clauses in
   let original_clauses' =
     ClauseMap.add (n + 1) original_clause original_clauses
@@ -290,10 +289,7 @@ let backtrack
         t
       |> Option.get_exn_or "Attempt to backtrack when trail is empty"
   in
-  print_endline "Adding database to formula:";
-  List.iter (fun x -> print_string (Clause.show x ^ " ")) (learned_clause :: db);
   let f' = add_learned_clauses f (learned_clause :: db) in
-  print_endline ("Result after adding: " ^ show f');
   (f', d')
 
 let choose_literal { occur; two_literal_clauses = tlc; _ } =
@@ -405,33 +401,16 @@ let simplify ({ occur; _ } as f) l =
           two_literal_clauses = tlc';
         })
   in
-  print_endline ("Simplifying by : " ^ Literal.show l);
   delete_literal (Literal.neg l) f
   |> Result.map (fun f' ->
-         print_endline
-           ("Result after removing "
-           ^ Literal.show (Literal.neg l)
-           ^ ": " ^ show f');
          match OccurrenceMap.get l occur with
-         | None ->
-             print_endline
-               ("Literal " ^ Literal.show l
-              ^ "not present, returning formula unchanged");
-             f'
+         | None -> f'
          | Some cs ->
-             print_endline
-               ("Clauses that " ^ Literal.show l ^ " appears in: "
-              ^ IntSet.show cs);
              let ({ occur; _ } as f'') = delete_clauses cs f' in
-             print_endline
-               ("Result after removing clauses: " ^ IntSet.show cs ^ ": "
-              ^ show f'');
              { f'' with occur = OccurrenceMap.remove l occur })
 
 let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
-  print_endline ("Rewriting by : " ^ Literal.show l);
   let f' = simplify f l |> Result.get_exn in
-  print_endline ("Result after simplifying: " ^ show f');
   let a' =
     Literal.(Map.add (var l) (Decision { literal = l; level = d + 1 }) a)
   in
@@ -441,13 +420,9 @@ let rewrite ({ decision_level = d; assignments = a; trail = t; _ } as f) l =
 let rec unit_propagate
     ({ assignments = a; unit_clauses = uc; original_clauses = oc; trail = t; _ }
     as f) =
-  print_endline "Unit propagating: ";
   match ClauseMap.choose_opt uc with
-  | None ->
-      print_endline "Nothing to propagate";
-      Ok f
+  | None -> Ok f
   | Some (c, ls) ->
-      print_endline (show f);
       let l = Clause.choose ls in
       let ls = ClauseMap.find c oc in
       let d =
