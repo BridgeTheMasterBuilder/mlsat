@@ -82,12 +82,12 @@ let remove_occurrences =
         { m' with occur2 = remove_occurrence l c occur2 }
       else { m' with occur1 = remove_occurrence l c occur1 })
 
-let show m =
-  fold
-    (fun l (pos, neg) s ->
-      s ^ Literal.show l ^ " -> (" ^ IntSet.show pos ^ ", " ^ IntSet.show neg
-      ^ ")\n")
-    m ""
+let show m = ""
+(* fold *)
+(*   (fun l (pos, neg) s -> *)
+(*     s ^ Literal.show l ^ " -> (" ^ IntSet.show pos ^ ", " ^ IntSet.show neg *)
+(*     ^ ")\n") *)
+(*   m "" *)
 
 let show_occurrences { occur1; occur2; occur_n } =
   "1-occurrences:\n" ^ show occur1 ^ "\n2-occurrences:\n" ^ show occur2
