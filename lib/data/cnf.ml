@@ -23,6 +23,54 @@ type formula = {
   unitClauses : IntSet.t IntMap.t;
 }
 
+let show_assignment (a : assignment) =
+  let open Printf in
+  match a with
+  | Decision { literal; level } ->
+      sprintf "\t%d because of decision on level %d\n" literal level
+  | Implication { literal; level; implicant } ->
+      let implicant_str =
+        IntSet.fold (fun l acc -> sprintf "%s%d " acc l) implicant ""
+      in
+      sprintf "\t%d because of clause (%s) - implied at level %d\n" literal
+        implicant_str level
+
+let show_formula (f : formula) =
+  let open Printf in
+  let show_clauses map_str =
+    IntMap.bindings map_str
+    |> List.map (fun (k, v) ->
+           let clause_str =
+             sprintf "(%s)"
+               (IntSet.fold (fun l acc -> sprintf "%s%d " acc l) v "")
+           in
+           sprintf "%d:%s\n" k clause_str)
+    |> String.concat ""
+  in
+  sprintf
+    "Clauses:\n\
+     %s\n\
+     Literals:\n\
+     %s\n\
+     Decision level: %d\n\
+     Assignments:\n\
+     %s\n\
+     Learned clauses:\n\
+     %s"
+    (if IntMap.is_empty f.clauseLiterals then "()"
+     else show_clauses f.clauseLiterals)
+    (if IntMap.is_empty f.literalClauses then "()"
+     else show_clauses f.literalClauses)
+    f.currentDecisionLevel
+    (List.fold_left
+       (fun acc (ass, _) -> sprintf "%s%s" acc (show_assignment ass))
+       "" f.trail)
+    (List.fold_left
+       (fun acc c ->
+         sprintf "%s(%s)\n" acc
+           (IntSet.fold (fun l acc -> sprintf "%s%d " acc l) c ""))
+       "" f.learnedClauses)
+
 let myAssert assertions =
   let open Printf in
   let rec recur assertions hasError =
@@ -86,8 +134,14 @@ let of_list clauses =
 let null { clauseLiterals = cm; literalClauses = lm; _ } =
   IntMap.is_empty cm || IntMap.is_empty lm
 
-let choose_literal { literalClauses = lm; twoLiteralClauses = tlc; _ } =
-  IntMap.choose lm |> fst
+let rec choose_literal
+    ({ literalClauses = lm; twoLiteralClauses = tlc; assignments = a; _ } as f)
+    =
+  print_endline ("Making a decision:\n" ^ show_formula f);
+  let l = IntMap.choose lm |> fst in
+  match IntMap.find_opt (Literal.var l) a with
+  | Some _ -> choose_literal { f with literalClauses = IntMap.remove l lm }
+  | None -> l
 
 (* let v = *)
 (*   fst *)
@@ -368,16 +422,16 @@ let show_trail trail =
     "" (List.map fst trail)
 
 let check_invariants
-    {
-      clauseLiterals = cm;
-      literalClauses = lm;
-      originalClauses = oc;
-      currentDecisionLevel = d;
-      assignments = a;
-      trail = t;
-      learnedClauses = lc;
-      _;
-    } =
+    ({
+       clauseLiterals = cm;
+       literalClauses = lm;
+       originalClauses = oc;
+       currentDecisionLevel = d;
+       assignments = a;
+       trail = t;
+       learnedClauses = lc;
+       _;
+     } as f) =
   let open List in
   let no_empty_clauses =
     not (exists (fun (_, c) -> IntSet.is_empty c) (IntMap.bindings cm))
@@ -433,7 +487,7 @@ let check_invariants
       (* (is_subset_of_original, "Formula has diverged from its original form"); *)
       (decision_level_non_negative, "Decision level is not non-negative");
       (assignments_valid, "Assignments are invalid");
-      (trail_valid, "Trail has duplicate assignments:\n" ^ show_trail t);
+      (trail_valid, "Trail has duplicate assignments:\n" ^ show_formula f);
       ( trail_geq_decision_level,
         "Fewer assignments than decision levels in trail" );
       (clauses_literals_eq, "Clauses and literals out of sync");
