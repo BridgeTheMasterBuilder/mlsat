@@ -6,6 +6,7 @@ val choose : t -> elt
 val empty : t
 val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
 val for_all : (elt -> bool) -> t -> bool
+val is_empty : t -> bool
 val make_occurrences : t -> int -> Occurrence.t list
 val mem : elt -> t -> bool
 val of_list : int list -> t

@@ -1,53 +1,78 @@
 open Common
 
-module Literal = struct
-  type t = int
+(* module Literal = struct *)
+(*   type t = int *)
 
-  let show l = string_of_int l
-  let var = abs
-end
+(*   let neg = ( ~- ) *)
+(*   let show l = string_of_int l *)
+(*   let var = abs *)
+(* end *)
 
 type assignment =
-  | Decision of { literal : int; level : int }
-  | Implication of { literal : int; level : int; implicant : IntSet.t }
+  | Decision of { literal : Literal.t; level : int }
+  | Implication of { literal : Literal.t; level : int; implicant : Clause.t }
+
+module OccurrenceMap = struct
+  include Literal.Map
+
+  type t = IntSet.t Literal.Map.t
+  type key = Literal.t
+end
 
 type formula = {
-  clauses : IntSet.t IntMap.t;
-  occur : IntSet.t IntMap.t;
-  original_clauses : IntSet.t IntMap.t;
-  unit_clauses : IntSet.t IntMap.t;
-  two_literal_clauses : IntSet.t IntMap.t;
+  clauses : ClauseMap.t;
+  (* occur : IntSet.t IntMap.t; *)
+  occur : OccurrenceMap.t;
+  original_clauses : ClauseMap.t;
+  unit_clauses : ClauseMap.t;
+  two_literal_clauses : ClauseMap.t;
   current_decision_level : int;
-  assignments : assignment IntMap.t;
+  (* assignments : assignment IntMap.t; *)
+  assignments : assignment Literal.Map.t;
   trail : (assignment * formula) list;
-  database : IntSet.t list;
+  database : Clause.t list;
 }
 
 let show_assignment (a : assignment) =
   let open Printf in
   match a with
   | Decision { literal; level } ->
-      sprintf "\t%d because of decision on level %d\n" literal level
+      sprintf "\t%s because of decision on level %d\n" (Literal.show literal)
+        level
   | Implication { literal; level; implicant } ->
       let implicant_str =
-        IntSet.fold (fun l acc -> sprintf "%s%d " acc l) implicant ""
+        (* IntSet.fold (fun l acc -> sprintf "%s%d " acc l) implicant "" *)
+        Clause.show implicant
       in
-      sprintf "\t%d because of clause (%s) - implied at level %d\n" literal
-        implicant_str level
+      sprintf "\t%s because of clause (%s) - implied at level %d\n"
+        (Literal.show literal) implicant_str level
 
 let show_formula ({ clauses; occur; current_decision_level; database; _ } as f)
     =
   let open Printf in
   let show_clauses map_str =
-    IntMap.bindings map_str
+    ClauseMap.to_list map_str
+    |> List.map (fun (k, v) ->
+           let clause_str =
+             sprintf "(%s)"
+               (Clause.fold
+                  (fun l acc -> sprintf "%s%s " acc (Literal.show l))
+                  v "")
+           in
+           sprintf "%d:%s\n" k clause_str)
+    |> String.concat ""
+  in
+  let show_occur map_str =
+    OccurrenceMap.to_list map_str
     |> List.map (fun (k, v) ->
            let clause_str =
              sprintf "(%s)"
                (IntSet.fold (fun l acc -> sprintf "%s%d " acc l) v "")
            in
-           sprintf "%d:%s\n" k clause_str)
+           sprintf "%s:%s\n" (Literal.show k) clause_str)
     |> String.concat ""
   in
+
   sprintf
     "Clauses:\n\
      %s\n\
@@ -58,8 +83,8 @@ let show_formula ({ clauses; occur; current_decision_level; database; _ } as f)
      %s\n\
      Learned clauses:\n\
      %s"
-    (if IntMap.is_empty clauses then "()" else show_clauses clauses)
-    (if IntMap.is_empty occur then "()" else show_clauses occur)
+    (if ClauseMap.is_empty clauses then "()" else show_clauses clauses)
+    (if OccurrenceMap.is_empty occur then "()" else show_occur occur)
     current_decision_level
     (List.fold_left
        (fun acc (ass, _) -> sprintf "%s%s" acc (show_assignment ass))
@@ -67,7 +92,9 @@ let show_formula ({ clauses; occur; current_decision_level; database; _ } as f)
     (List.fold_left
        (fun acc c ->
          sprintf "%s(%s)\n" acc
-           (IntSet.fold (fun l acc -> sprintf "%s%d " acc l) c ""))
+           (Clause.fold
+              (fun l acc -> sprintf "%s%s " acc (Literal.show l))
+              c ""))
        "" database)
 
 let of_list =
@@ -76,21 +103,21 @@ let of_list =
       n = function
     | [] -> f
     | c :: cs ->
-        let clause = IntSet.of_list c in
-        let clauses' = IntMap.add n clause clauses in
+        let clause = Clause.of_list c in
+        let clauses' = ClauseMap.add n clause clauses in
         let occur' =
-          IntSet.fold
+          Clause.fold
             (fun l m ->
-              IntMap.add_list_with
+              OccurrenceMap.add_list_with
                 ~f:(fun _ -> IntSet.union)
                 m
                 [ (l, IntSet.singleton n) ])
             clause occur
         in
         let uc', tlc' =
-          match IntSet.cardinal clause with
-          | 1 -> (IntMap.add n clause uc, tlc)
-          | 2 -> (uc, IntMap.add n clause tlc)
+          match Clause.size clause with
+          | 1 -> (ClauseMap.add n clause uc, tlc)
+          | 2 -> (uc, ClauseMap.add n clause tlc)
           | _ -> (uc, tlc)
         in
         let f' =
@@ -108,25 +135,25 @@ let of_list =
   in
   recur
     {
-      clauses = IntMap.empty;
-      occur = IntMap.empty;
-      original_clauses = IntMap.empty;
+      clauses = ClauseMap.empty;
+      occur = OccurrenceMap.empty;
+      original_clauses = ClauseMap.empty;
       current_decision_level = 0;
-      assignments = IntMap.empty;
+      assignments = Literal.Map.empty;
       trail = [];
       database = [];
-      two_literal_clauses = IntMap.empty;
-      unit_clauses = IntMap.empty;
+      unit_clauses = ClauseMap.empty;
+      two_literal_clauses = ClauseMap.empty;
     }
     1
 
-let is_empty { clauses; _ } = IntMap.is_empty clauses
+let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
 let rec choose_literal
     ({ occur; two_literal_clauses = _tlc; assignments = a; _ } as f) =
-  let l = IntMap.choose occur |> fst in
-  match IntMap.find_opt (Literal.var l) a with
-  | Some _ -> choose_literal { f with occur = IntMap.remove l occur }
+  let l = OccurrenceMap.choose occur |> fst in
+  match Literal.Map.find_opt (Literal.var l) a with
+  | Some _ -> choose_literal { f with occur = OccurrenceMap.remove l occur }
   | None -> l
 
 (* let v = *)
@@ -148,10 +175,10 @@ let rec choose_literal
 let level = function Decision { level; _ } | Implication { level; _ } -> level
 
 let raw_delete_literal ({ occur; _ } as f) l =
-  { f with occur = IntMap.remove l occur }
+  { f with occur = OccurrenceMap.remove l occur }
 
 let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
-  match IntMap.find_opt l occur with
+  match OccurrenceMap.find_opt l occur with
   | None -> Ok f
   | Some cs ->
       let result =
@@ -162,31 +189,32 @@ let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
             | Ok
                 ({ clauses; unit_clauses = uc; two_literal_clauses = tlc; _ } as
                 f'') -> (
-                match IntMap.find_opt c clauses with
+                match ClauseMap.get c clauses with
                 | None -> Ok f''
                 | Some ls -> (
-                    let diff = IntSet.remove l ls in
-                    match IntSet.cardinal diff with
-                    | 0 -> Error (IntMap.find c oc, f)
+                    let diff = Clause.remove l ls in
+                    match Clause.size diff with
+                    | 0 -> Error (ClauseMap.find c oc, f)
                     | 1 ->
                         Ok
                           {
                             f'' with
-                            clauses = IntMap.add c diff clauses;
-                            unit_clauses = IntMap.add c diff uc;
-                            two_literal_clauses = IntMap.remove c tlc;
+                            clauses = ClauseMap.add c diff clauses;
+                            unit_clauses = ClauseMap.add c diff uc;
+                            two_literal_clauses = ClauseMap.remove c tlc;
                           }
                     | 2 ->
                         Ok
                           {
                             f'' with
-                            clauses = IntMap.add c diff clauses;
-                            two_literal_clauses = IntMap.add c diff tlc;
+                            clauses = ClauseMap.add c diff clauses;
+                            two_literal_clauses = ClauseMap.add c diff tlc;
                           }
-                    | _ -> Ok { f'' with clauses = IntMap.add c diff clauses })))
+                    | _ ->
+                        Ok { f'' with clauses = ClauseMap.add c diff clauses })))
           cs (Ok f)
       in
-      let lm' = IntMap.remove l occur in
+      let lm' = OccurrenceMap.remove l occur in
       Result.map (fun f' -> { f' with occur = lm' }) result
 
 let delete_clauses f cs =
@@ -194,18 +222,18 @@ let delete_clauses f cs =
     (fun c
          ({ clauses; occur; unit_clauses = uc; two_literal_clauses = tlc; _ } as
          f') ->
-      let lits = IntMap.find c clauses in
+      let ls = ClauseMap.find c clauses in
       let occur' =
-        IntSet.fold
+        Clause.fold
           (fun l m ->
-            let diff = IntSet.remove c (IntMap.find l m) in
-            if IntSet.is_empty diff then IntMap.remove l m
-            else IntMap.add l diff m)
-          lits occur
+            let diff = IntSet.remove c (OccurrenceMap.find l m) in
+            if IntSet.is_empty diff then OccurrenceMap.remove l m
+            else OccurrenceMap.add l diff m)
+          ls occur
       in
-      let clauses' = IntMap.remove c clauses in
-      let tlc' = IntMap.remove c tlc in
-      let uc' = IntMap.remove c uc in
+      let clauses' = ClauseMap.remove c clauses in
+      let tlc' = ClauseMap.remove c tlc in
+      let uc' = ClauseMap.remove c uc in
       {
         f' with
         clauses = clauses';
@@ -216,33 +244,31 @@ let delete_clauses f cs =
     cs f
 
 let simplify ({ occur; _ } as f) l =
-  delete_literal f (-l)
+  delete_literal f (Literal.neg l)
   |> Result.map (fun f' ->
-         match IntMap.find_opt l occur with
+         match OccurrenceMap.find_opt l occur with
          | None -> f'
          | Some cs -> raw_delete_literal (delete_clauses f' cs) l)
 
 let rec unit_propagate
     ({ original_clauses = oc; unit_clauses = uc; assignments = a; trail = t; _ }
     as f) =
-  match IntMap.min_binding_opt uc with
+  match ClauseMap.choose_opt uc with
   | Some (c, ls) ->
-      let l' = IntSet.min_elt ls in
-      let ls' = IntMap.find c oc in
+      let l' = Clause.choose ls in
+      let ls' = ClauseMap.find c oc in
       let d' =
-        Option.value
-          (IntSet.max_elt_opt
-             (IntSet.map
-                (fun l ->
-                  Option.value
-                    (IntMap.find_opt (Literal.var l) a |> Option.map level)
-                    ~default:0)
-                (IntSet.remove l' ls')))
-          ~default:0
+        let open Iter in
+        Clause.remove l' ls |> Clause.to_iter
+        |> map (fun l ->
+               Literal.(Map.get (var l) a)
+               |> Option.map_or ~default:0 (function
+                      | Decision { level; _ } | Implication { level; _ } ->
+                      level))
+        |> max |> Option.get_or ~default:0
       in
-
       let i = Implication { literal = l'; implicant = ls'; level = d' } in
-      let a' = IntMap.add (Literal.var l') i a in
+      let a' = Literal.Map.add (Literal.var l') i a in
       let t' = (i, f) :: t in
       let f' = { f with assignments = a'; trail = t' } in
       simplify f' l' |> Result.flat_map unit_propagate
@@ -252,39 +278,34 @@ let rewrite ({ current_decision_level = d; assignments = a; trail = t; _ } as f)
     l =
   let f' = Result.get_exn (simplify f l) in
   let a' =
-    IntMap.add (Literal.var l) (Decision { literal = l; level = d + 1 }) a
+    Literal.Map.add (Literal.var l) (Decision { literal = l; level = d + 1 }) a
   in
   let t' = (Decision { literal = l; level = d + 1 }, f) :: t in
   { f' with current_decision_level = d + 1; assignments = a'; trail = t' }
 
-let neg i = -i
-let var i = abs i
-
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
-  let ls = IntSet.elements clause in
+  let ls = Clause.to_list clause in
   let rec recur q c history =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
-        match IntMap.find_opt (Literal.var l) a with
-        | Some (Decision _) -> recur q' (IntSet.add l c) history
+        match Literal.Map.get l a with
+        | Some (Decision _) -> recur q' (Clause.add l c) history
         | Some (Implication { implicant = ls'; level = d'; _ }) ->
-            if d' < d then recur q' (IntSet.add l c) history
+            if d' < d then recur q' (Clause.add l c) history
             else
               let ls'' =
-                IntSet.filter
-                  (fun l'' -> not (IntSet.mem (Literal.var l'') history))
-                  ls'
+                Literal.Set.filter
+                  (fun l'' -> not Literal.(Set.mem (Literal.var l'') history))
+                  (Clause.to_set ls')
               in
-              let q'' = CCFQueue.add_iter_back q' (IntSet.to_iter ls'') in
-              let history' =
-                IntSet.union history (IntSet.map Literal.var ls'')
-              in
+              let q'' = CCFQueue.add_iter_back q' (Literal.Set.to_iter ls'') in
+              let history' = Literal.(Set.union history (Set.map var ls'')) in
               recur q'' c history'
         | _ -> recur q' c history)
   in
-  recur (CCFQueue.of_list ls) IntSet.empty
-    (IntSet.of_list (List.map Literal.var ls))
+  recur (CCFQueue.of_list ls) Clause.empty
+    (Literal.Set.map Literal.var (Clause.to_set clause))
 
 let maximumMay x = List.to_iter x |> Iter.max
 
@@ -297,22 +318,22 @@ let add_clause
        two_literal_clauses = tlc;
        _;
      } as f) clause original_clause =
-  let n = fst (IntMap.max_binding f.original_clauses) in
-  let clauses' = IntMap.add (n + 1) clause clauses in
+  let n = ClauseMap.size oc in
+  let clauses' = ClauseMap.add (n + 1) clause clauses in
   let occur' =
-    IntSet.fold
+    Clause.fold
       (fun l m ->
-        IntMap.add_list_with
+        OccurrenceMap.add_list_with
           ~f:(fun _ -> IntSet.union)
           m
           [ (l, IntSet.singleton (n + 1)) ])
       clause occur
   in
-  let oc' = IntMap.add (n + 1) original_clause oc in
+  let oc' = ClauseMap.add (n + 1) original_clause oc in
   let uc', tlc' =
-    match IntSet.cardinal clause with
-    | 1 -> (IntMap.add (n + 1) clause uc, tlc)
-    | 2 -> (uc, IntMap.add (n + 1) clause tlc)
+    match Clause.size clause with
+    | 1 -> (ClauseMap.add (n + 1) clause uc, tlc)
+    | 2 -> (uc, ClauseMap.add (n + 1) clause tlc)
     | _ -> (uc, tlc)
   in
   {
@@ -327,18 +348,16 @@ let add_clause
 let literal = function
   | Decision { literal; _ } | Implication { literal; _ } -> literal
 
-let signum = Int.sign
-
-let add_learned_clauses f db =
+let add_learned_clauses ({ assignments = a; _ } as f) db =
   let db' =
     List.map
       (fun c ->
-        IntSet.fold
+        Clause.fold
           (fun l c' ->
-            match IntMap.find_opt (var l) f.assignments with
+            match Literal.Map.find_opt (Literal.var l) a with
             | Some x ->
-                if signum (literal x) <> signum l then
-                  Option.map (fun c' -> IntSet.remove l c') c'
+                if Literal.signum (literal x) <> Literal.signum l then
+                  Option.map (fun c' -> Clause.remove l c') c'
                 else None
             | _ -> c')
           c (Some c))
@@ -360,8 +379,8 @@ let backtrack
   let ds =
     List.map level
       (List.filter_map
-         (fun l -> IntMap.find_opt (Literal.var l) a)
-         (IntSet.elements learned_clause))
+         (fun l -> Literal.Map.find_opt (Literal.var l) a)
+         (Clause.to_list learned_clause))
   in
   let ds' = List.filter (fun d' -> d' < d) ds in
   let d' = Option.value (maximumMay ds') ~default:0 in
@@ -385,7 +404,7 @@ let restart ({ trail = t; database = db; _ } as f) =
 
 let show_set c =
   "("
-  ^ IntSet.fold
+  ^ Clause.fold
       (fun l s ->
         (if String.equal s "" then "" else s ^ "\\/") ^ Literal.show l)
       c ""
@@ -428,12 +447,14 @@ let check_invariants
      } as f) =
   let open List in
   let no_empty_clauses =
-    not (exists (fun (_, c) -> IntSet.is_empty c) (IntMap.bindings cm))
+    not (exists (fun (_, c) -> Clause.is_empty c) (ClauseMap.to_list cm))
   in
   (* let is_subset_of_original = is_submap (fun _ _ -> true) cm oc in *)
   let decision_level_non_negative = d >= 0 in
   let assignments_valid =
-    for_all (fun (k, v) -> k = var (literal v)) (IntMap.bindings a)
+    for_all
+      (fun (k, v) -> Literal.equal k (Literal.var (literal v)))
+      (Literal.Map.bindings a)
   in
   let trail_valid =
     for_all
@@ -443,7 +464,7 @@ let check_invariants
           (exists
              (fun (y, _) ->
                let y' = literal y in
-               x' = -y')
+               Literal.equal x' (Literal.neg y'))
              t))
       t
   in
@@ -454,11 +475,11 @@ let check_invariants
         for_all
           (fun l ->
             for_all
-              (fun c' -> IntSet.mem l (IntMap.find c' cm))
-              (IntSet.to_list (IntMap.find l lm))
-            && IntSet.mem c (IntMap.find l lm))
-          (IntSet.to_list ls))
-      (IntMap.bindings cm)
+              (fun c' -> Clause.mem l (ClauseMap.find c' cm))
+              (IntSet.to_list (OccurrenceMap.find l lm))
+            && IntSet.mem c (OccurrenceMap.find l lm))
+          (Clause.to_list ls))
+      (ClauseMap.to_list cm)
   in
   let literals_clauses_eq =
     for_all
@@ -466,14 +487,14 @@ let check_invariants
         for_all
           (fun c ->
             for_all
-              (fun l' -> IntSet.mem c (IntMap.find l' lm))
-              (IntSet.to_list (IntMap.find c cm))
-            && IntSet.mem l (IntMap.find c cm))
+              (fun l' -> IntSet.mem c (OccurrenceMap.find l' lm))
+              (Clause.to_list (ClauseMap.find c cm))
+            && Clause.mem l (ClauseMap.find c cm))
           (IntSet.to_list cs))
-      (IntMap.to_list lm)
+      (OccurrenceMap.to_list lm)
   in
   let learned_clauses_no_empty_clauses =
-    not (exists (fun c -> IntSet.is_empty c) db)
+    not (exists (fun c -> Clause.is_empty c) db)
   in
   myAssert
     [

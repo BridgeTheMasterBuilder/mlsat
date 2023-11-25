@@ -15,6 +15,9 @@ let add n c m =
   (* add (cardinal m + 1) c m *)
   add n c m
 
+(* let choose m = choose m |> fst *)
+let choose m = choose m
+
 let remove_literal_from_clauses l cs m =
   try
     Ok
@@ -51,9 +54,9 @@ let remove_many cs m =
 
 let size m = max_binding_opt m |> Option.map_or ~default:0 fst
 
-let show m =
-  fold
-    (fun c v s ->
-      (if String.equal s "" then "" else s ^ "/\\")
-      ^ string_of_int c ^ ":" ^ Clause.show v)
-    m ""
+(* let show m = *)
+(*   fold *)
+(*     (fun c v s -> *)
+(*       (if String.equal s "" then "" else s ^ "/\\") *)
+(*       ^ string_of_int c ^ ":" ^ Clause.show v) *)
+(*     m "" *)
