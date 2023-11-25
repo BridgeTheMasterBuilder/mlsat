@@ -7,10 +7,48 @@ open Common
 (*   let show l = string_of_int l *)
 (*   let var = abs *)
 (* end *)
+module Literal = struct
+  module Map = Map.Make (Int)
+  module Set = Iter.Set.Make (Int)
+  include Int
+
+  let invalid = 0
+  let is_negated l = l < 0
+  let of_int i = if i = 0 then failwith "Invalid literal" else i
+  let show = string_of_int
+  let signum = sign
+  let var = abs
+end
+
+module Clause = struct
+  include Literal.Set
+
+  let of_list ls = Iter.(of_list ls |> map Literal.of_int |> of_iter)
+  let size = cardinal
+
+  let show c =
+    "("
+    ^ fold
+        (fun l s ->
+          (if String.equal s "" then "" else s ^ "\\/") ^ Literal.show l)
+        c ""
+    ^ ")"
+
+  let to_set = Fun.id
+end
 
 type assignment =
   | Decision of { literal : Literal.t; level : int }
   | Implication of { literal : Literal.t; level : int; implicant : Clause.t }
+
+module ClauseMap = struct
+  include IntMap
+
+  type t = Clause.t IntMap.t
+  type key = Literal.t
+
+  let size m = max_binding_opt m |> Option.map_or ~default:0 fst
+end
 
 module OccurrenceMap = struct
   include Literal.Map
@@ -284,28 +322,31 @@ let rewrite ({ current_decision_level = d; assignments = a; trail = t; _ } as f)
   { f' with current_decision_level = d + 1; assignments = a'; trail = t' }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
-  let ls = Clause.to_list clause in
+  let ls = Literal.Set.elements clause in
   let rec recur q c history =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
-        match Literal.Map.get l a with
+        match IntMap.find_opt (Literal.var l) a with
         | Some (Decision _) -> recur q' (Clause.add l c) history
         | Some (Implication { implicant = ls'; level = d'; _ }) ->
             if d' < d then recur q' (Clause.add l c) history
             else
               let ls'' =
-                Literal.Set.filter
-                  (fun l'' -> not Literal.(Set.mem (Literal.var l'') history))
-                  (Clause.to_set ls')
+                Clause.filter
+                  (fun l'' -> not (Literal.Set.mem (Literal.var l'') history))
+                  ls'
               in
-              let q'' = CCFQueue.add_iter_back q' (Literal.Set.to_iter ls'') in
-              let history' = Literal.(Set.union history (Set.map var ls'')) in
+              let q'' = CCFQueue.add_iter_back q' (Clause.to_iter ls'') in
+              let history' =
+                Literal.Set.union history
+                  (Literal.Set.map Literal.var (Clause.to_set ls''))
+              in
               recur q'' c history'
         | _ -> recur q' c history)
   in
   recur (CCFQueue.of_list ls) Clause.empty
-    (Literal.Set.map Literal.var (Clause.to_set clause))
+    (Literal.Set.of_list (List.map Literal.var ls))
 
 let maximumMay x = List.to_iter x |> Iter.max
 
