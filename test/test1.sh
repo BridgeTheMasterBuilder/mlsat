@@ -27,7 +27,7 @@ else
 	   set -x GROW_FACTOR 8
 	end
 
-	set output (string lower (./_build/default/bin/main.exe -- $file | tail -n 1)) #) -t 10.0 -n -c $NUM_CONFLICTS -g $GROW_FACTOR))
+	set output (string lower (./_build/default/bin/main.exe $file -t 10.0 -c $NUM_CONFLICTS -g $GROW_FACTOR | tail -n 1)) #) -t 10.0 -n -c $NUM_CONFLICTS -g $GROW_FACTOR))
 	# set output (string lower (cabal run -v0 sat $file -- -t 10.0 -n))
 
 	if test $status -gt 0

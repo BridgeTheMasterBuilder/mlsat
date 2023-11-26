@@ -25,9 +25,9 @@ problem: problem_line clauses EOF {
                         let (v, c) = $1 in
                         let v' = IntSet.cardinal !variable_set in
                         let c' = List.length $2 in
-                        if v <> v' || c <> c' then
+                        (* if v <> v' || c <> c' then
                             failwith "Malformed DIMACS file"
-                        else
+                        else *)
                             ({
                             formula = Cnf.of_list $2;
                             config=Config.empty

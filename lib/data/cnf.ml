@@ -1,12 +1,5 @@
 open Common
 
-(* module Literal = struct *)
-(*   type t = int *)
-
-(*   let neg = ( ~- ) *)
-(*   let show l = string_of_int l *)
-(*   let var = abs *)
-(* end *)
 module Literal = struct
   module Map = Map.Make (Int)
   module Set = Iter.Set.Make (Int)
@@ -59,13 +52,11 @@ end
 
 type formula = {
   clauses : ClauseMap.t;
-  (* occur : IntSet.t IntMap.t; *)
   occur : OccurrenceMap.t;
   original_clauses : ClauseMap.t;
   unit_clauses : ClauseMap.t;
   two_literal_clauses : ClauseMap.t;
   current_decision_level : int;
-  (* assignments : assignment IntMap.t; *)
   assignments : assignment Literal.Map.t;
   trail : (assignment * formula) list;
   database : Clause.t list;
@@ -146,10 +137,11 @@ let of_list =
         let occur' =
           Clause.fold
             (fun l m ->
-              OccurrenceMap.add_list_with
-                ~f:(fun _ -> IntSet.union)
-                m
-                [ (l, IntSet.singleton n) ])
+              OccurrenceMap.update l
+                (function
+                  | Some s -> Some (IntSet.add n s)
+                  | None -> Some (IntSet.singleton n))
+                m)
             clause occur
         in
         let uc', tlc' =
@@ -188,28 +180,41 @@ let of_list =
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
 let rec choose_literal
-    ({ occur; two_literal_clauses = _tlc; assignments = a; _ } as f) =
-  let l = OccurrenceMap.choose occur |> fst in
+    ({ clauses; occur; two_literal_clauses = tlc; assignments = a; _ } as f) =
+  let m = if ClauseMap.is_empty tlc then clauses else tlc in
+  let l = ClauseMap.choose m |> snd |> Clause.choose in
   match Literal.Map.find_opt (Literal.var l) a with
   | Some _ -> choose_literal { f with occur = OccurrenceMap.remove l occur }
   | None -> l
-
+(* let m = if OccurrenceMap.is_empty tlc then clauses else tlc in  *)
 (* let v = *)
-(*   fst *)
-(*     (IntMap.max_binding *)
-(*     @@ IntMap.map *)
-(*          (fun v1 -> IntSet.cardinal v1) *)
-(*          (IntMap.mapKeys (fun k -> abs k) lm)) *)
+(*   let open Iter in *)
+(*   (\* (OccurrenceMap.filter_map (fun l cs -> if Literal.is_negated l then None else Some cs) occur) |> *\) *)
+(*   OccurrenceMap.to_iter m *)
+(*   |> filter_map (fun (l, cs) -> *)
+(*          if Literal.is_negated l then None else Some (l, cs)) *)
+(*   |> max ~lt:(fun (_, cs) (_, cs') -> *)
+(*       IntSet.cardinal cs < IntSet.cardinal cs') *)
+(* |> Option.map fst |> Option.get_exn_or "Impossible" *)
+(*   (\* fst *\) *)
+(*   (\*   (IntMap.max_binding *\) *)
+(*   (\*   @@ IntMap.map *\) *)
+(*   (\*        (fun v1 -> IntSet.cardinal v1) *\) *)
+(*   (\*        (IntMap.mapKeys (fun k -> abs k) occur)) *\) *)
+(*   (\*        ) *\) *)
 (* in *)
 (* let sz1 = *)
-(*   Option.value (IntMap.find_opt v lm |> Option.map IntSet.cardinal) ~default:0 *)
+(*   Option.value *)
+(*     (IntMap.find_opt v occur |> Option.map IntSet.cardinal) *)
+(*     ~default:0 *)
 (* in *)
 (* let sz2 = *)
 (*   Option.value *)
-(*     (IntMap.find_opt (-v) lm |> Option.map IntSet.cardinal) *)
+(*     (IntMap.find_opt (-v) occur |> Option.map IntSet.cardinal) *)
 (*     ~default:0 *)
 (* in *)
 (* Literal (if sz1 > sz2 then v else -v) *)
+
 let level = function Decision { level; _ } | Implication { level; _ } -> level
 
 let raw_delete_literal ({ occur; _ } as f) l =
@@ -327,20 +332,19 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
-        match IntMap.find_opt (Literal.var l) a with
+        match Literal.(Map.find_opt (var l) a) with
         | Some (Decision _) -> recur q' (Clause.add l c) history
         | Some (Implication { implicant = ls'; level = d'; _ }) ->
             if d' < d then recur q' (Clause.add l c) history
             else
               let ls'' =
                 Clause.filter
-                  (fun l'' -> not (Literal.Set.mem (Literal.var l'') history))
+                  (fun l'' -> not Literal.(Set.mem (var l'') history))
                   ls'
               in
               let q'' = CCFQueue.add_iter_back q' (Clause.to_iter ls'') in
               let history' =
-                Literal.Set.union history
-                  (Literal.Set.map Literal.var (Clause.to_set ls''))
+                Literal.(Set.union history (Set.map var (Clause.to_set ls'')))
               in
               recur q'' c history'
         | _ -> recur q' c history)
@@ -364,10 +368,11 @@ let add_clause
   let occur' =
     Clause.fold
       (fun l m ->
-        OccurrenceMap.add_list_with
-          ~f:(fun _ -> IntSet.union)
-          m
-          [ (l, IntSet.singleton (n + 1)) ])
+        OccurrenceMap.update l
+          (function
+            | Some s -> Some (IntSet.add (n + 1) s)
+            | None -> Some (IntSet.singleton (n + 1)))
+          m)
       clause occur
   in
   let oc' = ClauseMap.add (n + 1) original_clause oc in
@@ -480,6 +485,7 @@ let check_invariants
     ({
        clauses = cm;
        occur = lm;
+       original_clauses = oc;
        current_decision_level = d;
        assignments = a;
        trail = t;
@@ -490,7 +496,14 @@ let check_invariants
   let no_empty_clauses =
     not (exists (fun (_, c) -> Clause.is_empty c) (ClauseMap.to_list cm))
   in
-  (* let is_subset_of_original = is_submap (fun _ _ -> true) cm oc in *)
+  let is_subset_of_original =
+    ClauseMap.for_all
+      (fun k v ->
+        match ClauseMap.get k oc with
+        | Some v' -> Clause.subset v v'
+        | None -> false)
+      cm
+  in
   let decision_level_non_negative = d >= 0 in
   let assignments_valid =
     for_all
@@ -540,7 +553,7 @@ let check_invariants
   myAssert
     [
       (no_empty_clauses, "Formula contains empty clause");
-      (* (is_subset_of_original, "Formula has diverged from its original form"); *)
+      (is_subset_of_original, "Formula has diverged from its original form");
       (decision_level_non_negative, "Decision level is not non-negative");
       (assignments_valid, "Assignments are invalid");
       (trail_valid, "Trail has duplicate assignments:\n" ^ show_formula f);

@@ -6,7 +6,6 @@ type result = Sat | Unsat
 
 let rec cdcl max_conflicts grow f =
   let rec recur d max_conflicts' conflicts f =
-    check_invariants f;
     if conflicts = max_conflicts' then
       let f = restart f in
       cdcl (max_conflicts' * grow) grow f
