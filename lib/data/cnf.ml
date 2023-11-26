@@ -297,7 +297,7 @@ let rec unit_propagate
       let ls' = ClauseMap.find c oc in
       let d' =
         let open Iter in
-        Clause.remove l' ls |> Clause.to_iter
+        Clause.remove l' ls' |> Clause.to_iter
         |> map (fun l ->
                Literal.(Map.get (var l) a)
                |> Option.map_or ~default:0 (function

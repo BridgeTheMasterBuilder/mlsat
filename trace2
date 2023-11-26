@@ -1,0 +1,650 @@
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
+State of queue: 
+-31 -18 13 
+History: 
+13 18 31 
+Seeing if 31 is assigned
+Decision level 0 is less than 13
+Adding -31 to learned clause
+State of queue: 
+-18 13 
+History: 
+13 18 31 
+Seeing if 18 is assigned
+Decision level 0 is less than 13
+Adding -18 to learned clause
+State of queue: 
+13 
+History: 
+13 18 31 
+Seeing if 13 is assigned
+Decision level 0 is less than 13
+Adding 13 to learned clause
+State of queue: 
+
+History: 
+13 18 31 
