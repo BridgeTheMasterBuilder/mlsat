@@ -75,11 +75,6 @@ module Assignment = struct
   let literal = function
     | Decision { literal; _ } | Implication { literal; _ } -> literal
 
-  let make_decision l d = Decision { literal = l; level = d }
-
-  let make_implication l ls d =
-    Implication { literal = l; implicant = ls; level = d }
-
   let show (a : assignment) =
     match a with
     | Decision { literal; level } ->
@@ -312,9 +307,9 @@ let rec unit_propagate
                |> Option.map_or ~default:0 Assignment.level)
         |> max |> Option.get_or ~default:0
       in
-      (* let i = Implication { literal = l'; implicant = ls'; level = d' } in *)
-      let i = Assignment.make_implication l' ls' d' in
-      (* let a' = Literal.Map.add (Literal.var l') i a in *)
+      let i =
+        Assignment.Implication { literal = l'; implicant = ls'; level = d' }
+      in
       let a' = Assignment.Map.add l' i a in
       let t' = (i, f) :: t in
       let f' = { f with assignments = a'; trail = t' } in
@@ -324,7 +319,7 @@ let rec unit_propagate
 let rewrite ({ current_decision_level = d; assignments = a; trail = t; _ } as f)
     l =
   let f' = Result.get_exn (simplify f l) in
-  let dec = Assignment.make_decision l (d + 1) in
+  let dec = Assignment.Decision { literal = l; level = d + 1 } in
   let a' = Assignment.Map.add l dec a in
   let t' = (dec, f) :: t in
   { f' with current_decision_level = d + 1; assignments = a'; trail = t' }
@@ -342,14 +337,14 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
         | Some (Implication { implicant = ls'; level = d'; _ }) ->
             if d' < d then recur q' (Clause.add l c) history
             else
-              let ls'' =
-                Clause.filter
-                  (fun l'' -> not Literal.(Set.mem (var l'') history))
-                  ls'
+              let open Iter in
+              let unseen =
+                Clause.to_iter ls'
+                |> filter (fun l'' -> not Literal.(Set.mem (var l'') history))
               in
-              let q'' = CCFQueue.add_iter_back q' (Clause.to_iter ls'') in
+              let q'' = CCFQueue.add_iter_back q' unseen in
               let history' =
-                Literal.(Set.union history (Set.map var (Clause.to_set ls'')))
+                Literal.(Set.(union history (map var (of_iter unseen))))
               in
               recur q'' c history'
         | _ -> recur q' c history)
@@ -397,41 +392,48 @@ let add_clause
   }
 
 let add_learned_clauses ({ assignments = a; _ } as f) db =
-  let db' =
-    List.map
-      (fun c ->
-        Clause.fold
-          (fun l c' ->
-            match Assignment.Map.find_opt l a with
-            | Some x ->
-                if Literal.signum (Assignment.literal x) <> Literal.signum l
-                then Option.map (fun c' -> Clause.remove l c') c'
-                else None
-            | _ -> c')
-          c (Some c))
-      db
+  let open Iter in
+  let f' =
+    List.to_iter db
+    |> map (fun c ->
+           ( Clause.fold
+               (fun l c' ->
+                 match Assignment.Map.find_opt l a with
+                 | Some x ->
+                     if
+                       Literal.signum (Assignment.literal x) <> Literal.signum l
+                     then Option.map (fun c' -> Clause.remove l c') c'
+                     else None
+                 | _ -> c')
+               c (Some c),
+             c ))
+    |> filter_map (fun (c, oc) -> Option.map (fun c -> (c, oc)) c)
+    |> fold (fun f' (c, oc) -> add_clause f' c oc) f
   in
-  let db'', oc' =
-    List.split
-      (List.map
-         (fun (c1, c2) -> (Option.get_exn_or "SPLIT" c1, c2))
-         (List.filter (fun (c1, _) -> Option.is_some c1) (List.combine db' db)))
-  in
-  let add_clause' f'' (c, oc) = add_clause f'' c oc in
-  let f' = List.fold_left add_clause' f (List.combine db'' oc') in
   { f' with database = db }
 
 let backtrack
     { current_decision_level = d; assignments = a; trail = t; database = db; _ }
     learned_clause =
-  let ds =
-    List.map Assignment.level
-      (List.filter_map
-         (fun l -> Assignment.Map.find_opt l a)
-         (Clause.to_list learned_clause))
+  let d' =
+    let open Iter in
+    Clause.to_iter learned_clause
+    |> filter_map (fun l -> Assignment.Map.find_opt l a)
+    |> map Assignment.level
+    |> filter (fun d' -> d' < d)
+    |> max |> Option.value ~default:0
   in
-  let ds' = List.filter (fun d' -> d' < d) ds in
-  let d' = Option.value (maximumMay ds') ~default:0 in
+  (* let d' = *)
+  (*   let open Iter in *)
+  (*   Clause.to_iter learned_clause *)
+  (*   |> filter_map (fun l -> *)
+  (*          Assignment.Map.find_opt l a *)
+  (*          |> Option.flat_map (fun ass -> *)
+  (*                 let d' = Assignment.level ass in *)
+  (*                 d' < d |> Bool.if_then (Fun.const d'))) *)
+  (*   |> max *)
+  (*   |> Option.value ~default:0 *)
+  (* in *)
   let _, f' =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
@@ -443,90 +445,93 @@ let restart ({ trail = t; database = db; _ } as f) =
   if List.is_empty t then f
   else
     add_learned_clauses
-      (snd (List.last_opt t |> Option.get_exn_or "RESTART"))
+      (snd
+         (List.last_opt t
+         |> Option.get_exn_or
+              "Attempt to backtrack without previous assignments."))
       db
 
-let my_assert assertions =
-  let rec recur assertions has_error =
-    match assertions with
-    | (c, msg) :: t ->
-        if not c then Printf.printf "ASSERTION FAILED: %s\n" msg;
-        recur t (has_error || not c)
-    | [] -> assert (not has_error)
-  in
-  recur assertions false
+(* let my_assert assertions = *)
+(*   let rec recur assertions has_error = *)
+(*     match assertions with *)
+(*     | (c, msg) :: t -> *)
+(*         if not c then Printf.printf "ASSERTION FAILED: %s\n" msg; *)
+(*         recur t (has_error || not c) *)
+(*     | [] -> assert (not has_error) *)
+(*   in *)
+(*   recur assertions false *)
 
-let check_invariants
-    ({
-       clauses = cm;
-       occur = lm;
-       original_clauses = oc;
-       current_decision_level = d;
-       assignments = a;
-       trail = t;
-       database = db;
-       _;
-     } as f) =
-  let open Iter in
-  let no_empty_clauses =
-    not (ClauseMap.to_iter cm |> exists (fun (_, c) -> Clause.is_empty c))
-  in
-  let is_subset_of_original =
-    ClauseMap.to_iter cm
-    |> for_all (fun (k, v) ->
-           match ClauseMap.find_opt k oc with
-           | Some v' -> Clause.subset v v'
-           | None -> false)
-  in
-  let decision_level_non_negative = d >= 0 in
-  let assignments_valid =
-    Assignment.Map.to_iter a
-    |> for_all (fun (k, v) ->
-           Literal.equal k (Literal.var (Assignment.literal v)))
-  in
-  let trail_valid =
-    List.to_iter t
-    |> for_all (fun (x, _) ->
-           let x' = Assignment.literal x in
-           not
-             (List.to_iter t
-             |> exists (fun (y, _) ->
-                    let y' = Assignment.literal y in
-                    Literal.equal x' (Literal.neg y'))))
-  in
-  let trail_geq_decision_level = List.length t >= d in
-  let clauses_literals_eq =
-    ClauseMap.to_iter cm
-    |> for_all (fun (c, ls) ->
-           Clause.to_iter ls
-           |> for_all (fun l ->
-                  IntSet.to_iter (OccurrenceMap.find l lm)
-                  |> for_all (fun c' -> Clause.mem l (ClauseMap.find c' cm))
-                  && IntSet.mem c (OccurrenceMap.find l lm)))
-  in
-  let literals_clauses_eq =
-    OccurrenceMap.to_iter lm
-    |> for_all (fun (l, cs) ->
-           IntSet.to_iter cs
-           |> for_all (fun c ->
-                  Clause.to_iter (ClauseMap.find c cm)
-                  |> for_all (fun l' -> IntSet.mem c (OccurrenceMap.find l' lm))
-                  && Clause.mem l (ClauseMap.find c cm)))
-  in
-  let learned_clauses_no_empty_clauses =
-    not (List.to_iter db |> exists (fun c -> Clause.is_empty c))
-  in
-  my_assert
-    [
-      (no_empty_clauses, "Formula contains empty clause");
-      (is_subset_of_original, "Formula has diverged from its original form");
-      (decision_level_non_negative, "Decision level is not non-negative");
-      (assignments_valid, "Assignments are invalid");
-      (trail_valid, "Trail has duplicate assignments:\n" ^ show_formula f);
-      ( trail_geq_decision_level,
-        "Fewer assignments than decision levels in trail" );
-      (clauses_literals_eq, "Clauses and literals out of sync");
-      (literals_clauses_eq, "Literals and clauses out of sync");
-      (learned_clauses_no_empty_clauses, "Learned empty clause");
-    ];
-  ()
+(* let check_invariants *)
+(*     ({ *)
+(*        clauses = cm; *)
+(*        occur = lm; *)
+(*        original_clauses = oc; *)
+(*        current_decision_level = d; *)
+(*        assignments = a; *)
+(*        trail = t; *)
+(*        database = db; *)
+(*        _; *)
+(*      } as f) = *)
+(*   let open Iter in *)
+(*   let no_empty_clauses = *)
+(*     not (ClauseMap.to_iter cm |> exists (fun (_, c) -> Clause.is_empty c)) *)
+(*   in *)
+(*   let is_subset_of_original = *)
+(*     ClauseMap.to_iter cm *)
+(*     |> for_all (fun (k, v) -> *)
+(*            match ClauseMap.find_opt k oc with *)
+(*            | Some v' -> Clause.subset v v' *)
+(*            | None -> false) *)
+(*   in *)
+(*   let decision_level_non_negative = d >= 0 in *)
+(*   let assignments_valid = *)
+(*     Assignment.Map.to_iter a *)
+(*     |> for_all (fun (k, v) -> *)
+(*            Literal.equal k (Literal.var (Assignment.literal v))) *)
+(*   in *)
+(*   let trail_valid = *)
+(*     List.to_iter t *)
+(*     |> for_all (fun (x, _) -> *)
+(*            let x' = Assignment.literal x in *)
+(*            not *)
+(*              (List.to_iter t *)
+(*              |> exists (fun (y, _) -> *)
+(*                     let y' = Assignment.literal y in *)
+(*                     Literal.equal x' (Literal.neg y')))) *)
+(*   in *)
+(*   let trail_geq_decision_level = List.length t >= d in *)
+(*   let clauses_literals_eq = *)
+(*     ClauseMap.to_iter cm *)
+(*     |> for_all (fun (c, ls) -> *)
+(*            Clause.to_iter ls *)
+(*            |> for_all (fun l -> *)
+(*                   IntSet.to_iter (OccurrenceMap.find l lm) *)
+(*                   |> for_all (fun c' -> Clause.mem l (ClauseMap.find c' cm)) *)
+(*                   && IntSet.mem c (OccurrenceMap.find l lm))) *)
+(*   in *)
+(*   let literals_clauses_eq = *)
+(*     OccurrenceMap.to_iter lm *)
+(*     |> for_all (fun (l, cs) -> *)
+(*            IntSet.to_iter cs *)
+(*            |> for_all (fun c -> *)
+(*                   Clause.to_iter (ClauseMap.find c cm) *)
+(*                   |> for_all (fun l' -> IntSet.mem c (OccurrenceMap.find l' lm)) *)
+(*                   && Clause.mem l (ClauseMap.find c cm))) *)
+(*   in *)
+(*   let learned_clauses_no_empty_clauses = *)
+(*     not (List.to_iter db |> exists (fun c -> Clause.is_empty c)) *)
+(*   in *)
+(*   my_assert *)
+(*     [ *)
+(*       (no_empty_clauses, "Formula contains empty clause"); *)
+(*       (is_subset_of_original, "Formula has diverged from its original form"); *)
+(*       (decision_level_non_negative, "Decision level is not non-negative"); *)
+(*       (assignments_valid, "Assignments are invalid"); *)
+(*       (trail_valid, "Trail has duplicate assignments:\n" ^ show_formula f); *)
+(*       ( trail_geq_decision_level, *)
+(*         "Fewer assignments than decision levels in trail" ); *)
+(*       (clauses_literals_eq, "Clauses and literals out of sync"); *)
+(*       (literals_clauses_eq, "Literals and clauses out of sync"); *)
+(*       (learned_clauses_no_empty_clauses, "Learned empty clause"); *)
+(*     ]; *)
+(*   () *)
