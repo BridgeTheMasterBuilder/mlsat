@@ -103,14 +103,21 @@ module TwoOccurrenceMap = struct
 
   let remove_literal = remove
 
-  let remove_clause =
+  let remove_clause l =
+    update l (function
+      | Some count ->
+          let count' = count - 1 in
+          if count' > 0 then Some count' else None
+      | None -> None (* failwith "REMOVE_CLAUSE" *))
+
+  let remove_clauses (* l m  *) =
     Clause.fold (fun l m' ->
         update l
           (function
             | Some count ->
                 let count' = count - 1 in
                 if count' > 0 then Some count' else None
-            | None -> failwith "REMOVE_CLAUSE")
+            | None -> None (* failwith "REMOVE_CLAUSE" *))
           m')
 end
 
@@ -217,6 +224,8 @@ let of_list =
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
 let choose_literal { clauses; occur; occur2; _ } =
+  (* let m = if ClauseMap.is_empty clauses then clauses else clauses in *)
+  (* ClauseMap.choose m |> snd |> Clause.choose *)
   match TwoOccurrenceMap.pop occur2 with
   | None -> OccurrenceMap.choose occur |> fst
   | Some ((l, _), _) -> l
@@ -248,7 +257,7 @@ let choose_literal { clauses; occur; occur2; _ } =
 let raw_delete_literal ({ occur; _ } as f) l =
   { f with occur = OccurrenceMap.remove l occur }
 
-let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
+let delete_literal ({ occur; occur2; original_clauses = oc; _ } as f) l =
   match OccurrenceMap.find_opt l occur with
   | None -> Ok f
   | Some cs ->
@@ -270,7 +279,7 @@ let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
                             f'' with
                             clauses = ClauseMap.add c diff clauses;
                             unit_clauses = ClauseMap.add c diff uc;
-                            occur2 = TwoOccurrenceMap.remove l occur2;
+                            occur2 = TwoOccurrenceMap.remove_clauses ls occur2;
                           }
                     | 2 ->
                         Ok
@@ -283,23 +292,27 @@ let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
                         Ok { f'' with clauses = ClauseMap.add c diff clauses })))
           cs (Ok f)
       in
-      let lm' = OccurrenceMap.remove l occur in
-      Result.map (fun f' -> { f' with occur = lm' }) result
+      let occur' = OccurrenceMap.remove l occur in
+      let occur2' = TwoOccurrenceMap.remove_literal l occur2 in
+      Result.map (fun f' -> { f' with occur = occur'; occur2 = occur2' }) result
 
 let delete_clauses f cs =
   IntSet.fold
     (fun c ({ clauses; occur; occur2; unit_clauses = uc; _ } as f') ->
       let ls = ClauseMap.find c clauses in
-      let occur' =
+      let occur', occur2' =
         Clause.fold
-          (fun l m ->
-            let diff = IntSet.remove c (OccurrenceMap.find l m) in
-            if IntSet.is_empty diff then OccurrenceMap.remove l m
-            else OccurrenceMap.add l diff m)
-          ls occur
+          (fun l (occur', occur2') ->
+            let diff = IntSet.remove c (OccurrenceMap.find l occur') in
+            if IntSet.is_empty diff then
+              ( OccurrenceMap.remove l occur',
+                TwoOccurrenceMap.remove_literal l occur2' )
+            else
+              ( OccurrenceMap.add l diff occur',
+                TwoOccurrenceMap.remove_clause l occur2' ))
+          ls (occur, occur2)
       in
       let clauses' = ClauseMap.remove c clauses in
-      let occur2' = TwoOccurrenceMap.remove_clause ls occur2 in
       let uc' = ClauseMap.remove c uc in
       {
         f' with
