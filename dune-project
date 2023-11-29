@@ -25,7 +25,8 @@
   (containers (>= 3.12))
   (containers-data (>= 3.12))
   (iter (>= 1.7))
-  (cmdliner (>= 1.2.0)))
+  (cmdliner (>= 1.2.0))
+  (psq (>= 0.2.1)))
  (tags
   (topics "to describe" your project)))
 

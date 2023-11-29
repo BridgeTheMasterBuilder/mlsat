@@ -1,4 +1,4 @@
 (library
  (name data)
- (libraries containers containers-data iter)
+ (libraries containers containers-data iter psq)
  (flags :standard -open Containers))

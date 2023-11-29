@@ -88,20 +88,46 @@ module Assignment = struct
     match a with Decision { level = d'; _ } -> d = d' | _ -> false
 end
 
+module TwoOccurrenceMap = struct
+  module Frequency = struct
+    type t = int
+
+    let compare x y = -compare x y
+  end
+
+  include Psq.Make (Literal) (Frequency)
+
+  let add_many =
+    Clause.fold (fun l m' ->
+        update l (function Some count -> Some (count + 1) | None -> Some 1) m')
+
+  let remove_literal = remove
+
+  let remove_clause =
+    Clause.fold (fun l m' ->
+        update l
+          (function
+            | Some count ->
+                let count' = count - 1 in
+                if count' > 0 then Some count' else None
+            | None -> failwith "REMOVE_CLAUSE")
+          m')
+end
+
 type formula = {
   clauses : ClauseMap.t;
   occur : OccurrenceMap.t;
+  occur2 : TwoOccurrenceMap.t;
   original_clauses : ClauseMap.t;
   unit_clauses : ClauseMap.t;
-  two_literal_clauses : ClauseMap.t;
+  (* two_literal_clauses : ClauseMap.t; *)
   current_decision_level : int;
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
   database : Clause.t list;
 }
 
-let show_formula ({ clauses; occur; current_decision_level; database; _ } as f)
-    =
+let show ({ clauses; occur; current_decision_level; database; _ } as f) =
   let open Printf in
   sprintf
     "Clauses:\n\
@@ -127,94 +153,97 @@ let show_formula ({ clauses; occur; current_decision_level; database; _ } as f)
               c ""))
        "" database)
 
+let add_clause
+    ({
+       clauses;
+       occur;
+       occur2;
+       original_clauses = oc;
+       unit_clauses = uc;
+
+       (* two_literal_clauses = tlc; *)
+     _;
+     } as f) clause original_clause =
+  let n = ClauseMap.size oc in
+  let clauses' = ClauseMap.add (n + 1) clause clauses in
+  let occur' =
+    Clause.fold
+      (fun l m ->
+        OccurrenceMap.update l
+          (function
+            | Some s -> Some (IntSet.add (n + 1) s)
+            | None -> Some (IntSet.singleton (n + 1)))
+          m)
+      clause occur
+  in
+  let oc' = ClauseMap.add (n + 1) original_clause oc in
+  let uc', occur2' =
+    match Clause.size clause with
+    | 1 -> (ClauseMap.add (n + 1) clause uc, occur2)
+    | 2 -> (uc, TwoOccurrenceMap.add_many clause occur2)
+    | _ -> (uc, occur2)
+  in
+  {
+    f with
+    clauses = clauses';
+    occur = occur';
+    occur2 = occur2';
+    original_clauses = oc';
+    unit_clauses = uc';
+  }
+
 let of_list =
-  let rec recur
-      ({ clauses; occur; unit_clauses = uc; two_literal_clauses = tlc; _ } as f)
-      n = function
+  let rec recur f n = function
     | [] -> f
     | c :: cs ->
         let clause = Clause.of_list c in
-        let clauses' = ClauseMap.add n clause clauses in
-        let occur' =
-          Clause.fold
-            (fun l m ->
-              OccurrenceMap.update l
-                (function
-                  | Some s -> Some (IntSet.add n s)
-                  | None -> Some (IntSet.singleton n))
-                m)
-            clause occur
-        in
-        let uc', tlc' =
-          match Clause.size clause with
-          | 1 -> (ClauseMap.add n clause uc, tlc)
-          | 2 -> (uc, ClauseMap.add n clause tlc)
-          | _ -> (uc, tlc)
-        in
-        let f' =
-          {
-            f with
-            clauses = clauses';
-            occur = occur';
-            original_clauses = clauses';
-            two_literal_clauses = tlc';
-            unit_clauses = uc';
-          }
-        in
-
+        let f' = add_clause f clause clause in
         recur f' (n + 1) cs
   in
   recur
     {
       clauses = ClauseMap.empty;
       occur = OccurrenceMap.empty;
+      occur2 = TwoOccurrenceMap.empty;
       original_clauses = ClauseMap.empty;
       current_decision_level = 0;
       assignments = Literal.Map.empty;
       trail = [];
       database = [];
       unit_clauses = ClauseMap.empty;
-      two_literal_clauses = ClauseMap.empty;
     }
     1
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
-let choose_literal { clauses; occur; two_literal_clauses = tlc; _ } =
-  let m = if ClauseMap.is_empty tlc then clauses else tlc in
-  let l = ClauseMap.choose m |> snd |> Clause.choose in
-  l
-(* match Literal.Map.find_opt (Literal.var l) a with *)
-(* | Some _ -> choose_literal { f with occur = OccurrenceMap.remove l occur } *)
-(* | None -> l *)
-(* let m = if OccurrenceMap.is_empty tlc then clauses else tlc in  *)
-(* let v = *)
+let choose_literal { clauses; occur; occur2; _ } =
+  match TwoOccurrenceMap.pop occur2 with
+  | None -> OccurrenceMap.choose occur |> fst
+  | Some ((l, _), _) -> l
+(* in *)
+(* let l = *)
 (*   let open Iter in *)
-(*   (\* (OccurrenceMap.filter_map (fun l cs -> if Literal.is_negated l then None else Some cs) occur) |> *\) *)
-(*   OccurrenceMap.to_iter m *)
-(*   |> filter_map (fun (l, cs) -> *)
-(*          if Literal.is_negated l then None else Some (l, cs)) *)
-(*   |> max ~lt:(fun (_, cs) (_, cs') -> *)
-(*       IntSet.cardinal cs < IntSet.cardinal cs') *)
-(* |> Option.map fst |> Option.get_exn_or "Impossible" *)
-(*   (\* fst *\) *)
-(*   (\*   (IntMap.max_binding *\) *)
-(*   (\*   @@ IntMap.map *\) *)
-(*   (\*        (fun v1 -> IntSet.cardinal v1) *\) *)
-(*   (\*        (IntMap.mapKeys (fun k -> abs k) occur)) *\) *)
-(*   (\*        ) *\) *)
+(*   ClauseMap.to_iter m *)
+(*   |> fold *)
+(*        (fun s (_, ls) -> Literal.Set.union s (Clause.to_set ls)) *)
+(*        Literal.Set.empty *)
+(*   |> Literal.Set.to_iter *)
+(*   |> max ~lt:(fun l1 l2 -> *)
+(*          IntSet.cardinal (OccurrenceMap.find l1 occur) *)
+(*          < IntSet.cardinal (OccurrenceMap.find l2 occur)) *)
+(*   |> Option.get_exn_or "CHOOSE" *)
 (* in *)
 (* let sz1 = *)
 (*   Option.value *)
-(*     (IntMap.find_opt v occur |> Option.map IntSet.cardinal) *)
+(*     (IntMap.find_opt l occur |> Option.map IntSet.cardinal) *)
 (*     ~default:0 *)
 (* in *)
 (* let sz2 = *)
 (*   Option.value *)
-(*     (IntMap.find_opt (-v) occur |> Option.map IntSet.cardinal) *)
+(*     (IntMap.find_opt (Literal.neg l) occur |> Option.map IntSet.cardinal) *)
 (*     ~default:0 *)
 (* in *)
-(* Literal (if sz1 > sz2 then v else -v) *)
+(* if sz1 > sz2 then l else Literal.neg l *)
 
 let raw_delete_literal ({ occur; _ } as f) l =
   { f with occur = OccurrenceMap.remove l occur }
@@ -228,9 +257,7 @@ let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
           (fun c f' ->
             match f' with
             | Error x -> Error x
-            | Ok
-                ({ clauses; unit_clauses = uc; two_literal_clauses = tlc; _ } as
-                f'') -> (
+            | Ok ({ clauses; occur2; unit_clauses = uc; _ } as f'') -> (
                 match ClauseMap.find_opt c clauses with
                 | None -> Ok f''
                 | Some ls -> (
@@ -243,14 +270,14 @@ let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
                             f'' with
                             clauses = ClauseMap.add c diff clauses;
                             unit_clauses = ClauseMap.add c diff uc;
-                            two_literal_clauses = ClauseMap.remove c tlc;
+                            occur2 = TwoOccurrenceMap.remove l occur2;
                           }
                     | 2 ->
                         Ok
                           {
                             f'' with
                             clauses = ClauseMap.add c diff clauses;
-                            two_literal_clauses = ClauseMap.add c diff tlc;
+                            occur2 = TwoOccurrenceMap.add_many ls occur2;
                           }
                     | _ ->
                         Ok { f'' with clauses = ClauseMap.add c diff clauses })))
@@ -261,9 +288,7 @@ let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
 
 let delete_clauses f cs =
   IntSet.fold
-    (fun c
-         ({ clauses; occur; unit_clauses = uc; two_literal_clauses = tlc; _ } as
-         f') ->
+    (fun c ({ clauses; occur; occur2; unit_clauses = uc; _ } as f') ->
       let ls = ClauseMap.find c clauses in
       let occur' =
         Clause.fold
@@ -274,14 +299,14 @@ let delete_clauses f cs =
           ls occur
       in
       let clauses' = ClauseMap.remove c clauses in
-      let tlc' = ClauseMap.remove c tlc in
+      let occur2' = TwoOccurrenceMap.remove_clause ls occur2 in
       let uc' = ClauseMap.remove c uc in
       {
         f' with
         clauses = clauses';
         occur = occur';
+        occur2 = occur2';
         unit_clauses = uc';
-        two_literal_clauses = tlc';
       })
     cs f
 
@@ -351,45 +376,6 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   in
   recur (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.of_list (List.map Literal.var ls))
-
-let maximumMay x = List.to_iter x |> Iter.max
-
-let add_clause
-    ({
-       clauses;
-       occur;
-       original_clauses = oc;
-       unit_clauses = uc;
-       two_literal_clauses = tlc;
-       _;
-     } as f) clause original_clause =
-  let n = ClauseMap.size oc in
-  let clauses' = ClauseMap.add (n + 1) clause clauses in
-  let occur' =
-    Clause.fold
-      (fun l m ->
-        OccurrenceMap.update l
-          (function
-            | Some s -> Some (IntSet.add (n + 1) s)
-            | None -> Some (IntSet.singleton (n + 1)))
-          m)
-      clause occur
-  in
-  let oc' = ClauseMap.add (n + 1) original_clause oc in
-  let uc', tlc' =
-    match Clause.size clause with
-    | 1 -> (ClauseMap.add (n + 1) clause uc, tlc)
-    | 2 -> (uc, ClauseMap.add (n + 1) clause tlc)
-    | _ -> (uc, tlc)
-  in
-  {
-    f with
-    clauses = clauses';
-    occur = occur';
-    original_clauses = oc';
-    unit_clauses = uc';
-    two_literal_clauses = tlc';
-  }
 
 let add_learned_clauses ({ assignments = a; _ } as f) db =
   let open Iter in
@@ -527,7 +513,7 @@ let restart ({ trail = t; database = db; _ } as f) =
 (*       (is_subset_of_original, "Formula has diverged from its original form"); *)
 (*       (decision_level_non_negative, "Decision level is not non-negative"); *)
 (*       (assignments_valid, "Assignments are invalid"); *)
-(*       (trail_valid, "Trail has duplicate assignments:\n" ^ show_formula f); *)
+(*       (trail_valid, "Trail has duplicate assignments:\n" ^ show f); *)
 (*       ( trail_geq_decision_level, *)
 (*         "Fewer assignments than decision levels in trail" ); *)
 (*       (clauses_literals_eq, "Clauses and literals out of sync"); *)
