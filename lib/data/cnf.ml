@@ -198,9 +198,12 @@ let of_list =
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
-let choose_literal { clauses; occur; two_literal_clauses = tlc; _ } =
+let choose_literal
+    { clauses; occur; two_literal_clauses = tlc; current_decision_level = d; _ }
+    =
   let m = if ClauseMap.is_empty tlc then clauses else tlc in
   let l = ClauseMap.choose m |> snd |> Clause.choose in
+  Printf.printf "Decision on level %d: %s\n" d (Literal.show l);
   l
 (* match Literal.Map.find_opt (Literal.var l) a with *)
 (* | Some _ -> choose_literal { f with occur = OccurrenceMap.remove l occur } *)
