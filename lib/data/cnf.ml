@@ -241,12 +241,14 @@ let of_list =
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
-let choose_literal { clauses; occur; occur2; _ } =
+let choose_literal { clauses; occur; occur2; current_decision_level = d; _ } =
   (* let m = if ClauseMap.is_empty clauses then clauses else clauses in *)
   (* ClauseMap.choose m |> snd |> Clause.choose *)
   match TwoOccurrenceMap.pop occur2 with
   | None -> OccurrenceMap.choose occur |> fst
-  | Some ((l, _), _) -> l
+  | Some ((l, _), _) ->
+      Printf.printf "Decision on level %d: %s\n" d (Literal.show l);
+      l
 (* in *)
 (* let l = *)
 (*   let open Iter in *)
