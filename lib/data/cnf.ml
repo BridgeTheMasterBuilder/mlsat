@@ -106,43 +106,43 @@ module Assignment = struct
     match a with Decision { level = d'; _ } -> d = d' | _ -> false
 end
 
-module TwoOccurrenceMap = struct
-  module Frequency = struct
-    type t = int
+(* module FrequencyMap = struct *)
+(*   module Frequency = struct *)
+(*     type t = int *)
 
-    let compare x y = -compare x y
-  end
+(*     let compare x y = -compare x y *)
+(*   end *)
 
-  include Psq.Make (Literal) (Frequency)
+(*   include Psq.Make (Literal) (Frequency) *)
 
-  let add_many =
-    Clause.fold (fun l m' ->
-        update l (function Some count -> Some (count + 1) | None -> Some 1) m')
+(*   let add_many = *)
+(*     Clause.fold (fun l m' -> *)
+(*         update l (function Some count -> Some (count + 1) | None -> Some 1) m') *)
 
-  let remove_literal = remove
+(*   let remove_literal = remove *)
 
-  let remove_clause l =
-    update l (function
-      | Some count ->
-          let count' = count - 1 in
-          if count' > 0 then Some count' else None
-      | None -> None (* failwith "REMOVE_CLAUSE" *))
+(*   let remove_clause l = *)
+(*     update l (function *)
+(*       | Some count -> *)
+(*           let count' = count - 1 in *)
+(*           if count' > 0 then Some count' else None *)
+(*       | None -> None (\* failwith "REMOVE_CLAUSE" *\)) *)
 
-  let remove_clauses (* l m  *) =
-    Clause.fold (fun l m' ->
-        update l
-          (function
-            | Some count ->
-                let count' = count - 1 in
-                if count' > 0 then Some count' else None
-            | None -> None (* failwith "REMOVE_CLAUSE" *))
-          m')
-end
+(*   let remove_clauses (\* l m  *\) = *)
+(*     Clause.fold (fun l m' -> *)
+(*         update l *)
+(*           (function *)
+(*             | Some count -> *)
+(*                 let count' = count - 1 in *)
+(*                 if count' > 0 then Some count' else None *)
+(*             | None -> None (\* failwith "REMOVE_CLAUSE" *\)) *)
+(*           m') *)
+(* end *)
 
 type formula = {
   clauses : ClauseMap.t;
   occur : OccurrenceMap.t;
-  occur2 : TwoOccurrenceMap.t;
+  (* frequency : FrequencyMap.t; *)
   original_clauses : ClauseMap.t;
   unit_clauses : ClauseMap.t;
   (* two_literal_clauses : ClauseMap.t; *)
@@ -179,16 +179,8 @@ let show ({ clauses; occur; current_decision_level; database; _ } as f) =
        "" database)
 
 let add_clause
-    ({
-       clauses;
-       occur;
-       occur2;
-       original_clauses = oc;
-       unit_clauses = uc;
-
-       (* two_literal_clauses = tlc; *)
-     _;
-     } as f) clause original_clause =
+    ({ clauses; occur; original_clauses = oc; unit_clauses = uc; _ } as f)
+    clause original_clause =
   let n = ClauseMap.size oc in
   let clauses' = ClauseMap.add (n + 1) clause clauses in
   let occur' =
@@ -202,17 +194,13 @@ let add_clause
       clause occur
   in
   let oc' = ClauseMap.add (n + 1) original_clause oc in
-  let uc', occur2' =
-    match Clause.size clause with
-    | 1 -> (ClauseMap.add (n + 1) clause uc, occur2)
-    | 2 -> (uc, TwoOccurrenceMap.add_many clause occur2)
-    | _ -> (uc, occur2)
+  let uc' =
+    if Clause.size clause = 1 then ClauseMap.add (n + 1) clause uc else uc
   in
   {
     f with
     clauses = clauses';
     occur = occur';
-    occur2 = occur2';
     original_clauses = oc';
     unit_clauses = uc';
   }
@@ -229,7 +217,6 @@ let of_list =
     {
       clauses = ClauseMap.empty;
       occur = OccurrenceMap.empty;
-      occur2 = TwoOccurrenceMap.empty;
       original_clauses = ClauseMap.empty;
       current_decision_level = 0;
       assignments = Literal.Map.empty;
@@ -240,15 +227,14 @@ let of_list =
     1
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
-
-let choose_literal { clauses; occur; occur2; current_decision_level = d; _ } =
-  (* let m = if ClauseMap.is_empty clauses then clauses else clauses in *)
-  (* ClauseMap.choose m |> snd |> Clause.choose *)
-  match TwoOccurrenceMap.pop occur2 with
-  | None -> OccurrenceMap.choose occur |> fst
-  | Some ((l, _), _) ->
-      Printf.printf "Decision on level %d: %s\n" d (Literal.show l);
-      l
+let choose_literal { clauses; occur; current_decision_level = d; _ } = 0
+(* let m = if ClauseMap.is_empty clauses then clauses else clauses in *)
+(* ClauseMap.choose m |> snd |> Clause.choose *)
+(* match TwoOccurrenceMap.pop occur2 with *)
+(* | None -> OccurrenceMap.choose occur |> fst *)
+(* | Some ((l, _), _) -> *)
+(*     Printf.printf "Decision on level %d: %s\n" d (Literal.show l); *)
+(*     l *)
 (* in *)
 (* let l = *)
 (*   let open Iter in *)
@@ -277,7 +263,7 @@ let choose_literal { clauses; occur; occur2; current_decision_level = d; _ } =
 let raw_delete_literal ({ occur; _ } as f) l =
   { f with occur = OccurrenceMap.remove l occur }
 
-let delete_literal ({ occur; occur2; original_clauses = oc; _ } as f) l =
+let delete_literal ({ occur; original_clauses = oc; _ } as f) l =
   match OccurrenceMap.find_opt l occur with
   | None -> Ok f
   | Some cs ->
@@ -286,61 +272,40 @@ let delete_literal ({ occur; occur2; original_clauses = oc; _ } as f) l =
           (fun c f' ->
             match f' with
             | Error x -> Error x
-            | Ok ({ clauses; occur2; unit_clauses = uc; _ } as f'') -> (
+            | Ok ({ clauses; unit_clauses = uc; _ } as f'') -> (
                 match ClauseMap.find_opt c clauses with
                 | None -> Ok f''
-                | Some ls -> (
+                | Some ls ->
                     let diff = Clause.remove l ls in
-                    match Clause.size diff with
-                    | 0 -> Error (ClauseMap.find c oc, f)
-                    | 1 ->
-                        Ok
-                          {
-                            f'' with
-                            clauses = ClauseMap.add c diff clauses;
-                            unit_clauses = ClauseMap.add c diff uc;
-                            occur2 = TwoOccurrenceMap.remove_clauses ls occur2;
-                          }
-                    | 2 ->
-                        Ok
-                          {
-                            f'' with
-                            clauses = ClauseMap.add c diff clauses;
-                            occur2 = TwoOccurrenceMap.add_many ls occur2;
-                          }
-                    | _ ->
-                        Ok { f'' with clauses = ClauseMap.add c diff clauses })))
+                    Ok
+                      (if Clause.size diff = 1 then
+                         {
+                           f'' with
+                           clauses = ClauseMap.add c diff clauses;
+                           unit_clauses = ClauseMap.add c diff uc;
+                         }
+                       else { f'' with clauses = ClauseMap.add c diff clauses })
+                ))
           cs (Ok f)
       in
       let occur' = OccurrenceMap.remove l occur in
-      let occur2' = TwoOccurrenceMap.remove_literal l occur2 in
-      Result.map (fun f' -> { f' with occur = occur'; occur2 = occur2' }) result
+      Result.map (fun f' -> { f' with occur = occur' }) result
 
 let delete_clauses f cs =
   IntSet.fold
-    (fun c ({ clauses; occur; occur2; unit_clauses = uc; _ } as f') ->
+    (fun c ({ clauses; occur; unit_clauses = uc; _ } as f') ->
       let ls = ClauseMap.find c clauses in
-      let occur', occur2' =
+      let occur' =
         Clause.fold
-          (fun l (occur', occur2') ->
-            let diff = IntSet.remove c (OccurrenceMap.find l occur') in
-            if IntSet.is_empty diff then
-              ( OccurrenceMap.remove l occur',
-                TwoOccurrenceMap.remove_literal l occur2' )
-            else
-              ( OccurrenceMap.add l diff occur',
-                TwoOccurrenceMap.remove_clause l occur2' ))
-          ls (occur, occur2)
+          (fun l m' ->
+            let diff = IntSet.remove c (OccurrenceMap.find l m') in
+            if IntSet.is_empty diff then OccurrenceMap.remove l m'
+            else OccurrenceMap.add l diff m')
+          ls occur
       in
       let clauses' = ClauseMap.remove c clauses in
       let uc' = ClauseMap.remove c uc in
-      {
-        f' with
-        clauses = clauses';
-        occur = occur';
-        occur2 = occur2';
-        unit_clauses = uc';
-      })
+      { f' with clauses = clauses'; occur = occur'; unit_clauses = uc' })
     cs f
 
 let simplify ({ occur; _ } as f) l =
