@@ -14,33 +14,34 @@ module Literal = struct
 end
 
 module Clause = struct
-  (* include Literal.Set *)
+  include Literal.Set
 
-  (* let of_list ls = Iter.(of_list ls |> map Literal.of_int |> of_iter) *)
-  (* let size = cardinal *)
-
-  (* let show c = *)
-  (*   "(" ^ fold (fun l s -> Printf.sprintf "%s%s " s (Literal.show l)) c "" ^ ")" *)
-
-  (* let to_set = Fun.id *)
-  include List
-
-  type t = Literal.t list
-
-  let add = add_nodup ~eq:Literal.equal
-  let choose = hd
-  let fold f c s = fold_left (Fun.flip f) s c
-  let of_list = sort_uniq ~cmp:Literal.compare
-  let remove l = remove ~eq:Literal.equal ~key:l
-  let size = length
+  let of_list ls = Iter.(of_list ls |> map Literal.of_int |> of_iter)
+  let size = cardinal
 
   let show c =
-    "("
-    ^ fold_left (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
-    ^ ")"
+    "(" ^ fold (fun l s -> Printf.sprintf "%s%s " s (Literal.show l)) c "" ^ ")"
 
-  let to_list = Fun.id
-  let to_set = Literal.Set.of_list
+  let to_set = Fun.id
+
+  (* include List *)
+
+  (* type t = Literal.t list *)
+
+  (* let add = add_nodup ~eq:Literal.equal *)
+  (* let choose = hd *)
+  (* let fold f c s = fold_left (Fun.flip f) s c *)
+  (* let of_list = sort_uniq ~cmp:Literal.compare *)
+  (* let remove l = remove ~eq:Literal.equal ~key:l *)
+  (* let size = length *)
+
+  (* let show c = *)
+  (*   "(" *)
+  (*   ^ fold_left (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c *)
+  (*   ^ ")" *)
+
+  (* let to_list = Fun.id *)
+  (* let to_set = Literal.Set.of_list *)
 end
 
 module ClauseMap = struct
@@ -108,42 +109,48 @@ end
 
 module FrequencyMap = struct
   module Frequency = struct
-    type t = int
+    type t = float
 
-    let compare x y = -compare x y
+    let compare x y = -Float.(compare x y)
   end
 
   include Psq.Make (Literal) (Frequency)
 
+  let decay_factor = 0.99
+
   let add_many =
     Clause.fold (fun l m' ->
-        update l (function Some count -> Some (count + 1) | None -> Some 1) m')
+        update l
+          (function Some count -> Some (count +. 1.0) | None -> Some 1.0)
+          m')
+
+  let decay m =
+    fold (fun l f m' -> adjust l (Fun.const (f *. decay_factor)) m') m m
 
   let remove_literal = remove
 
   let remove_clause l =
     update l (function
       | Some count ->
-          let count' = count - 1 in
-          if count' > 0 then Some count' else None
-      | None -> None (* failwith "REMOVE_CLAUSE" *))
+          let count' = count -. 1.0 in
+          if count' >. 0.0 then Some count' else None
+      | None -> None)
 
-  let remove_clauses (* l m  *) =
+  let remove_clauses =
     Clause.fold (fun l m' ->
         update l
           (function
             | Some count ->
-                let count' = count - 1 in
-                if count' > 0 then Some count' else None
-            | None -> None (* failwith "REMOVE_CLAUSE" *))
+                let count' = count -. 1.0 in
+                if count' >. 0.0 then Some count' else None
+            | None -> None)
           m')
 
   let show o =
     to_priority_list o
-    |> (* fold (fun l c s -> Printf.sprintf "%s%s:%d\n" s (Literal.show l) c) "" o *)
-    List.fold_left
-      (fun s (l, c) -> Printf.sprintf "%s%s:%d\n" s (Literal.show l) c)
-      ""
+    |> List.fold_left
+         (fun s (l, c) -> Printf.sprintf "%s%s:%f\n" s (Literal.show l) c)
+         ""
 end
 
 type formula = {
@@ -242,13 +249,10 @@ let of_list =
 
 let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 
-let choose_literal ({ occur; frequency; current_decision_level = d; _ } as f) =
+let choose_literal { occur; frequency; _ } =
   match FrequencyMap.pop frequency with
   | None -> OccurrenceMap.choose occur |> fst
-  | Some ((l, _), _) ->
-      (* print_endline (show f); *)
-      (* Printf.printf "Decision on level %d: %s\n" d (Literal.show l); *)
-      l
+  | Some ((l, _), _) -> l
 
 let raw_delete_literal ({ occur; _ } as f) l =
   { f with occur = OccurrenceMap.remove l occur }
@@ -414,21 +418,11 @@ let backtrack
     |> filter (fun d' -> d' < d)
     |> max |> Option.value ~default:0
   in
-  (* let d' = *)
-  (*   let open Iter in *)
-  (*   Clause.to_iter learned_clause *)
-  (*   |> filter_map (fun l -> *)
-  (*          Assignment.Map.find_opt l a *)
-  (*          |> Option.flat_map (fun ass -> *)
-  (*                 let d' = Assignment.level ass in *)
-  (*                 d' < d |> Bool.if_then (Fun.const d'))) *)
-  (*   |> max *)
-  (*   |> Option.value ~default:0 *)
-  (* in *)
   let _, f' =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
   in
+  let f' = { f' with frequency = FrequencyMap.decay f'.frequency } in
   let f'' = add_learned_clauses f' (learned_clause :: db) in
   (f'', d')
 
