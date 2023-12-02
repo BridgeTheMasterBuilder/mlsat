@@ -10,9 +10,9 @@ let mem l { clause; _ } = mem l clause
 let add l { clause; original } =
   { clause = add l clause; original = add l original }
 
-let remove l { clause; _ } =
-  let clause = remove l clause in
-  { clause; original = clause }
+let remove l { clause; original } =
+  let clause' = remove l clause in
+  { clause = clause'; original }
 
 let fold f { clause; _ } = fold f clause
 

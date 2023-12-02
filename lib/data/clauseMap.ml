@@ -15,5 +15,4 @@ let show map_str =
     (fun c ls s -> Printf.sprintf "%s%d:%s\n" s c (Clause.show ls))
     map_str ""
 
-(* let size m = max_binding_opt m |> Option.map_or ~default:0 fst *)
 let size _ = !sz
