@@ -175,7 +175,6 @@ let rec unit_propagate
   match ClauseMap.choose_opt uc with
   | Some (c, ls) ->
       let l' = Clause.choose ls in
-      (* let ls' = ClauseMap.find c oc in *)
       let ls' = ClauseMap.find c clauses |> Clause.original in
       let d' =
         let open Iter in
@@ -208,24 +207,24 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
-        (* if CCFQueue.is_empty q' then Clause.add l c *)
-        (* else *)
-        match Assignment.(Map.find_opt l a) with
-        | Some (Decision _) -> aux q' (Clause.add l c) history
-        | Some (Implication { implicant = ls'; level = d'; _ }) ->
-            if d' < d then aux q' (Clause.add l c) history
-            else
-              let open Iter in
-              let unseen =
-                Clause.to_iter ls'
-                |> filter (fun l'' -> not Literal.(Set.mem (var l'') history))
-              in
-              let q'' = CCFQueue.add_iter_back q' unseen in
-              let history' =
-                Literal.(Set.(union history (map var (of_iter unseen))))
-              in
-              aux q'' c history'
-        | _ -> aux q' c history)
+        if CCFQueue.is_empty q' then Clause.add l c
+        else
+          match Assignment.(Map.find_opt l a) with
+          | Some (Decision _) -> aux q' (Clause.add l c) history
+          | Some (Implication { implicant = ls'; level = d'; _ }) ->
+              if d' < d then aux q' (Clause.add l c) history
+              else
+                let open Iter in
+                let unseen =
+                  Clause.to_iter ls'
+                  |> filter (fun l'' -> not Literal.(Set.mem (var l'') history))
+                in
+                let q'' = CCFQueue.add_iter_back q' unseen in
+                let history' =
+                  Literal.(Set.(union history (map var (of_iter unseen))))
+                in
+                aux q'' c history'
+          | _ -> aux q' c history)
   in
   aux (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.of_list (List.map Literal.var ls))
