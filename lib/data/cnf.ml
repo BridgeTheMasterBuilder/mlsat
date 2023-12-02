@@ -4,7 +4,6 @@ type formula = {
   clauses : ClauseMap.t;
   occur : OccurrenceMap.t;
   frequency : FrequencyMap.t;
-  original_clauses : ClauseMap.t;
   unit_clauses : ClauseMap.t;
   current_decision_level : int;
   assignments : Assignment.Map.t;
@@ -43,10 +42,9 @@ let show
               c ""))
        "" database)
 
-let add_clause
-    ({ clauses; occur; frequency; original_clauses = oc; unit_clauses = uc; _ }
-    as f) clause original_clause =
-  let n = ClauseMap.size oc in
+let add_clause ({ clauses; occur; frequency; unit_clauses = uc; _ } as f) clause
+    =
+  let n = ClauseMap.size clauses in
   let clauses' = ClauseMap.add (n + 1) clause clauses in
   let occur' =
     Clause.fold
@@ -58,7 +56,6 @@ let add_clause
           m)
       clause occur
   in
-  let oc' = ClauseMap.add (n + 1) original_clause oc in
   let uc' =
     if Clause.size clause = 1 then ClauseMap.add (n + 1) clause uc else uc
   in
@@ -68,7 +65,6 @@ let add_clause
     clauses = clauses';
     occur = occur';
     frequency = frequency';
-    original_clauses = oc';
     unit_clauses = uc';
   }
 
@@ -77,7 +73,7 @@ let of_list =
     | [] -> f
     | c :: cs ->
         let clause = Clause.of_list c in
-        let f' = add_clause f clause clause in
+        let f' = add_clause f clause in
         aux f' (n + 1) cs
   in
   aux
@@ -85,9 +81,8 @@ let of_list =
       clauses = ClauseMap.empty;
       occur = OccurrenceMap.empty;
       frequency = FrequencyMap.empty;
-      original_clauses = ClauseMap.empty;
       current_decision_level = 0;
-      assignments = Literal.Map.empty;
+      assignments = Assignment.Map.empty;
       trail = [];
       database = [];
       unit_clauses = ClauseMap.empty;
@@ -101,7 +96,7 @@ let choose_literal { occur; frequency; _ } =
   | None -> OccurrenceMap.choose occur |> fst
   | Some ((l, _), _) -> l
 
-let delete_literal ({ occur; frequency; original_clauses = oc; _ } as f) l =
+let delete_literal ({ occur; frequency; _ } as f) l =
   let exception Conflict of Clause.t * formula in
   match OccurrenceMap.find_opt l occur with
   | None -> Ok f
@@ -117,7 +112,11 @@ let delete_literal ({ occur; frequency; original_clauses = oc; _ } as f) l =
                   | Some ls -> (
                       let diff = Clause.remove l ls in
                       match Clause.size diff with
-                      | 0 -> raise_notrace (Conflict (ClauseMap.find c oc, f))
+                      | 0 ->
+                          raise_notrace
+                            (Conflict
+                               (Clause.original ls, f)
+                               (* (ClauseMap.find c oc, f) *))
                       | 1 ->
                           {
                             f'' with
@@ -172,12 +171,12 @@ let simplify ({ occur; _ } as f) l =
          | Some cs -> raw_delete_literal (delete_clauses f' cs) l)
 
 let rec unit_propagate
-    ({ original_clauses = oc; unit_clauses = uc; assignments = a; trail = t; _ }
-    as f) =
+    ({ clauses; unit_clauses = uc; assignments = a; trail = t; _ } as f) =
   match ClauseMap.choose_opt uc with
   | Some (c, ls) ->
       let l' = Clause.choose ls in
-      let ls' = ClauseMap.find c oc in
+      (* let ls' = ClauseMap.find c oc in *)
+      let ls' = ClauseMap.find c clauses |> Clause.original in
       let d' =
         let open Iter in
         Clause.remove l' ls' |> Clause.to_iter
@@ -235,20 +234,17 @@ let add_learned_clauses ({ assignments = a; _ } as f) db =
   let open Iter in
   let f' =
     List.to_iter db
-    |> map (fun c ->
-           ( Clause.fold
-               (fun l c' ->
-                 match Assignment.Map.find_opt l a with
-                 | Some x ->
-                     if
-                       Literal.signum (Assignment.literal x) <> Literal.signum l
-                     then Option.map (fun c' -> Clause.remove l c') c'
-                     else None
-                 | _ -> c')
-               c (Some c),
-             c ))
-    |> filter_map (fun (c, oc) -> Option.map (fun c -> (c, oc)) c)
-    |> fold (fun f' (c, oc) -> add_clause f' c oc) f
+    |> filter_map (fun c ->
+           Clause.fold
+             (fun l c' ->
+               match Assignment.Map.find_opt l a with
+               | Some x ->
+                   if Literal.signum (Assignment.literal x) <> Literal.signum l
+                   then Option.map (fun c' -> Clause.remove l c') c'
+                   else None
+               | _ -> c')
+             c (Some c))
+    |> fold add_clause f
   in
   { f' with database = db }
 
@@ -295,7 +291,7 @@ let check_invariants
     ({
        clauses = cm;
        occur = lm;
-       (* original_clauses = oc; *)
+       (*  *)
        current_decision_level = d;
        assignments = a;
        trail = t;

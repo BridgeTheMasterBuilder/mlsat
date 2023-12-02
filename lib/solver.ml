@@ -16,7 +16,7 @@ let rec cdcl max_conflicts grow f =
           else
             let learned_clause = analyze_conflict f clause in
             let f', d' = backtrack f learned_clause in
-            let f' = add_clause f' learned_clause learned_clause in
+            let f' = add_clause f' learned_clause in
             aux d' max_conflicts' (conflicts + 1) f'
       | Ok f ->
           if is_empty f then Sat
