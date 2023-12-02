@@ -5,7 +5,7 @@ open Problem
 type result = Sat | Unsat
 
 let rec cdcl max_conflicts grow f =
-  let rec recur d max_conflicts' conflicts f =
+  let rec aux d max_conflicts' conflicts f =
     if conflicts = max_conflicts' then
       let f = restart f in
       cdcl (max_conflicts' * grow) grow f
@@ -17,15 +17,15 @@ let rec cdcl max_conflicts grow f =
             let learned_clause = analyze_conflict f clause in
             let f', d' = backtrack f learned_clause in
             let f' = add_clause f' learned_clause learned_clause in
-            recur d' max_conflicts' (conflicts + 1) f'
+            aux d' max_conflicts' (conflicts + 1) f'
       | Ok f ->
           if is_empty f then Sat
           else
             let l = choose_literal f in
             let f' = rewrite f l in
-            recur (d + 1) max_conflicts' conflicts f'
+            aux (d + 1) max_conflicts' conflicts f'
   in
-  recur 0 max_conflicts 0 f
+  aux 0 max_conflicts 0 f
 
 let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
   match unit_propagate f with
