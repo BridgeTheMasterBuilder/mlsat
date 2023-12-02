@@ -26,16 +26,6 @@ let remove_clause l =
         if count' >. 0.0 then Some count' else None
     | None -> None)
 
-let remove_clauses =
-  Clause.fold (fun l m' ->
-      update l
-        (function
-          | Some count ->
-              let count' = count -. 1.0 in
-              if count' >. 0.0 then Some count' else None
-          | None -> None)
-        m')
-
 let show o =
   to_priority_list o
   |> List.fold_left
