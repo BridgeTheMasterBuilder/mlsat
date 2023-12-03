@@ -1,0 +1,503 @@
+[4m[37mProblem set: Backbone-minimal Sub-instances (satisfiable)
+(B[m[1m[37mRunning 500 tests
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_0.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_2.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_1.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_5.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_6.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_8.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_9.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_10.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_11.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_12.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_4.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_3.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_7.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_14.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_17.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_18.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_19.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_15.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_21.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_20.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_23.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_22.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_25.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_24.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_26.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_28.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_29.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_30.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_31.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_13.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_33.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_32.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_35.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_27.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_36.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_38.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_39.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_16.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_41.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_37.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_34.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_43.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_40.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_42.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_47.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_48.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_45.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_50.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_51.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_44.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_53.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_54.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_49.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_56.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_52.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_57.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_58.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_60.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_55.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_46.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_62.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_63.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_65.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_66.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_59.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_64.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_69.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_70.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_61.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_72.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_68.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_67.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_75.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_76.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_71.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_77.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_79.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_73.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_74.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_81.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_83.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_78.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_85.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_82.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_87.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_88.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_80.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_89.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_91.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_92.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_86.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_93.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_94.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_95.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_84.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_98.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_99.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_90.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_101.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_100.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_96.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_104.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_103.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_106.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_102.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_107.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_97.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_110.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_109.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_105.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_112.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_108.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_113.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_115.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_111.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_117.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_119.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_120.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_114.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_122.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_118.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_124.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_125.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_116.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_121.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_128.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_123.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_126.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_131.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_132.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_133.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_134.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_135.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_130.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_137.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_138.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_136.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_139.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_127.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_129.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_143.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_140.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_145.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_141.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_146.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_148.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_142.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_144.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_151.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_152.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_150.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_147.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_149.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_156.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_157.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_153.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_159.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_160.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_161.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_162.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_154.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_155.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_164.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_166.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_167.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_158.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_169.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_170.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_163.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_172.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_173.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_174.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_175.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_168.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_176.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_165.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_179.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_177.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_181.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_182.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_178.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_180.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_184.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_186.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_171.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_188.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_183.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_190.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_189.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_185.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_193.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_192.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_194.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_187.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_191.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_196.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_197.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_199.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_201.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_202.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_198.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_200.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_205.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_206.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_207.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_208.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_204.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_195.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_210.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_212.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_213.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_214.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_211.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_215.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_203.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_209.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_218.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_219.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_221.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_222.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_223.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_224.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_220.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_216.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_217.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_226.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_229.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_228.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_227.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_231.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_232.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_234.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_225.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_236.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_233.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_237.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_230.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_235.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_241.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_239.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_243.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_240.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_238.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_245.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_247.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_242.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_244.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_250.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_248.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_252.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_246.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_249.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_251.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_253.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_257.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_258.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_259.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_260.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_261.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_262.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_256.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_254.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_265.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_266.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_255.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_268.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_263.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_264.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_267.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_269.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_270.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_274.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_273.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_276.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_271.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_278.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_272.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_277.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_280.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_275.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_283.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_279.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_281.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_286.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_285.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_282.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_287.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_284.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_290.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_288.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_292.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_294.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_289.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_295.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_291.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_298.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_296.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_299.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_301.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_302.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_297.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_303.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_304.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_293.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_306.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_308.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_305.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_300.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_307.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_309.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_313.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_310.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_312.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_311.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_317.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_318.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_315.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_320.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_319.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_322.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_321.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_314.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_325.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_323.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_316.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_328.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_329.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_330.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_324.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_331.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_333.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_334.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_326.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_335.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_332.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_338.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_339.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_340.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_341.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_327.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_343.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_344.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_345.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_336.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_337.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_348.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_349.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_350.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_342.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_346.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_347.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_353.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_355.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_351.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_357.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_354.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_352.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_359.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_360.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_356.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_358.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_362.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_361.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_366.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_367.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_368.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_363.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_364.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_371.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_370.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_373.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_374.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_365.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_376.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_369.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_378.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_379.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_375.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_381.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_377.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_380.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_384.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_385.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_386.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_387.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_372.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_383.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_388.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_391.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_392.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_382.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_394.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_395.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_389.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_390.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_398.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_396.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_393.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_400.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_397.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_403.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_401.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_404.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_406.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_405.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_408.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_409.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_410.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_407.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_399.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_412.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_414.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_415.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_411.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_417.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_418.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_419.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_420.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_402.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_422.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_413.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_421.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_425.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_426.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_427.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_416.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_429.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_423.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_431.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_424.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_428.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_433.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_435.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_436.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_430.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_432.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_439.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_440.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_441.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_437.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_442.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_443.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_445.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_434.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_447.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_446.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_449.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_438.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_448.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_450.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_451.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_454.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_444.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_452.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_453.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_457.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_455.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_459.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_460.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_456.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_463.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_464.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_462.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_466.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_467.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_468.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_465.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_470.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_471.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_458.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_461.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_472.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_469.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_475.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_473.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_476.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_479.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_480.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_481.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_474.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_477.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_482.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_483.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_484.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_478.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_488.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_485.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_490.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_487.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_491.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_493.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_494.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_495.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_492.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_486.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_498.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_497.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_489.cnf - [1m[33mTIME OUT
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_496.cnf - [1m[32mOK
+(B[mformulas/BMS_k3_n100_m429/BMS_k3_n100_m429_499.cnf - [1m[32mOK
+(B[m
