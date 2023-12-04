@@ -2,7 +2,7 @@ open Common
 include IntMap
 
 type t = Clause.t IntMap.t
-type key = Literal.t
+type key = int
 
 let sz = ref 0
 

@@ -5,8 +5,6 @@ type t =
 type assignment = t
 
 module Map : sig
-  (* include module type of Literal.Map *)
-
   type key = Literal.t
   type t
 

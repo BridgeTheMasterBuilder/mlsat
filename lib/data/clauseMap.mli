@@ -1,6 +1,4 @@
 type t = Clause.t Common.IntMap.t
-
-(* type key = Literal.t *)
 type key = int
 
 val add : key -> Clause.t -> t -> t

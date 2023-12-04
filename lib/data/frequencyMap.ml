@@ -17,6 +17,7 @@ let add_many =
 let decay m =
   fold (fun l f m' -> adjust l (Fun.const (f *. decay_factor)) m') m m
 
+let pop m = pop m |> Option.map (fun ((l, _), _) -> l)
 let remove_literal = remove
 
 let remove_clause l =

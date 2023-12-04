@@ -76,7 +76,7 @@ let of_list =
   let rec aux f n = function
     | [] -> f
     | c :: cs ->
-        let clause = Clause.of_list c in
+        let clause = Clause.of_int_list c in
         let f' = add_clause f clause clause in
         aux f' (n + 1) cs
   in
@@ -99,7 +99,7 @@ let is_empty { clauses; _ } = ClauseMap.is_empty clauses
 let choose_literal { occur; frequency; _ } =
   match FrequencyMap.pop frequency with
   | None -> OccurrenceMap.choose occur |> fst
-  | Some ((l, _), _) -> l
+  | Some l -> l
 
 let delete_literal ({ occur; frequency; original_clauses = oc; _ } as f) l =
   let exception Conflict of Clause.t * formula in
