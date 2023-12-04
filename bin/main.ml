@@ -29,7 +29,7 @@ let parse_args () =
   (* in *)
   let base_num_conflicts =
     Arg.(
-      value & opt int 5
+      value & opt int 256
       & info
           [ "c"; "base-num-conflicts" ]
           ~docv:"NUM"
