@@ -6,6 +6,7 @@ val choose_opt : t -> (key * Clause.t) option
 val empty : t
 val find : key -> t -> Clause.t
 val find_opt : key -> t -> Clause.t option
+val mem : key -> t -> bool
 val is_empty : t -> bool
 val remove : key -> t -> t
 val show : t -> string

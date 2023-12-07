@@ -8,6 +8,7 @@ val choose : t -> key * IntSet.t
 val empty : t
 val find : key -> t -> IntSet.t
 val find_opt : key -> t -> IntSet.t option
+val mem : key -> t -> bool
 val is_empty : t -> bool
 val remove : key -> t -> t
 val show : t -> string

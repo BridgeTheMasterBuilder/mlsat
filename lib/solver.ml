@@ -9,7 +9,6 @@ let rec cdcl max_conflicts luby f =
     if conflicts = max_conflicts' then
       let f = restart f in
       let max_conflicts', luby' = Luby.next luby in
-      (* print_endline ("Next Luby number: " ^ string_of_int max_conflicts'); *)
       cdcl max_conflicts' luby' f
     else
       match unit_propagate f with
@@ -34,4 +33,5 @@ let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
   | Error _ -> Unsat
   | Ok f ->
       let luby = Luby.create base_num_conflicts grow_factor in
+      let f = preprocess f in
       cdcl base_num_conflicts luby f

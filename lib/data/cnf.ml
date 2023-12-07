@@ -72,136 +72,26 @@ let add_clause
     unit_clauses = uc';
   }
 
-let of_list =
-  let rec aux f n = function
-    | [] -> f
-    | c :: cs ->
-        let clause = Clause.of_int_list c in
-        let f' = add_clause f clause clause in
-        aux f' (n + 1) cs
+let add_learned_clauses ({ assignments = a; _ } as f) db =
+  let open Iter in
+  let f' =
+    List.to_iter db
+    |> map (fun c ->
+           ( Clause.fold
+               (fun l c' ->
+                 match Assignment.Map.find_opt l a with
+                 | Some x ->
+                     if
+                       Literal.signum (Assignment.literal x) <> Literal.signum l
+                     then Option.map (fun c' -> Clause.remove l c') c'
+                     else None
+                 | _ -> c')
+               c (Some c),
+             c ))
+    |> filter_map (fun (c, oc) -> Option.map (fun c -> (c, oc)) c)
+    |> fold (fun f' (c, oc) -> add_clause f' c oc) f
   in
-  aux
-    {
-      clauses = ClauseMap.empty;
-      occur = OccurrenceMap.empty;
-      frequency = FrequencyMap.empty;
-      original_clauses = ClauseMap.empty;
-      current_decision_level = 0;
-      assignments = Assignment.Map.empty;
-      trail = [];
-      database = [];
-      unit_clauses = ClauseMap.empty;
-    }
-    1
-
-let is_empty { clauses; _ } = ClauseMap.is_empty clauses
-
-let choose_literal { occur; frequency; _ } =
-  match FrequencyMap.pop frequency with
-  | None -> OccurrenceMap.choose occur |> fst
-  | Some l -> l
-
-let delete_literal ({ occur; frequency; original_clauses = oc; _ } as f) l =
-  let exception Conflict of Clause.t * formula in
-  match OccurrenceMap.find_opt l occur with
-  | None -> Ok f
-  | Some cs -> (
-      try
-        let f' =
-          IntSet.fold
-            (fun c f' ->
-              match f' with
-              | { clauses; unit_clauses = uc; _ } as f'' -> (
-                  match ClauseMap.find_opt c clauses with
-                  | None -> f''
-                  | Some ls -> (
-                      let diff = Clause.remove l ls in
-                      match Clause.size diff with
-                      | 0 -> raise_notrace (Conflict (ClauseMap.find c oc, f))
-                      | 1 ->
-                          {
-                            f'' with
-                            clauses = ClauseMap.add c diff clauses;
-                            unit_clauses = ClauseMap.add c diff uc;
-                          }
-                      | 2 -> { f'' with clauses = ClauseMap.add c diff clauses }
-                      | _ -> { f'' with clauses = ClauseMap.add c diff clauses }
-                      )))
-            cs f
-        in
-        let occur' = OccurrenceMap.remove l occur in
-        let frequency' = FrequencyMap.remove_literal l frequency in
-        Ok { f' with occur = occur'; frequency = frequency' }
-      with Conflict (c, f) -> Error (c, f))
-
-let delete_clauses f cs =
-  IntSet.fold
-    (fun c ({ clauses; occur; frequency; unit_clauses = uc; _ } as f') ->
-      let ls = ClauseMap.find c clauses in
-      let occur', frequency' =
-        Clause.fold
-          (fun l (occur', frequency') ->
-            let diff = IntSet.remove c (OccurrenceMap.find l occur') in
-            if IntSet.is_empty diff then
-              ( OccurrenceMap.remove l occur',
-                FrequencyMap.remove_literal l frequency' )
-            else
-              ( OccurrenceMap.add l diff occur',
-                (* FrequencyMap.remove_clause l frequency' *) frequency' ))
-          ls (occur, frequency)
-      in
-      let clauses' = ClauseMap.remove c clauses in
-      let uc' = ClauseMap.remove c uc in
-      {
-        f' with
-        clauses = clauses';
-        occur = occur';
-        frequency = frequency';
-        unit_clauses = uc';
-      })
-    cs f
-
-let simplify ({ occur; _ } as f) l =
-  let raw_delete_literal ({ occur; _ } as f) l =
-    { f with occur = OccurrenceMap.remove l occur }
-  in
-  delete_literal f (Literal.neg l)
-  |> Result.map (fun f' ->
-         match OccurrenceMap.find_opt l occur with
-         | None -> f'
-         | Some cs -> raw_delete_literal (delete_clauses f' cs) l)
-
-let rec unit_propagate
-    ({ original_clauses = oc; unit_clauses = uc; assignments = a; trail = t; _ }
-    as f) =
-  match ClauseMap.choose_opt uc with
-  | Some (c, ls) ->
-      let l' = Clause.choose ls in
-      let ls' = ClauseMap.find c oc in
-      let d' =
-        let open Iter in
-        Clause.remove l' ls' |> Clause.to_iter
-        |> map (fun l ->
-               Assignment.Map.find_opt l a
-               |> Option.map_or ~default:0 Assignment.level)
-        |> max |> Option.get_or ~default:0
-      in
-      let i =
-        Assignment.Implication { literal = l'; implicant = ls'; level = d' }
-      in
-      let a' = Assignment.Map.add l' i a in
-      let t' = (i, f) :: t in
-      let f' = { f with assignments = a'; trail = t' } in
-      simplify f' l' |> Result.flat_map unit_propagate
-  | None -> Ok f
-
-let rewrite ({ current_decision_level = d; assignments = a; trail = t; _ } as f)
-    l =
-  let f' = Result.get_exn (simplify f l) in
-  let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  let a' = Assignment.Map.add l dec a in
-  let t' = (dec, f) :: t in
-  { f' with current_decision_level = d + 1; assignments = a'; trail = t' }
+  { f' with database = db }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   let ls = Clause.to_list clause in
@@ -231,27 +121,6 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   aux (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.of_list (List.map Literal.var ls))
 
-let add_learned_clauses ({ assignments = a; _ } as f) db =
-  let open Iter in
-  let f' =
-    List.to_iter db
-    |> map (fun c ->
-           ( Clause.fold
-               (fun l c' ->
-                 match Assignment.Map.find_opt l a with
-                 | Some x ->
-                     if
-                       Literal.signum (Assignment.literal x) <> Literal.signum l
-                     then Option.map (fun c' -> Clause.remove l c') c'
-                     else None
-                 | _ -> c')
-               c (Some c),
-             c ))
-    |> filter_map (fun (c, oc) -> Option.map (fun c -> (c, oc)) c)
-    |> fold (fun f' (c, oc) -> add_clause f' c oc) f
-  in
-  { f' with database = db }
-
 let backtrack
     { current_decision_level = d; assignments = a; trail = t; database = db; _ }
     learned_clause =
@@ -271,26 +140,6 @@ let backtrack
   let f'' = add_learned_clauses f' (learned_clause :: db) in
   (f'', d')
 
-let restart ({ trail = t; database = db; _ } as f) =
-  if List.is_empty t then f
-  else
-    add_learned_clauses
-      (snd
-         (List.last_opt t
-         |> Option.get_exn_or
-              "Attempt to backtrack without previous assignments."))
-      db
-
-let my_assert assertions =
-  let rec aux assertions has_error =
-    match assertions with
-    | (c, msg) :: t ->
-        if not c then Printf.printf "ASSERTION FAILED: %s\n" msg;
-        aux t (has_error || not c)
-    | [] -> assert (not has_error)
-  in
-  aux assertions false
-
 let check_invariants
     ({
        clauses = cm;
@@ -302,6 +151,16 @@ let check_invariants
        database = db;
        _;
      } as f) =
+  let my_assert assertions =
+    let rec aux assertions has_error =
+      match assertions with
+      | (c, msg) :: t ->
+          if not c then Printf.printf "ASSERTION FAILED: %s\n" msg;
+          aux t (has_error || not c)
+      | [] -> assert (not has_error)
+    in
+    aux assertions false
+  in
   let open Iter in
   let no_empty_clauses =
     not (ClauseMap.to_iter cm |> exists (fun (_, c) -> Clause.is_empty c))
@@ -365,3 +224,158 @@ let check_invariants
       (learned_clauses_no_empty_clauses, "Learned empty clause");
     ];
   ()
+
+let choose_literal { occur; frequency; _ } =
+  match FrequencyMap.pop frequency with
+  | None -> OccurrenceMap.choose occur |> fst
+  | Some l -> l
+
+let delete_clauses f cs =
+  IntSet.fold
+    (fun c ({ clauses; occur; frequency; unit_clauses = uc; _ } as f') ->
+      let ls = ClauseMap.find c clauses in
+      let occur', frequency' =
+        Clause.fold
+          (fun l (occur', frequency') ->
+            let diff = IntSet.remove c (OccurrenceMap.find l occur') in
+            if IntSet.is_empty diff then
+              ( OccurrenceMap.remove l occur',
+                FrequencyMap.remove_literal l frequency' )
+            else
+              ( OccurrenceMap.add l diff occur',
+                (* FrequencyMap.remove_clause l frequency' *) frequency' ))
+          ls (occur, frequency)
+      in
+      let clauses' = ClauseMap.remove c clauses in
+      let uc' = ClauseMap.remove c uc in
+      {
+        f' with
+        clauses = clauses';
+        occur = occur';
+        frequency = frequency';
+        unit_clauses = uc';
+      })
+    cs f
+
+let delete_literal ({ occur; frequency; original_clauses = oc; _ } as f) l =
+  let exception Conflict of Clause.t * formula in
+  match OccurrenceMap.find_opt l occur with
+  | None -> Ok f
+  | Some cs -> (
+      try
+        let f' =
+          IntSet.fold
+            (fun c f' ->
+              match f' with
+              | { clauses; unit_clauses = uc; _ } as f'' -> (
+                  match ClauseMap.find_opt c clauses with
+                  | None -> f''
+                  | Some ls -> (
+                      let diff = Clause.remove l ls in
+                      match Clause.size diff with
+                      | 0 -> raise_notrace (Conflict (ClauseMap.find c oc, f))
+                      | 1 ->
+                          {
+                            f'' with
+                            clauses = ClauseMap.add c diff clauses;
+                            unit_clauses = ClauseMap.add c diff uc;
+                          }
+                      | 2 -> { f'' with clauses = ClauseMap.add c diff clauses }
+                      | _ -> { f'' with clauses = ClauseMap.add c diff clauses }
+                      )))
+            cs f
+        in
+        let occur' = OccurrenceMap.remove l occur in
+        let frequency' = FrequencyMap.remove_literal l frequency in
+        Ok { f' with occur = occur'; frequency = frequency' }
+      with Conflict (c, f) -> Error (c, f))
+
+let is_empty { clauses; _ } = ClauseMap.is_empty clauses
+
+let of_list =
+  let rec aux f n = function
+    | [] -> f
+    | c :: cs ->
+        let clause = Clause.of_int_list c in
+        let f' = add_clause f clause clause in
+        aux f' (n + 1) cs
+  in
+  aux
+    {
+      clauses = ClauseMap.empty;
+      occur = OccurrenceMap.empty;
+      frequency = FrequencyMap.empty;
+      original_clauses = ClauseMap.empty;
+      current_decision_level = 0;
+      assignments = Assignment.Map.empty;
+      trail = [];
+      database = [];
+      unit_clauses = ClauseMap.empty;
+    }
+    1
+
+let eliminate_pure_literals ({ occur; _ } as f) =
+  let open Iter in
+  OccurrenceMap.to_iter occur
+  |> fold
+       (fun ({ clauses; occur; _ } as f') (l, cs) ->
+         if OccurrenceMap.mem (Literal.neg l) occur then f'
+         else
+           let cs' = IntSet.filter (fun c -> ClauseMap.mem c clauses) cs in
+           let ({ occur; _ } as f') = delete_clauses f' cs' in
+           { f' with occur = OccurrenceMap.remove l occur })
+       f
+
+let preprocess = eliminate_pure_literals
+
+let restart ({ trail = t; database = db; _ } as f) =
+  if List.is_empty t then f
+  else
+    add_learned_clauses
+      (snd
+         (List.last_opt t
+         |> Option.get_exn_or
+              "Attempt to backtrack without previous assignments."))
+      db
+
+let simplify ({ occur; _ } as f) l =
+  let raw_delete_literal ({ occur; _ } as f) l =
+    { f with occur = OccurrenceMap.remove l occur }
+  in
+  delete_literal f (Literal.neg l)
+  |> Result.map (fun f' ->
+         match OccurrenceMap.find_opt l occur with
+         | None -> f'
+         | Some cs -> raw_delete_literal (delete_clauses f' cs) l)
+
+let rewrite ({ current_decision_level = d; assignments = a; trail = t; _ } as f)
+    l =
+  let f' = Result.get_exn (simplify f l) in
+  let dec = Assignment.Decision { literal = l; level = d + 1 } in
+  let a' = Assignment.Map.add l dec a in
+  let t' = (dec, f) :: t in
+  { f' with current_decision_level = d + 1; assignments = a'; trail = t' }
+
+let rec unit_propagate
+    ({ original_clauses = oc; unit_clauses = uc; assignments = a; trail = t; _ }
+    as f) =
+  match ClauseMap.choose_opt uc with
+  | Some (c, ls) ->
+      let l' = Clause.choose ls in
+      let ls' = ClauseMap.find c oc in
+      let d' =
+        let open Iter in
+        Clause.remove l' ls' |> Clause.to_iter
+        |> map (fun l ->
+               Assignment.Map.find_opt l a
+               |> Option.map_or ~default:0 Assignment.level)
+        |> max |> Option.get_or ~default:0
+      in
+      let i =
+        Assignment.Implication { literal = l'; implicant = ls'; level = d' }
+      in
+      let a' = Assignment.Map.add l' i a in
+      let t' = (i, f) :: t in
+      let f' = { f with assignments = a'; trail = t' } in
+      simplify f' l' |> Result.flat_map unit_propagate
+  | None -> Ok f
