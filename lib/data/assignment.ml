@@ -10,7 +10,8 @@ module Map = struct
   type t = assignment Literal.Map.t
 
   let add l = add (Literal.var l)
-  let find_opt l = get (Literal.var l)
+  let find l = find (Literal.var l)
+  let find_opt l = find_opt (Literal.var l)
 end
 
 let level = function Decision { level; _ } | Implication { level; _ } -> level

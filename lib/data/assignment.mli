@@ -10,7 +10,9 @@ module Map : sig
 
   val add : key -> assignment -> t -> t
   val empty : t
+  val find : key -> t -> assignment
   val find_opt : key -> t -> assignment option
+  val mem : key -> t -> bool
   val to_iter : t -> (key * assignment) Iter.iter
 end
 

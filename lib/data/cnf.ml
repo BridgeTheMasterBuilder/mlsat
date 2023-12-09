@@ -101,9 +101,9 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
     | Some (l, q') -> (
         (* if CCFQueue.is_empty q' then Clause.add l c *)
         (* else *)
-        match Assignment.(Map.find_opt l a) with
-        | Some (Decision _) -> aux q' (Clause.add l c) history
-        | Some (Implication { implicant = ls'; level = d'; _ }) ->
+        match Assignment.(Map.find l a) with
+        | Decision _ -> aux q' (Clause.add l c) history
+        | Implication { implicant = ls'; level = d'; _ } ->
             if d' < d then aux q' (Clause.add l c) history
             else
               let open Iter in
@@ -115,8 +115,7 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
               let history' =
                 Literal.(Set.(union history (map var (of_iter unseen))))
               in
-              aux q'' c history'
-        | _ -> aux q' c history)
+              aux q'' c history')
   in
   aux (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.of_list (List.map Literal.var ls))
@@ -290,7 +289,8 @@ let delete_literal ({ occur; frequency; original_clauses = oc; _ } as f) l =
         Ok { f' with occur = occur'; frequency = frequency' }
       with Conflict (c, f) -> Error (c, f))
 
-let is_empty { clauses; _ } = ClauseMap.is_empty clauses
+(* let is_empty { clauses; _ } = ClauseMap.is_empty clauses *)
+let is_empty { frequency; _ } = FrequencyMap.is_empty frequency
 
 let of_list =
   let rec aux f n = function
