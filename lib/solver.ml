@@ -32,6 +32,8 @@ let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
   match unit_propagate f with
   | Error _ -> Unsat
   | Ok f ->
-      let luby = Luby.create base_num_conflicts grow_factor in
-      let f = preprocess f in
-      cdcl base_num_conflicts luby f
+      if is_empty f then Sat
+      else
+        let luby = Luby.create base_num_conflicts grow_factor in
+        let f = preprocess f in
+        cdcl base_num_conflicts luby f

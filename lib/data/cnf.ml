@@ -5,7 +5,7 @@ type formula = {
   occur : OccurrenceMap.t;
   frequency : FrequencyMap.t;
   original_clauses : ClauseMap.t;
-  unit_clauses : ClauseMap.t;
+  unit_clauses : (int * Clause.t) list;
   current_decision_level : int;
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
@@ -59,9 +59,7 @@ let add_clause
       clause occur
   in
   let oc' = ClauseMap.add (n + 1) original_clause oc in
-  let uc' =
-    if Clause.size clause = 1 then ClauseMap.add (n + 1) clause uc else uc
-  in
+  let uc' = if Clause.size clause = 1 then (n + 1, clause) :: uc else uc in
   let frequency' = FrequencyMap.add_many clause frequency in
   {
     f with
@@ -246,7 +244,7 @@ let delete_clauses f cs =
           ls (occur, frequency)
       in
       let clauses' = ClauseMap.remove c clauses in
-      let uc' = ClauseMap.remove c uc in
+      let uc' = List.remove_assq c uc in
       {
         f' with
         clauses = clauses';
@@ -277,7 +275,7 @@ let delete_literal ({ occur; frequency; original_clauses = oc; _ } as f) l =
                           {
                             f'' with
                             clauses = ClauseMap.add c diff clauses;
-                            unit_clauses = ClauseMap.add c diff uc;
+                            unit_clauses = (c, diff) :: uc;
                           }
                       | 2 -> { f'' with clauses = ClauseMap.add c diff clauses }
                       | _ -> { f'' with clauses = ClauseMap.add c diff clauses }
@@ -310,7 +308,7 @@ let of_list =
       assignments = Assignment.Map.empty;
       trail = [];
       database = [];
-      unit_clauses = ClauseMap.empty;
+      unit_clauses = [];
     }
     1
 
@@ -359,7 +357,7 @@ let rewrite ({ current_decision_level = d; assignments = a; trail = t; _ } as f)
 let rec unit_propagate
     ({ original_clauses = oc; unit_clauses = uc; assignments = a; trail = t; _ }
     as f) =
-  match ClauseMap.choose_opt uc with
+  match List.head_opt uc with
   | Some (c, ls) ->
       let l' = Clause.choose ls in
       let ls' = ClauseMap.find c oc in
