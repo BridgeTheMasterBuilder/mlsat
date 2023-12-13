@@ -22,8 +22,9 @@ let rec cdcl max_conflicts luby f =
       | Ok f ->
           if is_empty f then Sat
           else
-            let l = choose_literal f in
-            let f' = rewrite f l in
+            (* let l = choose_literal f in *)
+            (* let f' = rewrite f l in *)
+            let f' = make_decision f in
             aux (d + 1) max_conflicts' conflicts f'
   in
   aux 0 max_conflicts 0 f

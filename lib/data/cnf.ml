@@ -359,21 +359,74 @@ let rec unit_propagate
     as f) =
   match List.head_opt uc with
   | Some (c, ls) ->
-      let l' = Clause.choose ls in
+      let l = Clause.choose ls in
       let ls' = ClauseMap.find c oc in
       let d' =
         let open Iter in
-        Clause.remove l' ls' |> Clause.to_iter
+        Clause.remove l ls' |> Clause.to_iter
         |> map (fun l ->
                Assignment.Map.find_opt l a
                |> Option.map_or ~default:0 Assignment.level)
         |> max |> Option.get_or ~default:0
       in
       let i =
-        Assignment.Implication { literal = l'; implicant = ls'; level = d' }
+        Assignment.Implication { literal = l; implicant = ls'; level = d' }
       in
-      let a' = Assignment.Map.add l' i a in
+      let a' = Assignment.Map.add l i a in
       let t' = (i, f) :: t in
       let f' = { f with assignments = a'; trail = t' } in
-      simplify f' l' |> Result.flat_map unit_propagate
+      simplify f' l |> Result.flat_map unit_propagate
   | None -> Ok f
+
+let make_assignment l ass
+    ({ clauses; occur; frequency; assignments = a; unit_clauses = uc; _ } as f)
+    =
+  let exception Conflict of Clause.t * formula in
+  let cs = OccurrenceMap.find (Literal.neg l) occur in
+  let a' = Assignment.Map.add l ass a in
+  let f' = { f with assignments = a' } in
+  try
+    let uc', f' =
+      IntSet.fold
+        (fun c (uc', f') ->
+          let ls = ClauseMap.find c clauses in
+          let any_true = Clause.to_iter ls |> Iter.exists (fun l -> true) in
+          (* TODO collect unit clauses and raise an exception if contradiction *)
+          (uc', f'))
+        cs (uc, f')
+    in
+    let frequency' =
+      FrequencyMap.remove_literal l frequency
+      |> FrequencyMap.remove_literal (Literal.neg l)
+    in
+    let f' = { f' with frequency = frequency'; unit_clauses = uc' } in
+    Ok f'
+  with Conflict (c, f) -> Error (c, f)
+
+let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
+  match ucs with
+  | (_, uc) :: ucs' ->
+      let l =
+        Clause.to_iter uc
+        |> Iter.find_pred_exn (fun l -> not (Assignment.Map.mem l a))
+      in
+      let f' = { f with unit_clauses = ucs' } in
+      let d' =
+        let open Iter in
+        Clause.remove l uc |> Clause.to_iter
+        |> map (fun l ->
+               Assignment.Map.find_opt l a
+               |> Option.map_or ~default:0 Assignment.level)
+        |> max |> Option.get_or ~default:0
+      in
+      let i =
+        Assignment.Implication { literal = l; implicant = uc; level = d' }
+      in
+      make_assignment l i f' |> Result.flat_map unit_propagate
+  | [] -> Ok f
+
+let make_decision ({ current_decision_level = d; _ } as f) =
+  let l = choose_literal f in
+  let dec = Assignment.Decision { literal = l; level = d + 1 } in
+  let f' = { f with current_decision_level = d + 1 } in
+  make_assignment l dec f' |> Result.get_exn
