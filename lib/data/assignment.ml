@@ -12,6 +12,7 @@ module Map = struct
   let add l = add (Literal.var l)
   let find l = find (Literal.var l)
   let find_opt l = find_opt (Literal.var l)
+  let mem l = mem (Literal.var l)
 end
 
 let level = function Decision { level; _ } | Implication { level; _ } -> level

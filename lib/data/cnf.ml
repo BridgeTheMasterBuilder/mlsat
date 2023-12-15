@@ -99,7 +99,7 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
-        Printf.printf "Examining literal %s\n" (Literal.show l);
+        (* Printf.printf "Examining literal %s\n" (Literal.show l); *)
         (* if CCFQueue.is_empty q' then Clause.add l c *)
         (* else *)
         match Assignment.(Map.find_opt l a) with
@@ -139,6 +139,7 @@ let backtrack
   in
   let f' = { f' with frequency = FrequencyMap.decay f'.frequency } in
   let f'' = add_learned_clauses f' (learned_clause :: db) in
+  Printf.printf "Backtracking to level %d\n" d';
   (f'', d')
 
 let check_invariants
@@ -229,7 +230,9 @@ let check_invariants
 let choose_literal { occur; frequency; _ } =
   match FrequencyMap.pop frequency with
   | None -> OccurrenceMap.choose occur |> fst
-  | Some l -> l
+  | Some l ->
+      Printf.printf "Deciding %s\n" (Literal.show l);
+      l
 
 let delete_clauses f cs =
   IntSet.fold
@@ -365,6 +368,8 @@ let rec unit_propagate
   | Some (c, ls) ->
       let l = Clause.choose ls in
       let ls' = ClauseMap.find c oc in
+      Printf.printf "Unit propagating by literal %s taken from %s\n"
+        (Literal.show l) (Clause.show ls');
       let d' =
         let open Iter in
         Clause.remove l ls' |> Clause.to_iter
@@ -403,22 +408,34 @@ let make_assignment l ass
           IntSet.fold
             (fun c (uc', f') ->
               let ls = ClauseMap.find c clauses in
-              let uc'', f'', unassigned, falsified =
+              (* Printf.printf "Examining clause: %s\n" (Clause.show ls); *)
+              let uc'', f'', unassigned, falsified, satisfied =
                 Clause.fold
-                  (fun l (uc'', f'', unassigned', falsified') ->
+                  (fun l (uc'', f'', unassigned', falsified', satisfied') ->
                     match Assignment.Map.find_opt l a' with
                     | Some ass' ->
                         let l' = Assignment.literal ass' in
                         let falso = Literal.signum l <> Literal.signum l' in
-                        (uc'', f'', unassigned', falsified' && falso)
-                    | None -> (uc'', f'', Clause.add l unassigned', false))
+                        ( uc'',
+                          f'',
+                          unassigned',
+                          falsified' && falso,
+                          satisfied' || not falso )
+                    | None ->
+                        (* Printf.printf "Unassigned literal: %s\n" *)
+                        (*   (Literal.show l); *)
+                        (uc'', f'', Clause.add l unassigned', false, satisfied'))
                   ls
-                  (uc', f', Clause.empty, true)
+                  (uc', f', Clause.empty, true, false)
               in
-              if falsified then (
-                Printf.printf "Clause: %s\n" (Clause.show ls);
-                raise_notrace (Conflict (ls, f)))
-              else if Clause.size unassigned = 1 then ((c, ls) :: uc'', f'')
+              if satisfied then (uc'', f'')
+              else if falsified then
+                (* Printf.printf "Falsified clause: %s\n" (Clause.show ls); *)
+                raise_notrace (Conflict (ls, f))
+              else if Clause.size unassigned = 1 then
+                ( (* Printf.printf "Unit clause: %s\n" (Clause.show ls); *)
+                  (c, ls) :: uc'',
+                  f'' )
               else (uc'', f''))
             cs (uc, f)
       | None -> (uc, f)
@@ -434,10 +451,16 @@ let make_assignment l ass
 let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
   match ucs with
   | (_, uc) :: ucs' ->
+      (* print_endline (show f); *)
+      (* Clause.to_iter uc *)
+      (* |> Iter.iter (fun l -> *)
+      (*        Printf.printf "%s: %b\n" (Literal.show l) (Assignment.Map.mem l a)); *)
       let l =
         Clause.to_iter uc
         |> Iter.find_pred_exn (fun l -> not (Assignment.Map.mem l a))
       in
+      Printf.printf "Unit propagating by literal %s taken from %s\n"
+        (Literal.show l) (Clause.show uc);
       let f' = { f with unit_clauses = ucs' } in
       let d' =
         let open Iter in
@@ -455,9 +478,10 @@ let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
 
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
-  (* Printf.printf "Deciding %s\n" (Literal.show l); *)
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  let f' = { f with current_decision_level = d + 1 } in
-  make_assignment l dec f' |> Result.get_exn
+  (* let f' = { f with current_decision_level = d + 1 } in *)
+  (* make_assignment l dec f' |> Result.get_exn *)
+  let f' = make_assignment l dec f |> Result.get_exn in
+  { f' with current_decision_level = d + 1 }
 (* let l = choose_literal f in *)
 (* rewrite f l *)
