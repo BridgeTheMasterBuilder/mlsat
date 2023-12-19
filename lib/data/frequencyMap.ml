@@ -11,7 +11,13 @@ let decay_factor = 0.99
 let add_many =
   Clause.fold (fun l m' ->
       update l
-        (function Some count -> Some (count +. 1.0) | None -> Some 1.0)
+        (function
+          | Some count ->
+              (* Printf.printf *)
+              (*   "Updating frequency count for literal %s from %f to %f\n" *)
+              (*   (Literal.show l) count (count +. 1.0); *)
+              Some (count +. 1.0)
+          | None -> Some 1.0)
         m')
 
 let decay m =

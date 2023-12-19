@@ -44,8 +44,15 @@ let show
        "" database)
 
 let add_clause
-    ({ clauses; occur; frequency; original_clauses = oc; unit_clauses = uc; _ }
-    as f) clause original_clause =
+    ({
+       clauses;
+       occur;
+       frequency;
+       original_clauses = oc;
+       unit_clauses = uc;
+       assignments = a;
+       _;
+     } as f) clause original_clause =
   let n = ClauseMap.size oc in
   let clauses' = ClauseMap.add (n + 1) clause clauses in
   let occur' =
@@ -60,7 +67,13 @@ let add_clause
   in
   let oc' = ClauseMap.add (n + 1) original_clause oc in
   let uc' = if Clause.size clause = 1 then (n + 1, clause) :: uc else uc in
-  let frequency' = FrequencyMap.add_many clause frequency in
+  let frequency' =
+    FrequencyMap.add_many
+      (Clause.to_iter clause
+      |> Iter.filter (fun l -> not (Assignment.Map.mem l a))
+      |> Clause.of_iter)
+      frequency
+  in
   {
     f with
     clauses = clauses';
@@ -71,7 +84,7 @@ let add_clause
   }
 
 let add_learned_clauses ({ assignments = a; _ } as f) db =
-  let f' = f in
+  let f' = List.fold_left (fun f' c -> add_clause f' c c) f db in
   (* let open Iter in *)
   (* let f' = *)
   (*   List.to_iter db *)
@@ -92,10 +105,14 @@ let add_learned_clauses ({ assignments = a; _ } as f) db =
   (* in *)
   { f' with database = db }
 
+(* TODO examine every detail *)
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   let ls = Clause.to_list clause in
-  Printf.printf "Analyzing clause: %s\n" (Clause.show clause);
+  (* Printf.printf "Analyzing clause: %s\n" (Clause.show clause); *)
   let rec aux q c history =
+    (* print_string "State of queue: "; *)
+    (* CCFQueue.iter (fun l -> print_string (Literal.show l ^ " ")) q; *)
+    (* print_newline (); *)
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
@@ -103,9 +120,18 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
         (* if CCFQueue.is_empty q' then Clause.add l c *)
         (* else *)
         match Assignment.(Map.find_opt l a) with
-        | Some (Decision _) -> aux q' (Clause.add l c) history
+        (* | Some (Decision _) -> *)
+        | Some (Decision { level = d'; _ }) ->
+            (* Printf.printf "Adding decision literal %s (level %d) to clause" *)
+            (*   (Literal.show l) d'; *)
+            aux q' (Clause.add l c) history
         | Some (Implication { implicant = ls'; level = d'; _ }) ->
-            if d' < d then aux q' (Clause.add l c) history
+            (* Printf.printf "Examining implied literal %s (level %d)" *)
+            (*   (Literal.show l) d'; *)
+            if d' < d then
+              (* Printf.printf "Adding implied literal %s to clause" *)
+              (*   (Literal.show l); *)
+              aux q' (Clause.add l c) history
             else
               let open Iter in
               let unseen =
@@ -127,8 +153,12 @@ let backtrack
     learned_clause =
   let d' =
     let open Iter in
+    (* Printf.printf "Calculating backtrack level from %s\n" *)
+    (*   (Clause.show learned_clause); *)
     Clause.to_iter learned_clause
-    |> filter_map (fun l -> Assignment.Map.find_opt l a)
+    |> filter_map (fun l ->
+           (* Printf.printf "Examining literal %s\n" (Literal.show l); *)
+           Assignment.Map.find_opt l a)
     |> map Assignment.level
     |> filter (fun d' -> d' < d)
     |> max |> Option.value ~default:0
@@ -139,7 +169,7 @@ let backtrack
   in
   let f' = { f' with frequency = FrequencyMap.decay f'.frequency } in
   let f'' = add_learned_clauses f' (learned_clause :: db) in
-  Printf.printf "Backtracking to level %d\n" d';
+  (* Printf.printf "Backtracking to level %d\n" d'; *)
   (f'', d')
 
 let check_invariants
@@ -368,8 +398,8 @@ let rec unit_propagate
   | Some (c, ls) ->
       let l = Clause.choose ls in
       let ls' = ClauseMap.find c oc in
-      Printf.printf "Unit propagating by literal %s taken from %s\n"
-        (Literal.show l) (Clause.show ls');
+      (* Printf.printf "Unit propagating by literal %s taken from %s\n" *)
+      (*   (Literal.show l) (Clause.show ls'); *)
       let d' =
         let open Iter in
         Clause.remove l ls' |> Clause.to_iter
@@ -429,13 +459,22 @@ let make_assignment l ass
                   (uc', f', Clause.empty, true, false)
               in
               if satisfied then (uc'', f'')
-              else if falsified then
-                (* Printf.printf "Falsified clause: %s\n" (Clause.show ls); *)
-                raise_notrace (Conflict (ls, f))
-              else if Clause.size unassigned = 1 then
-                ( (* Printf.printf "Unit clause: %s\n" (Clause.show ls); *)
-                  (c, ls) :: uc'',
-                  f'' )
+              else if falsified then (
+                Printf.printf "Falsified clause: %s\n" (Clause.show ls);
+                raise_notrace (Conflict (ls, f)))
+              else if Clause.size unassigned = 1 then (
+                if
+                  not
+                    (List.mem
+                       ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2)
+                       (c, ls) uc')
+                then
+                  Printf.printf "Adding unit clause to queue: %s\n"
+                    (Clause.show ls);
+                ( List.add_nodup
+                    ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2)
+                    (c, ls) uc'',
+                  f'' ))
               else (uc'', f''))
             cs (uc, f)
       | None -> (uc, f)
@@ -450,38 +489,44 @@ let make_assignment l ass
 
 let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
   match ucs with
-  | (_, uc) :: ucs' ->
+  | (_, uc) :: ucs' -> (
       (* print_endline (show f); *)
-      (* Clause.to_iter uc *)
-      (* |> Iter.iter (fun l -> *)
-      (*        Printf.printf "%s: %b\n" (Literal.show l) (Assignment.Map.mem l a)); *)
-      let l =
-        Clause.to_iter uc
-        |> Iter.find_pred_exn (fun l -> not (Assignment.Map.mem l a))
-      in
-      Printf.printf "Unit propagating by literal %s taken from %s\n"
-        (Literal.show l) (Clause.show uc);
+      Printf.printf "Attempting to unit propagate %s\n" (Clause.show uc);
+      print_string "Rest of queue: ";
+      List.iter (fun (_, c) -> print_string (Clause.show c ^ " ")) ucs';
+      print_newline ();
+      Clause.to_iter uc
+      |> Iter.iter (fun l ->
+             Printf.printf "%s: %b\n" (Literal.show l) (Assignment.Map.mem l a));
       let f' = { f with unit_clauses = ucs' } in
-      let d' =
-        let open Iter in
-        Clause.remove l uc |> Clause.to_iter
-        |> map (fun l ->
-               Assignment.Map.find_opt l a
-               |> Option.map_or ~default:0 Assignment.level)
-        |> max |> Option.get_or ~default:0
-      in
-      let i =
-        Assignment.Implication { literal = l; implicant = uc; level = d' }
-      in
-      make_assignment l i f' |> Result.flat_map unit_propagate
+      match
+        Clause.to_iter uc
+        |> Iter.find_pred (fun l -> not (Assignment.Map.mem l a))
+      with
+      | Some l ->
+          Printf.printf "Unit propagating by literal %s taken from %s\n"
+            (Literal.show l) (Clause.show uc);
+          let d' =
+            let open Iter in
+            Clause.remove l uc |> Clause.to_iter
+            |> map (fun l ->
+                   Assignment.Map.find_opt l a
+                   |> Option.map_or ~default:0 Assignment.level)
+            |> max |> Option.get_or ~default:0
+          in
+          let i =
+            Assignment.Implication { literal = l; implicant = uc; level = d' }
+          in
+          make_assignment l i f' |> Result.flat_map unit_propagate
+      | None -> unit_propagate f')
   | [] -> Ok f
 
 let make_decision ({ current_decision_level = d; _ } as f) =
+  (* print_endline (show f); *)
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  (* let f' = { f with current_decision_level = d + 1 } in *)
-  (* make_assignment l dec f' |> Result.get_exn *)
   let f' = make_assignment l dec f |> Result.get_exn in
+  (* print_endline (show f'); *)
   { f' with current_decision_level = d + 1 }
 (* let l = choose_literal f in *)
 (* rewrite f l *)
