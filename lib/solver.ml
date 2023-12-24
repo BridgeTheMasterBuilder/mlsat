@@ -6,12 +6,14 @@ type result = Sat | Unsat
 
 let rec cdcl max_conflicts luby f =
   let rec aux d max_conflicts' conflicts f =
+    (* check_invariants f; *)
     print_endline (show f);
     if conflicts = max_conflicts' then
       let f = restart f in
       let max_conflicts', luby' = Luby.next luby in
       cdcl max_conflicts' luby' f
     else
+      (* print_endline "Starting unit prop"; *)
       match unit_propagate f with
       | Error (clause, f) ->
           if d = 0 then Unsat
