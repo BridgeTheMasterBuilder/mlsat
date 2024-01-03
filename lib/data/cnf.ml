@@ -68,41 +68,41 @@ let add_clause
   let oc' = ClauseMap.add (n + 1) original_clause oc in
   let uc' =
     (* TODO for some reason, adding unit clauses only works after an assignment *)
-    if Clause.size clause = 1 then (
-      Printf.printf "(FXX) Adding unit clause to queue: %s\n"
-        (Clause.show clause);
-      (n + 1, clause) :: uc)
-    else uc
-    (* (\* Printf.printf "Assignments:\n%s\n" *\) *)
-    (* (\*   (List.fold_left *\) *)
-    (* (\*      (fun acc (ass, _) -> Printf.sprintf "%s%s" acc (Assignment.show ass)) *\) *)
-    (* (\*      "" f.trail); *\) *)
-    (* let unassigned = *)
-    (*   Clause.to_iter clause *)
-    (*   (\* |> Iter.filter_count (fun l -> not (Assignment.Map.mem l a)) *\) *)
-    (*   |> Iter.filter_map (fun l -> *)
-    (*          match Assignment.Map.find_opt l a with *)
-    (*          | Some _ -> None *)
-    (*          | None -> Some l) *)
-    (*   |> Clause.of_iter *)
-    (* in *)
-    (* (\* Printf.printf "%d unassigned literals in: %s\n" unassigned *\) *)
-    (* (\*   (Clause.show clause); *\) *)
-    (* if Clause.size unassigned = 1 then ( *)
-    (*   if *)
-    (*     not *)
-    (*       (List.mem *)
-    (*          ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2) *)
-    (*          (n + 1, clause) *)
-    (*          uc) *)
-    (*   then *)
-    (*     Printf.printf "(FXX) Adding unit clause to queue: %s\n" *)
-    (*       (Clause.show clause); *)
-    (*   List.add_nodup *)
-    (*     ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2) *)
-    (*     (n + 1, clause) *)
-    (*     uc) *)
+    (* if Clause.size clause = 1 then ( *)
+    (*   Printf.printf "(FXX) Adding unit clause to queue: %s\n" *)
+    (*     (Clause.show clause); *)
+    (*   (n + 1, clause) :: uc) *)
     (* else uc *)
+    (* Printf.printf "Assignments:\n%s\n" *)
+    (*   (List.fold_left *)
+    (*      (fun acc (ass, _) -> Printf.sprintf "%s%s" acc (Assignment.show ass)) *)
+    (*      "" f.trail); *)
+    let unassigned =
+      Clause.to_iter clause
+      (* |> Iter.filter_count (fun l -> not (Assignment.Map.mem l a)) *)
+      |> Iter.filter_map (fun l ->
+             match Assignment.Map.find_opt l a with
+             | Some _ -> None
+             | None -> Some l)
+      |> Clause.of_iter
+    in
+    (* Printf.printf "%d unassigned literals in: %s\n" unassigned *)
+    (*   (Clause.show clause); *)
+    if Clause.size unassigned = 1 then
+      (* if *)
+      (*   not *)
+      (*     (List.mem *)
+      (*        ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2) *)
+      (*        (n + 1, clause) *)
+      (*        uc) *)
+      (* then *)
+      (*   Printf.printf "(FXX) Adding unit clause to queue: %s\n" *)
+      (*     (Clause.show clause); *)
+      List.add_nodup
+        ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2)
+        (n + 1, clause)
+        uc
+    else uc
   in
   let frequency' =
     FrequencyMap.add_many
@@ -122,26 +122,26 @@ let add_clause
 
 (* TODO error is likely here *)
 let add_learned_clauses ({ assignments = a; _ } as f) db =
-  let f' = List.fold_left (fun f' c -> add_clause f' c c) f db in
-  (* let open Iter in *)
-  (* let f' = *)
-  (*   List.to_iter db *)
-  (*   |> map (fun c -> *)
-  (*          ( Clause.fold *)
-  (*              (fun l c' -> *)
-  (*                match Assignment.Map.find_opt l a with *)
-  (*                | Some x -> *)
-  (*                    if *)
-  (*                      Literal.signum (Assignment.literal x) <> Literal.signum l *)
-  (*                    then Option.map (fun c' -> Clause.remove l c') c' *)
-  (*                    else None *)
-  (*                | _ -> c') *)
-  (*              c (Some c), *)
-  (*            c )) *)
-  (*   |> filter_map (fun (c, oc) -> Option.map (fun c -> (c, oc)) c) *)
-  (*   (\* |> fold (fun f' (c, oc) -> add_clause f' c oc) f *\) *)
-  (*   |> fold (fun f' (c, oc) -> add_clause f' oc oc) f *)
-  (* in *)
+  (* let f' = List.fold_left (fun f' c -> add_clause f' c c) f db in *)
+  let open Iter in
+  let f' =
+    List.to_iter db
+    |> map (fun c ->
+           ( Clause.fold
+               (fun l c' ->
+                 match Assignment.Map.find_opt l a with
+                 | Some x ->
+                     if
+                       Literal.signum (Assignment.literal x) <> Literal.signum l
+                     then Option.map (fun c' -> Clause.remove l c') c'
+                     else None
+                 | _ -> c')
+               c (Some c),
+             c ))
+    |> filter_map (fun (c, oc) -> Option.map (fun c -> (c, oc)) c)
+    (* |> fold (fun f' (c, oc) -> add_clause f' c oc) f *)
+    |> fold (fun f' (c, oc) -> add_clause f' oc oc) f
+  in
   { f' with database = db }
 
 (* TODO examine every detail *)
@@ -209,6 +209,8 @@ let backtrack
   let f' = { f' with frequency = FrequencyMap.decay f'.frequency } in
   let f'' = add_learned_clauses f' (learned_clause :: db) in
   (* Printf.printf "Backtracking to level %d\n" d'; *)
+  (* List.iter (fun (_, c) -> print_string (Clause.show c ^ " ")) f''.unit_clauses; *)
+  (* print_newline (); *)
   (f'', d')
 
 let check_invariants
@@ -310,7 +312,7 @@ let choose_literal { occur; frequency; _ } =
   match FrequencyMap.pop frequency with
   | None -> OccurrenceMap.choose occur |> fst
   | Some l ->
-      Printf.printf "Deciding %s\n" (Literal.show l);
+      (* Printf.printf "Deciding %s\n" (Literal.show l); *)
       l
 
 let delete_clauses f cs =
@@ -418,6 +420,7 @@ let eliminate_pure_literals ({ occur; _ } as f) =
 let preprocess = eliminate_pure_literals
 
 let restart ({ trail = t; database = db; _ } as f) =
+  (* print_endline "Restarting"; *)
   if List.is_empty t then f
   else
     add_learned_clauses
@@ -452,8 +455,8 @@ let rec unit_propagate
   | Some (c, ls) ->
       let l = Clause.choose ls in
       let ls' = ClauseMap.find c oc in
-      Printf.printf "Unit propagating by literal %s taken from %s\n"
-        (Literal.show l) (Clause.show ls');
+      (* Printf.printf "Unit propagating by literal %s taken from %s\n" *)
+      (*   (Literal.show l) (Clause.show ls'); *)
       let d' =
         let open Iter in
         Clause.remove l ls' |> Clause.to_iter
@@ -513,22 +516,28 @@ let make_assignment l ass
                   (uc', f', Clause.empty, true, false)
               in
               if satisfied then (uc'', f'')
-              else if falsified then (
-                Printf.printf "Falsified clause: %s\n" (Clause.show ls);
-                raise_notrace (Conflict (ls, f)))
-              else if Clause.size unassigned = 1 then (
-                if
-                  not
-                    (List.mem
-                       ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2)
-                       (c, ls) uc')
-                then
-                  Printf.printf "Adding unit clause to queue: %s\n"
-                    (Clause.show ls);
-                ( List.add_nodup
+              else if falsified then
+                (* Printf.printf "Falsified clause: %s\n" (Clause.show ls); *)
+                raise_notrace (Conflict (ls, f))
+              else if Clause.size unassigned = 1 then
+                ( (* if *)
+                  (*   not *)
+                  (*     (List.mem *)
+                  (*        ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2) *)
+                  (*        (c, ls) uc') *)
+                  (* then *)
+                  (*   Printf.printf "Adding unit clause to queue: %s\n" *)
+                  (*     (Clause.show ls); *)
+                  (* List.iter *)
+                  (*   (fun (_, c) -> print_string (Clause.show c ^ " ")) *)
+                  (*   (List.add_nodup *)
+                  (*      ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2) *)
+                  (*      (c, ls) uc''); *)
+                  (* print_newline (); *)
+                  List.add_nodup
                     ~eq:(fun (_, c1) (_, c2) -> Clause.equal c1 c2)
                     (c, ls) uc'',
-                  f'' ))
+                  f'' )
               else (uc'', f''))
             cs (uc, f)
       | None -> (uc, f)
@@ -541,6 +550,7 @@ let make_assignment l ass
     Ok f'
   with Conflict (c, f) -> Error (c, f)
 
+(* TODO Need to find another way to handle unit clause queue, it always deletes clauses off the top *)
 let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
   match ucs with
   | (_, uc) :: ucs' -> (
@@ -558,8 +568,10 @@ let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
         |> Iter.find_pred (fun l -> not (Assignment.Map.mem l a))
       with
       | Some l ->
-          Printf.printf "Unit propagating by literal %s taken from %s\n"
-            (Literal.show l) (Clause.show uc);
+          (* Printf.printf "Unit propagating by literal %s taken from %s\n" *)
+          (*   (Literal.show l) (Clause.show uc); *)
+          (* List.iter (fun (_, c) -> print_string (Clause.show c ^ " ")) ucs'; *)
+          (* print_newline (); *)
           let d' =
             let open Iter in
             Clause.remove l uc |> Clause.to_iter
@@ -571,7 +583,8 @@ let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
           let i =
             Assignment.Implication { literal = l; implicant = uc; level = d' }
           in
-          make_assignment l i f' |> Result.flat_map unit_propagate
+          make_assignment l i f'
+          |> Result.flat_map (fun f' -> unit_propagate f')
       | None -> unit_propagate f')
   | [] -> Ok f
 

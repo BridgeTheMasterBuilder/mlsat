@@ -18,13 +18,15 @@ else
 
 	if not set -q NUM_CONFLICTS
 	   # set output (string lower (cabal run -v0 sat $file -- -t 10.0 -n))
-	   set -x NUM_CONFLICTS 8
+	   # set -x NUM_CONFLICTS 8
+	   set -x NUM_CONFLICTS 1
 	# else
 	#    set output (string lower (cabal run -v0 sat $file -- -t 10.0 -n -c $NUM_CONFLICTS))
 	end
 
 	if not set -q GROW_FACTOR
-	   set -x GROW_FACTOR 4
+	   # set -x GROW_FACTOR 4
+	   set -x GROW_FACTOR 2
 	end
 
 	set output (string lower (./_build/default/bin/main.exe $file -t 10.0 -c $NUM_CONFLICTS -g $GROW_FACTOR | tail -n 1)) #) -t 10.0 -n -c $NUM_CONFLICTS -g $GROW_FACTOR))

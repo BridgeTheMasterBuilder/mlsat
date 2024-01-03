@@ -7,7 +7,8 @@ type result = Sat | Unsat
 let rec cdcl max_conflicts luby f =
   let rec aux d max_conflicts' conflicts f =
     (* check_invariants f; *)
-    print_endline (show f);
+    (* print_endline (show f); *)
+    (* TODO par8-2 crashes if -c 8 ... *)
     if conflicts = max_conflicts' then
       let f = restart f in
       let max_conflicts', luby' = Luby.next luby in
@@ -42,4 +43,5 @@ let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
       else
         let luby = Luby.create base_num_conflicts grow_factor in
         let f = preprocess f in
+        let f = { f with trail = [] } in
         cdcl base_num_conflicts luby f
