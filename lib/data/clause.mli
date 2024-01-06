@@ -1,5 +1,23 @@
 type elt = Literal.t
 type t
+type clause = t
+
+module Map : sig
+  type t
+  type key = int
+
+  val add : key -> clause -> t -> t
+  val choose_opt : t -> (key * clause) option
+  val empty : t
+  val find : key -> t -> clause
+  val find_opt : key -> t -> clause option
+  val mem : key -> t -> bool
+  val is_empty : t -> bool
+  val remove : key -> t -> t
+  val show : t -> string
+  val size : t -> key
+  val to_iter : t -> (key * clause) Iter.iter
+end
 
 val empty : t
 val is_empty : t -> bool

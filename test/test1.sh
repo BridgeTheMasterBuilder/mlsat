@@ -18,14 +18,12 @@ else
 
 	if not set -q NUM_CONFLICTS
 	   # set output (string lower (cabal run -v0 sat $file -- -t 10.0 -n))
-	   # set -x NUM_CONFLICTS 8
-	   set -x NUM_CONFLICTS 1
+	   set -x NUM_CONFLICTS 256
 	# else
 	#    set output (string lower (cabal run -v0 sat $file -- -t 10.0 -n -c $NUM_CONFLICTS))
 	end
 
 	if not set -q GROW_FACTOR
-	   # set -x GROW_FACTOR 4
 	   set -x GROW_FACTOR 2
 	end
 
