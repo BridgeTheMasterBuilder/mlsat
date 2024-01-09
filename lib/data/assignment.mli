@@ -9,11 +9,13 @@ module Map : sig
   type t
 
   val add : key -> assignment -> t -> t
-  val empty : t
+
+  (* val empty : t *)
+  val create : int -> t
   val find : key -> t -> assignment
   val find_opt : key -> t -> assignment option
   val mem : key -> t -> bool
-  val to_iter : t -> (key * assignment) Iter.iter
+  (* val to_iter : t -> (key * assignment) Iter.iter *)
 end
 
 val level : t -> int
