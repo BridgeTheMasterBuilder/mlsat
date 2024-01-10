@@ -262,8 +262,8 @@ let of_list v _c =
   aux
     {
       clauses = Clause.Map.empty;
-      occur = Occurrence.Map.empty;
-      (* occur = Occurrence.Map.create v; *)
+      (* occur = Occurrence.Map.empty; *)
+      occur = Occurrence.Map.create v;
       frequency = Frequency.Map.empty;
       current_decision_level = 0;
       assignments = Assignment.Map.empty;
