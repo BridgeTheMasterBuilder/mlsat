@@ -17,7 +17,7 @@ module Map = struct
     let open Literal in
     let l' = (var l |> to_int) - 1 in
     (* let l'' = if is_negated l then l' + (length m / 2) else l' in *)
-    (* Printf.printf "%s -> %s\n" (show l) (string_of_int l'); *)
+    Printf.printf "%s -> %s\n" (show l) (string_of_int l');
     (* l'' *)
     l'
 
