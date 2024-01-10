@@ -4,31 +4,15 @@ type t =
 
 type assignment = t
 
-(* TODO Why is it different? *)
 module Map = struct
-  (* include Literal.Map *)
-  include Array
+  include Literal.Map
 
-  (* type t = assignment Literal.Map.t *)
-  type t = assignment option Array.t
-  type key = Literal.t
+  type t = assignment Literal.Map.t
 
-  let foo l =
-    let open Literal in
-    let l' = (var l |> to_int) - 1 in
-    (* let l'' = if is_negated l then l' + (length m / 2) else l' in *)
-    Printf.printf "%s -> %s\n" (show l) (string_of_int l');
-    (* l'' *)
-    l'
-
-  let add l x m =
-    set m (foo l) (Some x);
-    m
-
-  let create size = make size None
-  let find l m = get m (foo l) |> Option.get_exn_or "FIND"
-  let find_opt l m = get m (foo l)
-  let mem l m = find_opt l m |> Option.is_some
+  let add l = add (Literal.var l)
+  let find l = find (Literal.var l)
+  let find_opt l = find_opt (Literal.var l)
+  let mem l = mem (Literal.var l)
 end
 
 let level = function Decision { level; _ } | Implication { level; _ } -> level
