@@ -25,17 +25,17 @@ module Map = struct
 
   (* val add : key -> occurrence -> t -> t *)
   let add l x m =
-    set m (foo l) (Some x);
+    unsafe_set m (foo l) (Some x);
     m
 
   let create size = make ((size * 2) + 1) None
 
   (* val empty : t *)
   (* val find : key -> t -> occurrence *)
-  let find l m = get m (foo l) |> Option.get_exn_or "FIND"
+  let find l m = unsafe_get m (foo l) |> Option.get_exn_or "FIND"
 
   (* val find_opt : key -> t -> occurrence option *)
-  let find_opt l m = get m (foo l)
+  let find_opt l m = unsafe_get m (foo l)
 
   (* val mem : key -> t -> bool *)
   let mem l m = find_opt l m |> Option.is_some
@@ -49,7 +49,7 @@ module Map = struct
 
   (* val update : key -> (occurrence option -> occurrence option) -> t -> t *)
   let update l f m =
-    set m (foo l) (f (get m (foo l)));
+    unsafe_set m (foo l) (f (unsafe_get m (foo l)));
     m
   (* let show o = *)
   (*   fold *)
