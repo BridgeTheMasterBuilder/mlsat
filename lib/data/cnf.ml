@@ -251,7 +251,7 @@ let choose_literal { frequency; _ } =
 
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
 
-let of_list v _c =
+let of_list _v _c =
   let rec aux f = function
     | [] -> f
     | c :: cs ->
