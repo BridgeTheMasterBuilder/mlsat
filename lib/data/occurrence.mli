@@ -11,6 +11,7 @@ module Map : sig
   val empty : t
   val find : key -> t -> occurrence
   val find_opt : key -> t -> occurrence option
+  val is_empty : t -> bool
   val mem : key -> t -> bool
   val show : t -> string
   val to_iter : t -> (key * occurrence) Iter.iter

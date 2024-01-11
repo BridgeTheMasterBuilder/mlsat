@@ -10,10 +10,9 @@ module Map : sig
   val empty : t
   val find : key -> t -> clause
   val is_empty : t -> bool
-
-  (* val show : t -> string *)
+  val show : t -> string
   val size : t -> key
-  (* val to_iter : t -> (key * clause) Iter.iter *)
+  val to_iter : t -> (key * clause) Iter.iter
 end
 
 val empty : t

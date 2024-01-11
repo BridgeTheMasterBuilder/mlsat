@@ -23,11 +23,13 @@ module Map = struct
   let find c m = CCVector.get m c
   let is_empty = CCVector.is_empty
 
-  (* let show map_str = *)
-  (*   CCVector.foldi *)
-  (*     (fun s c ls -> Printf.sprintf "%s%d:%s\n" s c (show ls)) *)
-  (*     "" map_str *)
+  let show map_str =
+    CCVector.foldi
+      (fun c s ls -> Printf.sprintf "%s%d:%s\n" s c (show ls))
+      "" map_str
 
   let size = CCVector.length
-  (* let to_iter m = List.init (size m) (fun i -> Array.get m i) |> Iter.of_list *)
+
+  let to_iter m =
+    CCVector.to_list m |> Iter.of_list |> Iter.mapi (fun i x -> (i, x))
 end
