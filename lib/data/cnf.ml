@@ -259,6 +259,7 @@ let of_list v _c =
         let f' = add_clause f clause in
         aux f' cs
   in
+  Literal.num_variables := v;
   aux
     {
       clauses = Clause.Map.empty;

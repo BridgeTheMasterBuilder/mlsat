@@ -11,31 +11,31 @@ module Map = struct
   type t = occurrence option Array.t
   type key = Literal.t
 
-  let foo l m =
+  let foo l =
     let open Literal in
-    let l' = (var l |> to_int) - 1 + if is_negated l then length m / 2 else 0 in
+    let l' = to_int l in
+    (* Printf.printf "foo: %s -> %s\n" (show l) (string_of_int l'); *)
     l'
 
-  let unfoo l m =
+  let unfoo l =
     let open Literal in
-    let l' =
-      l - (if l >= length m / 2 then length m / 2 else 0) + 1 |> of_int
-    in
+    let l' = of_int_raw l in
+    (* Printf.printf "unfoo: %s -> %s\n" (string_of_int l) (show l'); *)
     l'
 
   (* val add : key -> occurrence -> t -> t *)
   let add l x m =
-    set m (foo l m) (Some x);
+    set m (foo l) (Some x);
     m
 
-  let create size = make (size * 2) None
+  let create size = make ((size * 2) + 1) None
 
   (* val empty : t *)
   (* val find : key -> t -> occurrence *)
-  let find l m = get m (foo l m) |> Option.get_exn_or "FIND"
+  let find l m = get m (foo l) |> Option.get_exn_or "FIND"
 
   (* val find_opt : key -> t -> occurrence option *)
-  let find_opt l m = get m (foo l m)
+  let find_opt l m = get m (foo l)
 
   (* val mem : key -> t -> bool *)
   let mem l m = find_opt l m |> Option.is_some
@@ -45,11 +45,11 @@ module Map = struct
   let to_iter m =
     let open Iter in
     of_array m
-    |> filter_mapi (fun k v -> Option.map (fun v' -> (unfoo k m, v')) v)
+    |> filter_mapi (fun k v -> Option.map (fun v' -> (unfoo k, v')) v)
 
   (* val update : key -> (occurrence option -> occurrence option) -> t -> t *)
   let update l f m =
-    set m (foo l m) (f (get m (foo l m)));
+    set m (foo l) (f (get m (foo l)));
     m
   (* let show o = *)
   (*   fold *)
