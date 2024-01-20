@@ -9,8 +9,6 @@ let size = cardinal
 let show c =
   "(" ^ fold (fun l s -> Printf.sprintf "%s%s " s (Literal.show l)) c "" ^ ")"
 
-let to_set = Fun.id
-
 module Map = struct
   type t = clause CCVector.vector
   type key = int
@@ -29,7 +27,5 @@ module Map = struct
       "" map_str
 
   let size = CCVector.length
-
-  let to_iter m =
-    CCVector.to_list m |> Iter.of_list |> Iter.mapi (fun i x -> (i, x))
+  let to_iter m = CCVector.to_iter m |> Iter.mapi (fun i x -> (i, x))
 end

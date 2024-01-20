@@ -9,6 +9,7 @@ type formula = {
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
   database : Clause.t list;
+  watchers : WatchedClause.t Literal.Map.t;
 }
 
 let show
@@ -271,6 +272,7 @@ let of_list _v _c =
       trail = [];
       database = [];
       unit_clauses = [];
+      watchers = Literal.Map.empty;
     }
 
 let restart ({ trail = t; database = db; _ } as f) =
