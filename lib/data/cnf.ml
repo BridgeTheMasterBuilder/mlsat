@@ -9,11 +9,20 @@ type formula = {
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
   database : Clause.t list;
+  (* TODO WatchedClause set *)
   watchers : WatchedClause.t Literal.Map.t;
 }
 
 let show
-    ({ clauses; occur; frequency; current_decision_level; database; _ } as f) =
+    ({
+       clauses;
+       occur;
+       frequency;
+       current_decision_level;
+       database;
+       watchers;
+       _;
+     } as f) =
   let open Printf in
   sprintf
     "Clauses:\n\
@@ -26,6 +35,8 @@ let show
      Assignments:\n\
      %s\n\
      Learned clauses:\n\
+     %s\n\
+     Watched literals:\n\
      %s"
     (if Clause.Map.is_empty clauses then "()" else Clause.Map.show clauses)
     (if Occurrence.Map.is_empty occur then "()" else Occurrence.Map.show occur)
@@ -42,10 +53,25 @@ let show
               (fun l acc -> sprintf "%s%s " acc (Literal.show l))
               c ""))
        "" database)
+    (* TODO pretty much the same as occurrence *)
+    (Literal.Map.fold
+       (fun l cs s ->
+         Printf.sprintf "%s%s:%s\n" s (Literal.show l)
+           (WatchedClause.fold
+              (fun acc l -> Printf.sprintf "%s%s " acc (Literal.show l))
+              "" cs))
+       watchers "")
 
 let add_clause
-    ({ clauses; occur; frequency; unit_clauses = uc; assignments = a; _ } as f)
-    clause =
+    ({
+       clauses;
+       occur;
+       frequency;
+       unit_clauses = uc;
+       assignments = a;
+       watchers;
+       _;
+     } as f) clause =
   let n = Clause.Map.size clauses in
   let clauses' = Clause.Map.add clause clauses in
   let occur' =
@@ -76,12 +102,20 @@ let add_clause
       |> Clause.of_iter)
       frequency
   in
+  let watched_clause = WatchedClause.of_clause clause in
+  let l1, l2 = WatchedClause.watched_literals watched_clause in
+  (* TODO pretty much the same as occurrence, use update () *)
+  let watchers' =
+    Literal.Map.add l1 watched_clause watchers
+    |> Literal.Map.add l2 watched_clause
+  in
   {
     f with
     clauses = clauses';
     occur = occur';
     frequency = frequency';
     unit_clauses = uc';
+    watchers = watchers';
   }
 
 let add_learned_clauses ({ assignments = a; _ } as f) db =
