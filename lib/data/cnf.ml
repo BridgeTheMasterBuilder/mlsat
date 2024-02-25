@@ -9,8 +9,7 @@ type formula = {
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
   database : Clause.t list;
-  (* TODO WatchedClause set *)
-  watchers : WatchedClause.t Literal.Map.t;
+  watchers : WatchedClause.Map.t;
 }
 
 let show
@@ -47,20 +46,10 @@ let show
        (fun acc (ass, _) -> sprintf "%s%s" acc (Assignment.show ass))
        "" f.trail)
     (List.fold_left
-       (fun acc c ->
-         sprintf "%s(%s)\n" acc
-           (Clause.fold
-              (fun l acc -> sprintf "%s%s " acc (Literal.show l))
-              c ""))
+       (fun acc c -> sprintf "%s%s\n" acc (Clause.show c))
        "" database)
-    (* TODO pretty much the same as occurrence *)
-    (Literal.Map.fold
-       (fun l cs s ->
-         Printf.sprintf "%s%s:%s\n" s (Literal.show l)
-           (WatchedClause.fold
-              (fun acc l -> Printf.sprintf "%s%s " acc (Literal.show l))
-              "" cs))
-       watchers "")
+    (if WatchedClause.Map.is_empty watchers then "()"
+     else WatchedClause.Map.show watchers)
 
 let add_clause
     ({
@@ -74,16 +63,7 @@ let add_clause
      } as f) clause =
   let n = Clause.Map.size clauses in
   let clauses' = Clause.Map.add clause clauses in
-  let occur' =
-    Clause.fold
-      (fun l m ->
-        Occurrence.Map.update l
-          (function
-            | Some s -> Some (IntSet.add n s)
-            | None -> Some (IntSet.singleton n))
-          m)
-      clause occur
-  in
+  let occur' = Clause.fold (fun l -> Occurrence.Map.add l n) clause occur in
   let uc' =
     let unassigned =
       Clause.to_iter clause
@@ -103,11 +83,11 @@ let add_clause
       frequency
   in
   let watched_clause = WatchedClause.of_clause clause in
-  let l1, l2 = WatchedClause.watched_literals watched_clause in
-  (* TODO pretty much the same as occurrence, use update () *)
   let watchers' =
-    Literal.Map.add l1 watched_clause watchers
-    |> Literal.Map.add l2 watched_clause
+    WatchedClause.watched_literals watched_clause
+    |> Option.map_or ~default:watchers (fun (l1, l2) ->
+           WatchedClause.Map.add l1 watched_clause watchers
+           |> WatchedClause.Map.add l2 watched_clause)
   in
   {
     f with
@@ -277,11 +257,7 @@ let check_invariants
     ];
   ()
 
-(* let choose_literal { occur; frequency; _ } = *)
 let choose_literal { frequency; _ } =
-  (* match Frequency.Map.pop frequency with *)
-  (* | None -> Occurrence.Map.choose occur |> fst *)
-  (* | Some l -> l *)
   Frequency.Map.pop frequency |> Option.get_exn_or "CHOOSE"
 
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
@@ -298,15 +274,13 @@ let of_list _v _c =
     {
       clauses = Clause.Map.empty;
       occur = Occurrence.Map.empty;
-      (* occur = Occurrence.Map.create v; *)
       frequency = Frequency.Map.empty;
       current_decision_level = 0;
       assignments = Assignment.Map.empty;
-      (* assignments = Assignment.Map.create v; *)
       trail = [];
       database = [];
       unit_clauses = [];
-      watchers = Literal.Map.empty;
+      watchers = WatchedClause.Map.empty;
     }
 
 let restart ({ trail = t; database = db; _ } as f) =
@@ -333,6 +307,10 @@ let make_assignment l ass
   let a' = Assignment.Map.add l ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
+  (match WatchedClause.Map.find_opt (Literal.neg l) f.watchers with
+  | Some cs ->
+      WatchedClause.Set.iter (fun c -> WatchedClause.update a' c |> ignore) cs
+  | None -> ());
   try
     let uc', f' =
       match Occurrence.Map.find_opt (Literal.neg l) occur with

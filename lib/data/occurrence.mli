@@ -7,7 +7,7 @@ module Map : sig
   type t
   type key = Literal.t
 
-  val add : key -> occurrence -> t -> t
+  val add : key -> int -> t -> t
   val empty : t
   val find : key -> t -> occurrence
   val find_opt : key -> t -> occurrence option
@@ -15,5 +15,4 @@ module Map : sig
   val mem : key -> t -> bool
   val show : t -> string
   val to_iter : t -> (key * occurrence) Iter.iter
-  val update : key -> (occurrence option -> occurrence option) -> t -> t
 end

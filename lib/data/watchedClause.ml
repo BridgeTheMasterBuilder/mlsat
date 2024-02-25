@@ -1,29 +1,66 @@
-type t = {
-  clause : Literal.t Iter.iter;
-  size : int;
-  (* index : int; *)
-  watcher1 : Literal.t;
-  watcher2 : Literal.t;
-}
+module M = struct
+  type t = {
+    clause : Literal.t array;
+    size : int;
+    index : int;
+    watchers : (Literal.t * Literal.t) option;
+  }
+
+  let compare { clause = c1; _ } { clause = c2; _ } =
+    Array.compare (fun l1 l2 -> Literal.compare l1 l2) c1 c2
+end
+
+open M
+module Set = Set.Make (M)
+
+module Map = struct
+  include Literal.Map
+
+  type t = Set.t Literal.Map.t
+  type key = Literal.t
+
+  let add l n =
+    update l (function
+      | Some s -> Some (Set.add n s)
+      | None -> Some (Set.singleton n))
+
+  (* let show o = *)
+  (*   fold *)
+  (*     (fun l cs s -> *)
+  (*       Printf.sprintf "%s%s:%s\n" s (Literal.show l) *)
+  (*         (WatchedClauseSet.fold *)
+  (*            (fun l acc -> Printf.sprintf "%s%d " acc l) *)
+  (*            cs "")) *)
+  (*     o "" *)
+  let show o =
+    fold
+      (fun l cs s ->
+        Printf.sprintf "%s%s:%s\n" s (Literal.show l)
+          (Set.fold (fun l acc -> Printf.sprintf "%s " acc) cs ""))
+      o ""
+end
+
+let fold f x { clause; _ } = Array.fold f x clause
 
 let of_clause c =
   let open Iter in
-  let clause = Clause.to_iter c |> cycle in
-  match take 2 clause |> to_list with
-  | [ l1; l2 ] ->
-      {
-        clause = drop 2 clause;
-        size = Clause.size c;
-        (* index = 2; *)
-        watcher1 = l1;
-        watcher2 = l2;
-      }
-  | _ -> failwith "Impossible"
+  let clause = Clause.to_iter c |> to_array in
+  let size = Array.length clause in
+  let watchers = if size >= 2 then Some (clause.(0), clause.(1)) else None in
+  { clause; size; index = 2; watchers }
 
-let watched_literals { watcher1; watcher2; _ } = (watcher1, watcher2)
-
-let fold f x { clause; size; _ } =
+let update a ({ size; _ } as c) =
   let open Iter in
-  take size clause |> fold f x
+  let c' =
+    Array.iter (fun l -> print_string (Literal.show l ^ " ")) c.clause;
+    0 -- (size - 1)
+    |> fold_while
+         (fun { clause; watchers; _ } i ->
+           print_string (Literal.show clause.(i) ^ " ");
+           (c, `Continue))
+         c
+  in
+  print_newline ();
+  c'
 
-let update = Fun.id
+let watched_literals { watchers; _ } = watchers

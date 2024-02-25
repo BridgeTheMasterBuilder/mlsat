@@ -9,10 +9,15 @@ module Map = struct
   type t = occurrence Literal.Map.t
   type key = Literal.t
 
+  let add l n =
+    update l (function
+      | Some s -> Some (IntSet.add n s)
+      | None -> Some (IntSet.singleton n))
+
   let show o =
     fold
       (fun l cs s ->
         Printf.sprintf "%s%s:%s\n" s (Literal.show l)
-          (IntSet.fold (fun l acc -> Printf.sprintf "%s%d " acc l) cs ""))
+          (IntSet.fold (fun c acc -> Printf.sprintf "%s%d " acc c) cs ""))
       o ""
 end
