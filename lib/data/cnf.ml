@@ -64,6 +64,7 @@ let add_clause
   let n = Clause.Map.size clauses in
   let clauses' = Clause.Map.add clause clauses in
   let occur' = Clause.fold (fun l -> Occurrence.Map.add l n) clause occur in
+  (* TODO No need for this anymore *)
   let uc' =
     let unassigned =
       Clause.to_iter clause
@@ -82,7 +83,8 @@ let add_clause
       |> Clause.of_iter)
       frequency
   in
-  let watched_clause = WatchedClause.of_clause clause in
+  let watched_clause = WatchedClause.of_clause clause n in
+  (* TODO here, handle the None case by adding them to unit clauses *)
   let watchers' =
     WatchedClause.watched_literals watched_clause
     |> Option.map_or ~default:watchers (fun (l1, l2) ->
@@ -307,10 +309,12 @@ let make_assignment l ass
   let a' = Assignment.Map.add l ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
+  (* TODO Here, I should check the watchers instead and check the result of updating them in the new context, whether it's falsified or ready for unit prop etc. *)
   (match WatchedClause.Map.find_opt (Literal.neg l) f.watchers with
   | Some cs ->
       WatchedClause.Set.iter (fun c -> WatchedClause.update a' c |> ignore) cs
   | None -> ());
+  (* TODO this is more or less unneeded, replaced by watcher update *)
   try
     let uc', f' =
       match Occurrence.Map.find_opt (Literal.neg l) occur with

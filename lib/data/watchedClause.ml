@@ -1,5 +1,6 @@
 module M = struct
   type t = {
+    id : int; (* TODO hack? *)
     clause : Literal.t array;
     size : int;
     index : int;
@@ -24,30 +25,23 @@ module Map = struct
       | Some s -> Some (Set.add n s)
       | None -> Some (Set.singleton n))
 
-  (* let show o = *)
-  (*   fold *)
-  (*     (fun l cs s -> *)
-  (*       Printf.sprintf "%s%s:%s\n" s (Literal.show l) *)
-  (*         (WatchedClauseSet.fold *)
-  (*            (fun l acc -> Printf.sprintf "%s%d " acc l) *)
-  (*            cs "")) *)
-  (*     o "" *)
   let show o =
     fold
       (fun l cs s ->
         Printf.sprintf "%s%s:%s\n" s (Literal.show l)
-          (Set.fold (fun l acc -> Printf.sprintf "%s " acc) cs ""))
+          (Set.fold (fun { id; _ } acc -> Printf.sprintf "%s%d " acc id) cs ""))
       o ""
 end
 
 let fold f x { clause; _ } = Array.fold f x clause
 
-let of_clause c =
+let of_clause c id =
+  (* TODO assert clause is not empty? *)
   let open Iter in
   let clause = Clause.to_iter c |> to_array in
   let size = Array.length clause in
   let watchers = if size >= 2 then Some (clause.(0), clause.(1)) else None in
-  { clause; size; index = 2; watchers }
+  { id; clause; size; index = 2; watchers }
 
 let update a ({ size; _ } as c) =
   let open Iter in
