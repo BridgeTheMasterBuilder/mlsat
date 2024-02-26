@@ -309,10 +309,13 @@ let make_assignment l ass
   let a' = Assignment.Map.add l ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
+  Printf.printf "Making assignment %s\n" (Assignment.show ass);
   (* TODO Here, I should check the watchers instead and check the result of updating them in the new context, whether it's falsified or ready for unit prop etc. *)
   (match WatchedClause.Map.find_opt (Literal.neg l) f.watchers with
   | Some cs ->
-      WatchedClause.Set.iter (fun c -> WatchedClause.update a' c |> ignore) cs
+      WatchedClause.Set.iter
+        (fun c -> WatchedClause.update (Literal.neg l) a' c |> ignore)
+        cs
   | None -> ());
   (* TODO this is more or less unneeded, replaced by watcher update *)
   try
