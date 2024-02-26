@@ -43,39 +43,11 @@ let of_clause c id =
   let watchers = if size >= 2 then Some (clause.(0), clause.(1)) else None in
   { id; clause; size; index = 2 mod size; watchers }
 
-(* try *)
-(*   let uc', f' = *)
-(*     match Occurrence.Map.find_opt (Literal.neg l) occur with *)
-(*     | Some cs -> *)
-(*         IntSet.fold *)
-(*           (fun c (uc', f') -> *)
-(*             let ls = Clause.Map.find c clauses in *)
-(*             let uc'', f'', unassigned, falsified, satisfied = *)
-(*               Clause.fold *)
-(*                 (fun l (uc'', f'', unassigned', falsified', satisfied') -> *)
-(*                   match Assignment.Map.find_opt l a' with *)
-(*                   | Some ass' -> *)
-(*                       let l' = Assignment.literal ass' in *)
-(*                       let falso = Literal.signum l <> Literal.signum l' in *)
-(*                       ( uc'', *)
-(*                         f'', *)
-(*                         unassigned', *)
-(*                         falsified' && falso, *)
-(*                         satisfied' || not falso ) *)
-(*                   | None -> *)
-(*                       (uc'', f'', Clause.add l unassigned', false, satisfied')) *)
-(*                 ls *)
-(*                 (uc', f', Clause.empty, true, false) *)
-(*             in *)
-(*             if satisfied then (uc'', f'') *)
-(*             else if falsified then raise_notrace (Conflict (ls, f)) *)
-(*             else if Clause.size unassigned = 1 then ((c, ls) :: uc'', f'') *)
-(*             else (uc'', f'')) *)
-(*           cs (uc, f) *)
-(*     | None -> (uc, f) *)
-(*   in *)
+type update_result =
+  | WatcherChange of (Literal.t * Literal.t * t)
+  | Unit of t
+  | Falsified of t
 
-(* TODO update_result type to know if the watchers need updating, unit propagation is ready, or the clause has been falsified *)
 let update l a ({ clause; size; index; watchers; _ } as c) =
   let update_watchers w w' =
     let w1, w2 = Option.get_exn_or "UPDATE_WATCHERS" watchers in
@@ -86,39 +58,44 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
   Printf.printf "%d (watching %s and %s - index %d): " c.id (Literal.show w1)
     (Literal.show w2) index;
-  let c', index' =
-    Array.iter (fun l -> print_string (Literal.show l ^ " ")) c.clause;
-    print_string "= ";
+  let index', watcher_change, falsified =
+    Array.iter
+      (fun l ->
+        Printf.printf "%s(%s) " (Literal.show l)
+          (Assignment.Map.find_opt l a
+          |> Option.map_or ~default:"_" (fun ass ->
+                 Literal.show (Assignment.literal ass))))
+      c.clause;
     0 -- (size - 1)
-    (* TODO falsified clause *)
     |> fold_while
-         (fun (c, index') _ ->
+         (fun (index', _, falsified') _ ->
            let index'' = (index' + 1) mod size in
            let l' = clause.(index') in
            match Assignment.Map.find_opt l' a with
-           | Some x ->
-               Printf.printf "%s(%s) " (Literal.show l')
-                 (Literal.show (Assignment.literal x));
-               ((c, index''), `Continue)
+           | Some ass ->
+               let l'' = Assignment.literal ass in
+               let falso = Literal.signum l' <> Literal.signum l'' in
+               ((index'', None, falsified' && falso), `Continue)
            | None ->
-               Printf.printf "%s(_) " (Literal.show l');
-               (* if Literal.equal l l' then print_endline "WRONG"; *)
-               (({ c with watchers = update_watchers l l' }, index''), `Stop))
-         (*   (\* print_string (Literal.show clause.(i) ^ " "); *\) *)
-         (*   Printf.printf "%s(%s) " (Literal.show l) *)
-         (*   (Assignment.Map.find_opt l a *)
-         (*   |> Option.map_or ~default:"_" (fun x -> *)
-         (*          Literal.show (Assignment.literal x))); *)
-         (* (c, `Continue)) *)
-         (c, index)
+               (* TODO *)
+               let watcher_change' =
+                 update_watchers l l'
+                 |> Option.map (fun watchers' -> (l, l', watchers'))
+               in
+               ((index'', watcher_change', false), `Stop))
+         (index, None, true)
   in
   print_newline ();
-  (match c'.watchers with
-  | Some (w1, w2) ->
-      Printf.printf "%d (watching %s and %s - index %d)\n\n" c'.id
-        (Literal.show w1) (Literal.show w2) index'
-  | None -> Printf.printf "Clause %d is ready for unit propagation\n" c'.id);
-  { c' with index = index' }
+  if falsified then Falsified c
+  else
+    (* TODO *)
+    match watcher_change with
+    | Some (w, w', watchers') ->
+        let c' = { c with watchers = Some watchers'; index = index' } in
+        let w1, w2 = Option.get_exn_or "WATCHERS" c'.watchers in
+        Printf.printf "%d (watching %s and %s - index %d)\n\n" c'.id
+          (Literal.show w1) (Literal.show w2) index';
+        WatcherChange (w, w', c')
+    | None -> Unit c
 
 let watched_literals { watchers; _ } = watchers
-(* TODO this is more or less unneeded, replaced by watcher update *)

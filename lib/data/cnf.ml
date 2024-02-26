@@ -298,11 +298,12 @@ let restart ({ trail = t; database = db; _ } as f) =
 let make_assignment l ass
     ({
        clauses;
-       occur;
+       (* occur; *)
        frequency;
        assignments = a;
-       unit_clauses = uc;
+       (* unit_clauses = uc; *)
        trail = t;
+       watchers;
        _;
      } as f) =
   let exception Conflict of Clause.t * formula in
@@ -310,50 +311,74 @@ let make_assignment l ass
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
   Printf.printf "Making assignment %s\n" (Assignment.show ass);
-  (* TODO Here, I should check the watchers instead and check the result of updating them in the new context, whether it's falsified or ready for unit prop etc. *)
-  (match WatchedClause.Map.find_opt (Literal.neg l) f.watchers with
-  | Some cs ->
-      WatchedClause.Set.iter
-        (fun c -> WatchedClause.update (Literal.neg l) a' c |> ignore)
-        cs
-  | None -> ());
-  (* TODO this is more or less unneeded, replaced by watcher update *)
   try
-    let uc', f' =
-      match Occurrence.Map.find_opt (Literal.neg l) occur with
+    let f' =
+      match WatchedClause.Map.find_opt (Literal.neg l) watchers with
       | Some cs ->
-          IntSet.fold
-            (fun c (uc', f') ->
-              let ls = Clause.Map.find c clauses in
-              let uc'', f'', unassigned, falsified, satisfied =
-                Clause.fold
-                  (fun l (uc'', f'', unassigned', falsified', satisfied') ->
-                    match Assignment.Map.find_opt l a' with
-                    | Some ass' ->
-                        let l' = Assignment.literal ass' in
-                        let falso = Literal.signum l <> Literal.signum l' in
-                        ( uc'',
-                          f'',
-                          unassigned',
-                          falsified' && falso,
-                          satisfied' || not falso )
-                    | None ->
-                        (uc'', f'', Clause.add l unassigned', false, satisfied'))
-                  ls
-                  (uc', f', Clause.empty, true, false)
-              in
-              if satisfied then (uc'', f'')
-              else if falsified then raise_notrace (Conflict (ls, f))
-              else if Clause.size unassigned = 1 then ((c, ls) :: uc'', f'')
-              else (uc'', f''))
-            cs (uc, f)
-      | None -> (uc, f)
+          WatchedClause.Set.fold
+            (fun ({ id; _ } as c)
+                 ({ unit_clauses = uc'; watchers = watchers'; _ } as f') ->
+              let ls = Clause.Map.find id clauses in
+              match WatchedClause.update (Literal.neg l) a' c with
+              (* TODO also need to update the other watcher's clause, find a more organized way to do this *)
+              | WatcherChange (w, w', c') ->
+                  Printf.printf "Moving watcher from %s to %s\n"
+                    (Literal.show w) (Literal.show w');
+                  let watchers' =
+                    WatchedClause.Map.remove w watchers
+                    |> WatchedClause.Map.add w' c'
+                  in
+                  { f' with watchers = watchers' }
+              | Unit { id; _ } ->
+                  Printf.printf "Clause %d is ready for unit propagation\n" id;
+                  { f' with unit_clauses = (id, ls) :: uc' }
+              | Falsified { id; _ } ->
+                  Printf.printf "Clause %d is falsified\n" id;
+                  raise_notrace (Conflict (ls, { f with watchers = watchers' })))
+            cs f
+      | None -> f
     in
     let frequency' =
       Frequency.Map.remove_literal l frequency
       |> Frequency.Map.remove_literal (Literal.neg l)
     in
-    let f' = { f' with frequency = frequency'; unit_clauses = uc' } in
+    let f' = { f' with frequency = frequency' } in
+    (* try *)
+    (*   let uc', f' = *)
+    (*     match Occurrence.Map.find_opt (Literal.neg l) occur with *)
+    (*     | Some cs -> *)
+    (*         IntSet.fold *)
+    (*           (fun c (uc', f') -> *)
+    (*             let ls = Clause.Map.find c clauses in *)
+    (*             let uc'', f'', unassigned, falsified, satisfied = *)
+    (*               Clause.fold *)
+    (*                 (fun l (uc'', f'', unassigned', falsified', satisfied') -> *)
+    (*                   match Assignment.Map.find_opt l a' with *)
+    (*                   | Some ass' -> *)
+    (*                       let l' = Assignment.literal ass' in *)
+    (*                       let falso = Literal.signum l <> Literal.signum l' in *)
+    (*                       ( uc'', *)
+    (*                         f'', *)
+    (*                         unassigned', *)
+    (*                         falsified' && falso, *)
+    (*                         satisfied' || not falso ) *)
+    (*                   | None -> *)
+    (*                       (uc'', f'', Clause.add l unassigned', false, satisfied')) *)
+    (*                 ls *)
+    (*                 (uc', f', Clause.empty, true, false) *)
+    (*             in *)
+    (*             if satisfied then (uc'', f'') *)
+    (*             else if falsified then raise_notrace (Conflict (ls, f)) *)
+    (*             else if Clause.size unassigned = 1 then ((c, ls) :: uc'', f'') *)
+    (*             else (uc'', f'')) *)
+    (*           cs (uc, f) *)
+    (*     | None -> (uc, f) *)
+    (*   in *)
+    (*   let frequency' = *)
+    (*     Frequency.Map.remove_literal l frequency *)
+    (*     |> Frequency.Map.remove_literal (Literal.neg l) *)
+    (*   in *)
+    (*   let f' = { f' with frequency = frequency'; unit_clauses = uc' } in *)
     Ok f'
   with Conflict (c, f) -> Error (c, f)
 
@@ -374,7 +399,9 @@ let eliminate_pure_literals ({ occur; _ } as f) =
   in
   { f' with trail = [] }
 
-let preprocess = eliminate_pure_literals
+(* TODO *)
+(* let preprocess = eliminate_pure_literals *)
+let preprocess = Fun.id
 
 let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
   match ucs with
