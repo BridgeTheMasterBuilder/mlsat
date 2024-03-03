@@ -64,16 +64,16 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
   in
   let open Iter in
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
-  (* Printf.printf "%d (watching %s and %s - index %d): " c.id (Literal.show w1) *)
-  (*   (Literal.show w2) index; *)
+  Printf.printf "%d (watching %s and %s - index %d): " c.id (Literal.show w1)
+    (Literal.show w2) index;
   let index', watcher_change, falsified =
-    (* Array.iter *)
-    (*   (fun l -> *)
-    (*     Printf.printf "%s(%s) " (Literal.show l) *)
-    (*       (Assignment.Map.find_opt l a *)
-    (*       |> Option.map_or ~default:"_" (fun ass -> *)
-    (*              Literal.show (Assignment.literal ass)))) *)
-    (*   c.clause; *)
+    Array.iter
+      (fun l ->
+        Printf.printf "%s(%s) " (Literal.show l)
+          (Assignment.Map.find_opt l a
+          |> Option.map_or ~default:"_" (fun ass ->
+                 Literal.show (Assignment.literal ass))))
+      c.clause;
     0 -- (size - 1)
     |> fold_while
          (fun (index', _, falsified') _ ->
@@ -100,13 +100,25 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
                    ((index'', watcher_change', false), `Stop)))
          (index, None, true)
   in
-  (* print_newline (); *)
+  print_newline ();
   if falsified then Falsified c
   else
     (* TODO *)
     match watcher_change with
     | Some (w1, w1', w2) ->
         let c' = { c with watchers = Some (w1', w2); index = index' } in
+        assert (
+          Assignment.Map.find_opt w1' a
+          |> Option.map_or ~default:true (fun ass ->
+                 let l' = Assignment.literal ass in
+                 Printf.printf "%s = %s\n" (Literal.show w1') (Literal.show l');
+                 Literal.signum w1' = Literal.signum l')
+          && Assignment.Map.find_opt w2 a
+             |> Option.map_or ~default:true (fun ass ->
+                    let l' = Assignment.literal ass in
+                    Printf.printf "%s = %s\n" (Literal.show w2)
+                      (Literal.show l');
+                    Literal.signum w2 = Literal.signum l'));
         (* let _w1', _w2 = Option.get_exn_or "WATCHERS" c'.watchers in *)
         (* Printf.printf "%d (watching %s and %s - index %d)\n\n" c'.id *)
         (*   (Literal.show _w1') (Literal.show _w2) index'; *)

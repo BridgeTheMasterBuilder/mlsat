@@ -18,7 +18,7 @@ let run filename config =
   |> ignore;
   try
     match solve p with
-    | Sat -> print_endline "SAT"
+    | Sat _ -> print_endline "SAT"
     | Unsat -> print_endline "UNSAT"
   with Timeout -> print_endline "Solver timed out"
 (* with _ -> *)

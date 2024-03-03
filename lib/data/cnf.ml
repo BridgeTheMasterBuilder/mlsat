@@ -144,6 +144,8 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   aux (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.of_list (List.map Literal.var ls))
 
+let assignments { assignments = a; _ } = Assignment.Map.assignments a
+
 let backtrack
     { current_decision_level = d; assignments = a; trail = t; database = db; _ }
     learned_clause =
@@ -310,7 +312,7 @@ let make_assignment l ass
   let a' = Assignment.Map.add l ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
-  (* Printf.printf "Making assignment %s\n" (Assignment.show ass); *)
+  Printf.printf "Making assignment %s\n" (Assignment.show ass);
   try
     let f' =
       match WatchedClause.Map.find_opt (Literal.neg l) watchers with
@@ -320,52 +322,52 @@ let make_assignment l ass
                  ({ unit_clauses = uc'; watchers = watchers'; _ } as f') ->
               let ls = Clause.Map.find id clauses in
               match WatchedClause.update (Literal.neg l) a' c with
-              | WatcherChange (w1, w1', w2, c') ->
-                  (* Printf.printf *)
-                  (*   "Moving watcher from %s to %s (other watcher is %s)\n" *)
-                  (*   (Literal.show w1) (Literal.show w1') (Literal.show w2); *)
+              | WatcherChange (w1, w1', w2, w2', c') ->
+                  Printf.printf
+                    "Moving watcher from %s to %s (other watcher is %s)\n"
+                    (Literal.show w1) (Literal.show w1') (Literal.show w2);
                   (* Printf.printf "Is %d physically equal to %d? %b\n" c.id c'.id *)
                   (*   (CCEqual.physical c c'); *)
                   let watchers' =
                     WatchedClause.Map.remove w1 c watchers'
                     |> WatchedClause.Map.remove w2 c (* TODO *)
                     |> WatchedClause.Map.add w1' c'
-                    |> WatchedClause.Map.add w2 c'
+                    |> WatchedClause.Map.add w2' c'
                   in
-                  (* Printf.printf "%s's new watchlist: \n" (Literal.show w1); *)
-                  (* WatchedClause.Set.iter *)
-                  (*   (fun { id; watchers; _ } -> *)
-                  (*     let l1, l2 = Option.get_exn_or "ITER" watchers in *)
-                  (*     Printf.printf "%d (%s, %s) " id (Literal.show l1) *)
-                  (*       (Literal.show l2)) *)
-                  (*   (WatchedClause.Map.find w1 watchers'); *)
-                  (* print_newline (); *)
-                  (* Printf.printf "%s's new watchlist: \n" (Literal.show w1'); *)
-                  (* WatchedClause.Set.iter *)
-                  (*   (fun { id; watchers; _ } -> *)
-                  (*     let l1, l2 = Option.get_exn_or "ITER" watchers in *)
-                  (*     Printf.printf "%d (%s, %s) " id (Literal.show l1) *)
-                  (*       (Literal.show l2)) *)
-                  (*   (WatchedClause.Map.find w1' watchers'); *)
-                  (* print_newline (); *)
-                  (* Printf.printf "%s's new watchlist: \n" (Literal.show w2); *)
-                  (* WatchedClause.Set.iter *)
-                  (*   (fun { id; watchers; _ } -> *)
-                  (*     let l1, l2 = Option.get_exn_or "ITER" watchers in *)
-                  (*     Printf.printf "%d (%s, %s) " id (Literal.show l1) *)
-                  (*       (Literal.show l2)) *)
-                  (*   (WatchedClause.Map.find w2 watchers'); *)
-                  (* print_newline (); *)
+                  Printf.printf "%s's new watchlist: \n" (Literal.show w1);
+                  WatchedClause.Set.iter
+                    (fun { id; watchers; _ } ->
+                      let l1, l2 = Option.get_exn_or "ITER" watchers in
+                      Printf.printf "%d (%s, %s) " id (Literal.show l1)
+                        (Literal.show l2))
+                    (WatchedClause.Map.find w1 watchers');
+                  print_newline ();
+                  Printf.printf "%s's new watchlist: \n" (Literal.show w1');
+                  WatchedClause.Set.iter
+                    (fun { id; watchers; _ } ->
+                      let l1, l2 = Option.get_exn_or "ITER" watchers in
+                      Printf.printf "%d (%s, %s) " id (Literal.show l1)
+                        (Literal.show l2))
+                    (WatchedClause.Map.find w1' watchers');
+                  print_newline ();
+                  Printf.printf "%s's new watchlist: \n" (Literal.show w2);
+                  WatchedClause.Set.iter
+                    (fun { id; watchers; _ } ->
+                      let l1, l2 = Option.get_exn_or "ITER" watchers in
+                      Printf.printf "%d (%s, %s) " id (Literal.show l1)
+                        (Literal.show l2))
+                    (WatchedClause.Map.find w2 watchers');
+                  print_newline ();
                   { f' with watchers = watchers' }
               | Unit { id; _ } ->
-                  (* Printf.printf "Clause %d is ready for unit propagation\n" id; *)
+                  Printf.printf "Clause %d is ready for unit propagation\n" id;
                   {
                     f' with
                     unit_clauses = (id, ls) :: uc';
                     (* watchers = watchers'; *)
                   }
               | Falsified { id; _ } ->
-                  (* Printf.printf "Clause %d is falsified\n" id; *)
+                  Printf.printf "Clause %d is falsified\n" id;
                   raise_notrace (Conflict (ls, { f with watchers = watchers' })))
             cs f
       | None -> f
@@ -466,3 +468,22 @@ let make_decision ({ current_decision_level = d; _ } as f) =
   (* { f' with current_decision_level = d + 1 } *)
   make_assignment l dec f
   |> Result.map (fun f' -> { f' with current_decision_level = d + 1 })
+
+let verify_sat a f =
+  let exception Foo of Literal.t in
+  try
+    let f' =
+      List.fold_left
+        (fun f' l ->
+          try
+            make_assignment l
+              (Assignment.Decision { literal = l; level = 0 })
+              f'
+            |> Result.get_exn
+          with Result.Get_error -> raise_notrace (Foo l))
+        f a
+    in
+    is_empty f'
+  with Foo l ->
+    Printf.printf "Literal assignment %s is contradicted" (Literal.show l);
+    false

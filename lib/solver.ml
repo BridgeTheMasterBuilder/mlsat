@@ -2,7 +2,7 @@ open Data
 open Cnf
 open Problem
 
-type result = Sat | Unsat
+type result = Sat of Literal.t list | Unsat
 
 let rec cdcl max_conflicts luby f =
   let rec aux d max_conflicts' conflicts f =
@@ -15,7 +15,7 @@ let rec cdcl max_conflicts luby f =
         aux d' max_conflicts' (conflicts + 1) f'
     in
     (* check_invariants f; *)
-    (* print_endline (show f); *)
+    print_endline (show f);
     if conflicts = max_conflicts' then
       let f = restart f in
       let max_conflicts', luby' = Luby.next luby in
@@ -24,7 +24,7 @@ let rec cdcl max_conflicts luby f =
       match unit_propagate f with
       | Error conflict -> handle conflict
       | Ok f -> (
-          if is_empty f then Sat
+          if is_empty f then Sat (assignments f)
           else
             match make_decision f with
             | Error conflict -> handle conflict
@@ -35,9 +35,14 @@ let rec cdcl max_conflicts luby f =
 let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
   match unit_propagate f with
   | Error _ -> Unsat
-  | Ok f ->
-      if is_empty f then Sat
+  | Ok f -> (
+      if is_empty f then Sat (assignments f)
       else
         let luby = Luby.create base_num_conflicts grow_factor in
         let f = preprocess f in
-        cdcl base_num_conflicts luby f
+        (* cdcl base_num_conflicts luby f  *)
+        match cdcl base_num_conflicts luby f with
+        | Sat assignments ->
+            assert (verify_sat assignments f);
+            Sat assignments
+        | id -> id)

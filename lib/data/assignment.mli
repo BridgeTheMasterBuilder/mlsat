@@ -9,6 +9,7 @@ module Map : sig
   type t
 
   val add : key -> assignment -> t -> t
+  val assignments : t -> Literal.t list
   val empty : t
   val find_opt : key -> t -> assignment option
   val mem : key -> t -> bool

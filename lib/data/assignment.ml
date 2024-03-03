@@ -4,16 +4,6 @@ type t =
 
 type assignment = t
 
-module Map = struct
-  include Literal.Map
-
-  type t = assignment Literal.Map.t
-
-  let add l = add (Literal.var l)
-  let find_opt l = find_opt (Literal.var l)
-  let mem l = mem (Literal.var l)
-end
-
 let level = function Decision { level; _ } | Implication { level; _ } -> level
 
 let literal = function
@@ -30,3 +20,17 @@ let show (a : assignment) =
 
 let was_decided_on_level a d =
   match a with Decision { level = d'; _ } -> d = d' | _ -> false
+
+module Map = struct
+  include Literal.Map
+
+  type t = assignment Literal.Map.t
+
+  let add l = add (Literal.var l)
+
+  let assignments m =
+    to_iter m |> Iter.map (fun (_, ass) -> literal ass) |> Iter.to_list
+
+  let find_opt l = find_opt (Literal.var l)
+  let mem l = mem (Literal.var l)
+end
