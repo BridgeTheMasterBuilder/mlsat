@@ -7,8 +7,9 @@ module M = struct
     watchers : (Literal.t * Literal.t) option;
   }
 
-  let compare { clause = c1; _ } { clause = c2; _ } =
-    Array.compare (fun l1 l2 -> Literal.compare l1 l2) c1 c2
+  let compare { clause = c1; id = id1; _ } { clause = c2; id = id2; _ } =
+    compare id1 id2
+  (* Array.compare (fun l1 l2 -> Literal.compare l1 l2) c1 c2 *)
 end
 
 open M
@@ -24,6 +25,12 @@ module Map = struct
     update l (function
       | Some s -> Some (Set.add n s)
       | None -> Some (Set.singleton n))
+
+  let remove l n =
+    (* Printf.printf "Removing %d from %s's watchlist\n" n.id (Literal.show l); *)
+    update l (function
+      | Some s -> Some (Set.remove n s)
+      | None -> failwith "REMOVE")
 
   let show o =
     fold
@@ -57,51 +64,57 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
   in
   let open Iter in
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
-  Printf.printf "%d (watching %s and %s - index %d): " c.id (Literal.show w1)
-    (Literal.show w2) index;
+  (* Printf.printf "%d (watching %s and %s - index %d): " c.id (Literal.show w1) *)
+  (*   (Literal.show w2) index; *)
   let index', watcher_change, falsified =
-    Array.iter
-      (fun l ->
-        Printf.printf "%s(%s) " (Literal.show l)
-          (Assignment.Map.find_opt l a
-          |> Option.map_or ~default:"_" (fun ass ->
-                 Literal.show (Assignment.literal ass))))
-      c.clause;
+    (* Array.iter *)
+    (*   (fun l -> *)
+    (*     Printf.printf "%s(%s) " (Literal.show l) *)
+    (*       (Assignment.Map.find_opt l a *)
+    (*       |> Option.map_or ~default:"_" (fun ass -> *)
+    (*              Literal.show (Assignment.literal ass)))) *)
+    (*   c.clause; *)
     0 -- (size - 1)
     |> fold_while
          (fun (index', _, falsified') _ ->
            let index'' = (index' + 1) mod size in
            let l' = clause.(index') in
            match Assignment.Map.find_opt l' a with
-           | Some ass ->
-               let l'' = Assignment.literal ass in
-               let falso = Literal.signum l' <> Literal.signum l'' in
-               ((index'', None, falsified' && falso), `Continue)
-           | None ->
+           (* | Some ass -> *)
+           (*     let l'' = Assignment.literal ass in *)
+           (*     let falso = Literal.signum l' <> Literal.signum l'' in *)
+           (*     if falso then ((index'', None, falsified' && falso), `Continue) *)
+           (*     else *)
+           (*       let watcher_change' = update_watchers l l' in *)
+           (*       ((index'', watcher_change', false), `Stop) *)
+           | Some ass
+             when let l'' = Assignment.literal ass in
+                  Literal.signum l' <> Literal.signum l'' ->
+               ((index'', None, falsified'), `Continue)
+           | _ -> (
                (* TODO *)
-               let watcher_change' =
-                 update_watchers l l'
-                 (* |> Option.map (fun watchers' -> (w1, w1', w2, watchers')) *)
-               in
-               ((index'', watcher_change', false), `Stop))
+               match update_watchers l l' with
+               | None -> ((index'', None, false), `Continue)
+               | watcher_change' ->
+                   (* |> Option.map (fun watchers' -> (w1, w1', w2, watchers')) *)
+                   ((index'', watcher_change', false), `Stop)))
          (index, None, true)
   in
-  print_newline ();
+  (* print_newline (); *)
   if falsified then Falsified c
   else
     (* TODO *)
     match watcher_change with
     | Some (w1, w1', w2) ->
         let c' = { c with watchers = Some (w1', w2); index = index' } in
-        let w1', w2 = Option.get_exn_or "WATCHERS" c'.watchers in
-        Printf.printf "%d (watching %s and %s - index %d)\n\n" c'.id
-          (Literal.show w1') (Literal.show w2) index';
+        (* let _w1', _w2 = Option.get_exn_or "WATCHERS" c'.watchers in *)
+        (* Printf.printf "%d (watching %s and %s - index %d)\n\n" c'.id *)
+        (*   (Literal.show _w1') (Literal.show _w2) index'; *)
         WatcherChange (w1, w1', w2, c')
     | None -> Unit c
 (* TODO False positive
 
-   Making assignment       6 because of clause ( 6 25 47 ) - implied at le
-   vel 11
+   Making assignment       6 because of clause ( 6 25 47 ) - implied at level 11
 
    52 (watching -36 and -6 - index 2): -36(-36) -6(6) 45(45)
    Clause 52 is ready for unit propagation
