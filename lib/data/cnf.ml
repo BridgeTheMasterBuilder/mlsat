@@ -320,18 +320,23 @@ let make_assignment l ass
                  ({ unit_clauses = uc'; watchers = watchers'; _ } as f') ->
               let ls = Clause.Map.find id clauses in
               match WatchedClause.update (Literal.neg l) a' c with
-              (* TODO also need to update the other watcher's clause, find a more organized way to do this *)
-              | WatcherChange (w, w', c') ->
+              | WatcherChange (w1, w1', w2, c') ->
                   Printf.printf "Moving watcher from %s to %s\n"
-                    (Literal.show w) (Literal.show w');
+                    (Literal.show w1) (Literal.show w1');
                   let watchers' =
-                    WatchedClause.Map.remove w watchers
-                    |> WatchedClause.Map.add w' c'
+                    WatchedClause.Map.remove w1 watchers
+                    |> WatchedClause.Map.remove w2 (* TODO *)
+                    |> WatchedClause.Map.add w1' c'
+                    |> WatchedClause.Map.add w2 c'
                   in
                   { f' with watchers = watchers' }
               | Unit { id; _ } ->
                   Printf.printf "Clause %d is ready for unit propagation\n" id;
-                  { f' with unit_clauses = (id, ls) :: uc' }
+                  {
+                    f' with
+                    unit_clauses = (id, ls) :: uc';
+                    watchers = watchers';
+                  }
               | Falsified { id; _ } ->
                   Printf.printf "Clause %d is falsified\n" id;
                   raise_notrace (Conflict (ls, { f with watchers = watchers' })))
@@ -430,5 +435,7 @@ let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  let f' = make_assignment l dec f |> Result.get_exn in
-  { f' with current_decision_level = d + 1 }
+  (* let f' = make_assignment l dec f |> Result.get_exn in *)
+  (* { f' with current_decision_level = d + 1 } *)
+  make_assignment l dec f
+  |> Result.map (fun f' -> { f' with current_decision_level = d + 1 })

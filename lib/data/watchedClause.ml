@@ -44,7 +44,7 @@ let of_clause c id =
   { id; clause; size; index = 2 mod size; watchers }
 
 type update_result =
-  | WatcherChange of (Literal.t * Literal.t * t)
+  | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
   | Unit of t
   | Falsified of t
 
@@ -52,7 +52,8 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
   let update_watchers w w' =
     let w1, w2 = Option.get_exn_or "UPDATE_WATCHERS" watchers in
     if Literal.equal w' w1 || Literal.equal w' w2 then None
-    else Some (if Literal.equal w w1 then (w', w2) else (w1, w'))
+      (* else Some (if Literal.equal w w1 then (w', w2) else (w1, w')) *)
+    else Some (w, w', if Literal.equal w w1 then w2 else w1)
   in
   let open Iter in
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
@@ -80,7 +81,7 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
                (* TODO *)
                let watcher_change' =
                  update_watchers l l'
-                 |> Option.map (fun watchers' -> (l, l', watchers'))
+                 (* |> Option.map (fun watchers' -> (w1, w1', w2, watchers')) *)
                in
                ((index'', watcher_change', false), `Stop))
          (index, None, true)
@@ -90,12 +91,22 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
   else
     (* TODO *)
     match watcher_change with
-    | Some (w, w', watchers') ->
-        let c' = { c with watchers = Some watchers'; index = index' } in
-        let w1, w2 = Option.get_exn_or "WATCHERS" c'.watchers in
+    | Some (w1, w1', w2) ->
+        let c' = { c with watchers = Some (w1', w2); index = index' } in
+        let w1', w2 = Option.get_exn_or "WATCHERS" c'.watchers in
         Printf.printf "%d (watching %s and %s - index %d)\n\n" c'.id
-          (Literal.show w1) (Literal.show w2) index';
-        WatcherChange (w, w', c')
+          (Literal.show w1') (Literal.show w2) index';
+        WatcherChange (w1, w1', w2, c')
     | None -> Unit c
+(* TODO False positive
+
+   Making assignment       6 because of clause ( 6 25 47 ) - implied at le
+   vel 11
+
+   52 (watching -36 and -6 - index 2): -36(-36) -6(6) 45(45)
+   Clause 52 is ready for unit propagation
+   6 (watching -32 and -6 - index 2): -32(-32) -6(6) 15(_)
+   6 (watching 15 and -32 - index 0)
+*)
 
 let watched_literals { watchers; _ } = watchers

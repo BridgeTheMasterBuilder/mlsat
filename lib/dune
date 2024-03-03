@@ -1,3 +1,4 @@
 (library
  (name mlsat)
- (libraries data frontend unix))
+ (libraries data frontend unix)
+ (flags :standard -open Containers))

@@ -6,6 +6,14 @@ type result = Sat | Unsat
 
 let rec cdcl max_conflicts luby f =
   let rec aux d max_conflicts' conflicts f =
+    let handle (clause, f) =
+      if d = 0 then Unsat
+      else
+        let learned_clause = analyze_conflict f clause in
+        let f', d' = backtrack f learned_clause in
+        let f' = add_clause f' learned_clause in
+        aux d' max_conflicts' (conflicts + 1) f'
+    in
     (* check_invariants f; *)
     print_endline (show f);
     if conflicts = max_conflicts' then
@@ -14,18 +22,13 @@ let rec cdcl max_conflicts luby f =
       cdcl max_conflicts' luby' f
     else
       match unit_propagate f with
-      | Error (clause, f) ->
-          if d = 0 then Unsat
-          else
-            let learned_clause = analyze_conflict f clause in
-            let f', d' = backtrack f learned_clause in
-            let f' = add_clause f' learned_clause in
-            aux d' max_conflicts' (conflicts + 1) f'
-      | Ok f ->
+      | Error conflict -> handle conflict
+      | Ok f -> (
           if is_empty f then Sat
           else
-            let f' = make_decision f in
-            aux (d + 1) max_conflicts' conflicts f'
+            match make_decision f with
+            | Error conflict -> handle conflict
+            | Ok f' -> aux (d + 1) max_conflicts' conflicts f')
   in
   aux 0 max_conflicts 0 f
 

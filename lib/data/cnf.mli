@@ -6,7 +6,9 @@ val backtrack : formula -> Clause.t -> formula * int
 val check_invariants : formula -> unit
 val choose_literal : formula -> Literal.t
 val is_empty : formula -> bool
-val make_decision : formula -> formula
+
+(* val make_decision : formula -> formula *)
+val make_decision : formula -> (formula, Clause.t * formula) Result.t
 val of_list : int -> int -> int list list -> formula
 val preprocess : formula -> formula
 val restart : formula -> formula
