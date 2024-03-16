@@ -181,7 +181,7 @@ let check_invariants
     let rec aux assertions has_error =
       match assertions with
       | (c, msg) :: t ->
-          if not c then Printf.printf "ASSERTION FAILED: %s\n" msg;
+          if not c then Logs.err (fun m -> m "ASSERTION FAILED: %s" msg);
           aux t (has_error || not c)
       | [] -> assert (not has_error)
     in
@@ -312,7 +312,7 @@ let make_assignment l ass
   let a' = Assignment.Map.add l ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
-  Printf.printf "Making assignment %s\n" (Assignment.show ass);
+  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
   try
     let f' =
       match WatchedClause.Map.find_opt (Literal.neg l) watchers with
@@ -322,52 +322,59 @@ let make_assignment l ass
                  ({ unit_clauses = uc'; watchers = watchers'; _ } as f') ->
               let ls = Clause.Map.find id clauses in
               match WatchedClause.update (Literal.neg l) a' c with
-              | WatcherChange (w1, w1', w2, w2', c') ->
-                  Printf.printf
-                    "Moving watcher from %s to %s (other watcher is %s)\n"
-                    (Literal.show w1) (Literal.show w1') (Literal.show w2);
+              | WatcherChange (w1, w1', w2, c') ->
+                  Logs.debug (fun m ->
+                      m "Moving watcher from %s to %s (other watcher is %s)"
+                        (Literal.show w1) (Literal.show w1') (Literal.show w2));
                   (* Printf.printf "Is %d physically equal to %d? %b\n" c.id c'.id *)
                   (*   (CCEqual.physical c c'); *)
+                  (* TODO Maybe just to get it to work I can just do
+                     WatchedClause.update w2 a' c' ?
+
+                     i.e. call update again on the other watcher, in case the watcher invariants
+                     have been temporarily violated
+                  *)
                   let watchers' =
                     WatchedClause.Map.remove w1 c watchers'
                     |> WatchedClause.Map.remove w2 c (* TODO *)
                     |> WatchedClause.Map.add w1' c'
-                    |> WatchedClause.Map.add w2' c'
+                    |> WatchedClause.Map.add w2 c'
                   in
-                  Printf.printf "%s's new watchlist: \n" (Literal.show w1);
-                  WatchedClause.Set.iter
-                    (fun { id; watchers; _ } ->
-                      let l1, l2 = Option.get_exn_or "ITER" watchers in
-                      Printf.printf "%d (%s, %s) " id (Literal.show l1)
-                        (Literal.show l2))
-                    (WatchedClause.Map.find w1 watchers');
-                  print_newline ();
-                  Printf.printf "%s's new watchlist: \n" (Literal.show w1');
-                  WatchedClause.Set.iter
-                    (fun { id; watchers; _ } ->
-                      let l1, l2 = Option.get_exn_or "ITER" watchers in
-                      Printf.printf "%d (%s, %s) " id (Literal.show l1)
-                        (Literal.show l2))
-                    (WatchedClause.Map.find w1' watchers');
-                  print_newline ();
-                  Printf.printf "%s's new watchlist: \n" (Literal.show w2);
-                  WatchedClause.Set.iter
-                    (fun { id; watchers; _ } ->
-                      let l1, l2 = Option.get_exn_or "ITER" watchers in
-                      Printf.printf "%d (%s, %s) " id (Literal.show l1)
-                        (Literal.show l2))
-                    (WatchedClause.Map.find w2 watchers');
-                  print_newline ();
+                  (* Printf.printf "%s's new watchlist: \n" (Literal.show w1); *)
+                  (* WatchedClause.Set.iter *)
+                  (*   (fun { id; watchers; _ } -> *)
+                  (*     let l1, l2 = Option.get_exn_or "ITER" watchers in *)
+                  (*     Printf.printf "%d (%s, %s) " id (Literal.show l1) *)
+                  (*       (Literal.show l2)) *)
+                  (*   (WatchedClause.Map.find w1 watchers'); *)
+                  (* print_newline (); *)
+                  (* Printf.printf "%s's new watchlist: \n" (Literal.show w1'); *)
+                  (* WatchedClause.Set.iter *)
+                  (*   (fun { id; watchers; _ } -> *)
+                  (*     let l1, l2 = Option.get_exn_or "ITER" watchers in *)
+                  (*     Printf.printf "%d (%s, %s) " id (Literal.show l1) *)
+                  (*       (Literal.show l2)) *)
+                  (*   (WatchedClause.Map.find w1' watchers'); *)
+                  (* print_newline (); *)
+                  (* Printf.printf "%s's new watchlist: \n" (Literal.show w2); *)
+                  (* WatchedClause.Set.iter *)
+                  (*   (fun { id; watchers; _ } -> *)
+                  (*     let l1, l2 = Option.get_exn_or "ITER" watchers in *)
+                  (*     Printf.printf "%d (%s, %s) " id (Literal.show l1) *)
+                  (*       (Literal.show l2)) *)
+                  (*   (WatchedClause.Map.find w2 watchers'); *)
+                  (* print_newline (); *)
                   { f' with watchers = watchers' }
               | Unit { id; _ } ->
-                  Printf.printf "Clause %d is ready for unit propagation\n" id;
+                  Logs.debug (fun m ->
+                      m "Clause %d is ready for unit propagation" id);
                   {
                     f' with
                     unit_clauses = (id, ls) :: uc';
                     (* watchers = watchers'; *)
                   }
               | Falsified { id; _ } ->
-                  Printf.printf "Clause %d is falsified\n" id;
+                  Logs.debug (fun m -> m "Clause %d is falsified" id);
                   raise_notrace (Conflict (ls, { f with watchers = watchers' })))
             cs f
       | None -> f
@@ -485,5 +492,6 @@ let verify_sat a f =
     in
     is_empty f'
   with Foo l ->
-    Printf.printf "Literal assignment %s is contradicted" (Literal.show l);
+    Logs.debug (fun m ->
+        m "Literal assignment %s is contradicted" (Literal.show l));
     false

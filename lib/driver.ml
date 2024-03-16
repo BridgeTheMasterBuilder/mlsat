@@ -16,6 +16,9 @@ let run filename config =
   set_signal sigalrm (Signal_handle (fun _ -> raise_notrace Timeout));
   setitimer ITIMER_REAL { it_value = config.time_limit; it_interval = 0.0 }
   |> ignore;
+  if config.verbose then (
+    Logs.set_reporter (Logs_fmt.reporter ());
+    Logs.set_level (Some Debug));
   try
     match solve p with
     | Sat _ -> print_endline "SAT"

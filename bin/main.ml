@@ -16,11 +16,11 @@ let parse_args () =
           ~doc:"Time limit for determining satisfiability of a formula")
   in
 
-  (* let verbose = *)
-  (*   Arg.( *)
-  (*     value & flag *)
-  (*     & info [ "v"; "verbose" ] ~doc:"Whether to print debug information") *)
-  (* in *)
+  let verbose =
+    Arg.(
+      value & flag
+      & info [ "v"; "verbose" ] ~doc:"Whether to print debug information")
+  in
 
   (* let no_validate = *)
   (*   Arg.( *)
@@ -45,17 +45,16 @@ let parse_args () =
   let config =
     Term.(
       const
-        (fun time_limit (* verbose no_validate *) base_num_conflicts grow_factor
+        (fun time_limit verbose (* no_validate *) base_num_conflicts grow_factor
         ->
           {
             time_limit;
-            (* verbose; *)
+            verbose;
             (* no_validate; *)
             base_num_conflicts;
             grow_factor;
           })
-      $ time_limit
-      (* $ verbose *)
+      $ time_limit $ verbose
       (* $ no_validate *)
       $ base_num_conflicts
       $ grow_factor)
