@@ -18,7 +18,10 @@ let run filename config =
   |> ignore;
   if config.verbose then (
     Logs.set_reporter (Logs_fmt.reporter ());
-    Logs.set_level (Some Debug));
+    Logs.set_level (Some Debug))
+  else (
+    Logs.set_reporter (Logs_fmt.reporter ());
+    Logs.set_level (Some App));
   try
     match solve p with
     | Sat _ -> print_endline "SAT"
