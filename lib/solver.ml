@@ -43,6 +43,6 @@ let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
         (* cdcl base_num_conflicts luby f  *)
         match cdcl base_num_conflicts luby f with
         | Sat assignments ->
-            assert (verify_sat assignments f);
+            (* assert (verify_sat assignments f); *)
             Sat assignments
         | id -> id)

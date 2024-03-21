@@ -97,6 +97,7 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
          (fun {
                 index = index';
                 watcher1_change;
+                watcher2_change;
                 clause_falsified = falsified';
                 _;
               } _ ->
@@ -108,8 +109,8 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
                   Literal.signum l' <> Literal.signum l'' ->
                ( {
                    index = index'';
-                   watcher1_change = None;
-                   watcher2_change = None;
+                   watcher1_change;
+                   watcher2_change;
                    clause_falsified = falsified';
                  },
                  `Continue )
