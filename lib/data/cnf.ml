@@ -22,6 +22,7 @@ let show
        current_decision_level;
        database;
        watchers;
+       unit_clauses;
        _;
      } as f) =
   let open Printf in
@@ -38,7 +39,9 @@ let show
      Learned clauses:\n\
      %s\n\
      Watched literals:\n\
-     %s"
+     %s\n\
+     Unit clauses:\n\
+     %s\n"
     (if Clause.Map.is_empty clauses then "()" else Clause.Map.show clauses)
     (if Occurrence.Map.is_empty occur then "()" else Occurrence.Map.show occur)
     (if Frequency.Map.is_empty frequency then "()"
@@ -52,6 +55,9 @@ let show
        "" database)
     (if WatchedClause.Map.is_empty watchers then "()"
      else WatchedClause.Map.show watchers)
+    (List.fold_left
+       (fun acc (_, c) -> sprintf "%s%s\n" acc (Clause.show c))
+       "" unit_clauses)
 
 let add_clause
     ({
@@ -297,7 +303,12 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
     | WatcherChange (w1, w1', w2, w2', c') ->
         Logs.debug (fun m ->
             m "Moving watcher from %s to %s (other watcher is %s)"
-              (Literal.show w1) (Literal.show w1') (Literal.show w2));
+              (Literal.show w1) (Literal.show w1') (Literal.show w2'));
+        if not (Literal.equal w2 w2') then
+          Logs.debug (fun m ->
+              m "Moving watcher from %s to %s (other watcher is %s)"
+                (Literal.show w2) (Literal.show w2') (Literal.show w1'));
+        assert (not (Literal.equal w1' w2'));
         (* TODO Maybe just to get it to work I can just do
            WatchedClause.update w2 a' c' ?
 

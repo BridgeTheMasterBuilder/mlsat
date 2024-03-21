@@ -14,7 +14,7 @@ let rec cdcl max_conflicts luby f =
         let f' = add_clause f' learned_clause in
         aux d' max_conflicts' (conflicts + 1) f'
     in
-    (* check_invariants f; *)
+    check_invariants f;
     Logs.debug (fun m -> m "%s" (show f));
     if conflicts = max_conflicts' then
       let f = restart f in

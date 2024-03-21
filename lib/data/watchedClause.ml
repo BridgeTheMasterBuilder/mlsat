@@ -64,8 +64,6 @@ type foo = {
   clause_falsified : bool;
 }
 
-(* TODO the problem here is that we may need to update the other watcher too, I'm struggling
-        to find a clean design for that *)
 let update l a ({ clause; size; index; watchers; _ } as c) =
   let open Iter in
   let w1, w2 =
@@ -161,6 +159,14 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
         let c' = { c with watchers = Some (w1', w2); index = index' } in
         WatcherChange (w1, w1', w2, w2, c')
     | _ -> Unit c
+(* TODO the problem here is that the clause might be satisfied and yet not be a unit clause, e.g.:
+
+   lsat: [DEBUG] 1594 (watching 942 and -828 - index 0):
+   mlsat: [DEBUG] -828(-828)
+   mlsat: [DEBUG] 942(-942)
+   mlsat: [DEBUG] Clause 1594 is ready for unit propagation
+   mlsat: [ERROR] ASSERTION FAILED: Unit clauses are incorrect
+*)
 (* | Some _, None -> Unit c *)
 (* | _ -> failwith "Impossible" *)
 
