@@ -173,6 +173,7 @@ let check_invariants
        trail = t;
        database = db;
        unit_clauses = uc;
+       watchers;
        _;
      } as f) =
   let my_assert assertions =
@@ -243,6 +244,32 @@ let check_invariants
         = 1)
       uc
   in
+  let watched_literals_are_watched =
+    WatchedClause.Map.to_iter watchers
+    |> for_all (fun (l, wcs) ->
+           WatchedClause.Set.for_all
+             (fun wc ->
+               match WatchedClause.watched_literals wc with
+               | None -> false
+               | Some (w1, w2) -> Literal.equal l w1 || Literal.equal l w2)
+             wcs)
+  in
+  let watched_literals_are_nonfalse =
+    let nonfalse l =
+      Assignment.Map.find_opt l a
+      |> Option.map_or ~default:true (fun ass ->
+             let l' = Assignment.literal ass in
+             Literal.signum l = Literal.signum l')
+    in
+    WatchedClause.Map.to_iter watchers
+    |> for_all (fun (_, wcs) ->
+           WatchedClause.Set.for_all
+             (fun wc ->
+               match WatchedClause.watched_literals wc with
+               | None -> true
+               | Some (w1, w2) -> nonfalse w1 && nonfalse w2)
+             wcs)
+  in
   my_assert
     [
       (no_empty_clauses, "Formula contains empty clause");
@@ -256,6 +283,9 @@ let check_invariants
       (* (literals_clauses_eq, "Literals and clauses out of sync"); *)
       (learned_clauses_no_empty_clauses, "Learned empty clause");
       (* (unit_clauses_really_unit, "Unit clauses are incorrect"); *)
+      ( watched_literals_are_watched,
+        "Watched literals are not correctly watched" );
+      (* (watched_literals_are_nonfalse, "Watching false literals"); *)
     ];
   ()
 
@@ -309,12 +339,6 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
               m "Moving watcher from %s to %s (other watcher is %s)"
                 (Literal.show w2) (Literal.show w2') (Literal.show w1'));
         assert (not (Literal.equal w1' w2'));
-        (* TODO Maybe just to get it to work I can just do
-           WatchedClause.update w2 a' c' ?
-
-           i.e. call update again on the other watcher, in case the watcher invariants
-           have been temporarily violated
-        *)
         let watchers' =
           WatchedClause.Map.remove w1 c watchers'
           |> WatchedClause.Map.remove w2 c (* TODO *)
@@ -327,7 +351,7 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
         { f' with unit_clauses = (id, ls) :: uc' (* watchers = watchers'; *) }
     | Falsified { id; _ } ->
         Logs.debug (fun m -> m "Clause %d is falsified" id);
-        raise_notrace (Conflict (ls, { f with watchers = watchers' }))
+        raise_notrace (Conflict (ls, f))
   in
   match WatchedClause.Map.find_opt l watchers with
   | Some cs -> WatchedClause.Set.fold (fun c f' -> update_watcher l c f') cs f
