@@ -102,16 +102,16 @@ let add_learned_clauses ({ assignments = a; _ } as f) db =
   let f' =
     let open Iter in
     List.to_iter db
-    |> filter_map (fun c ->
-           if
-             Clause.to_iter c
-             |> exists (fun l ->
-                    match Assignment.Map.find_opt l a with
-                    | Some x ->
-                        Literal.signum (Assignment.literal x) = Literal.signum l
-                    | _ -> false)
-           then None
-           else Some c)
+    (* |> filter_map (fun c -> *)
+    (*        if *)
+    (*          Clause.to_iter c *)
+    (*          |> exists (fun l -> *)
+    (*                 match Assignment.Map.find_opt l a with *)
+    (*                 | Some x -> *)
+    (*                     Literal.signum (Assignment.literal x) = Literal.signum l *)
+    (*                 | _ -> false) *)
+    (*        then None *)
+    (*        else Some c) *)
     |> fold add_clause f
   in
   { f' with database = db }
