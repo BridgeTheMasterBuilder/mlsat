@@ -98,6 +98,8 @@ let add_clause
     watchers = watchers';
   }
 
+(* TODO don't add the learned clauses twice, need to keep the original formula and the learned clauses separate, or completely
+   overwrite the clauses even? *)
 let add_learned_clauses ({ assignments = a; _ } as f) db =
   let f' =
     let open Iter in
