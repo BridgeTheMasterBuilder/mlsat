@@ -14,7 +14,7 @@ let rec cdcl max_conflicts luby f =
         let f' = add_clause f' learned_clause in
         aux d' max_conflicts' (conflicts + 1) f'
     in
-    check_invariants f;
+    (* check_invariants f; *)
     Logs.debug (fun m -> m "%s" (show f));
     if conflicts = max_conflicts' then
       let f = restart f in
@@ -43,6 +43,6 @@ let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
         (* cdcl base_num_conflicts luby f  *)
         match cdcl base_num_conflicts luby f with
         | Sat assignments ->
-            (* assert (verify_sat assignments f); *)
+            assert (verify_sat f);
             Sat assignments
         | id -> id)

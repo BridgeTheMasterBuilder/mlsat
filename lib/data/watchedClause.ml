@@ -124,21 +124,12 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
                      },
                      if other_watcher_needs_updating then `Continue else `Stop
                    )
-                   (* else if Option.is_none watcher2_change then *)
-                   (*   ( { *)
-                   (*       index = index''; *)
-                   (*       watcher1_change; *)
-                   (*       watcher2_change = Some l; *)
-                   (*       clause_falsified = false; *)
-                   (*     }, *)
-                   (*     `Stop ) *)
                | Some l'' ->
                    ( {
                        index = index'';
                        watcher1_change;
                        watcher2_change =
                          (if Literal.equal l' l'' then None else Some l');
-                       (* TODO ? *)
                        clause_falsified = false;
                      },
                      `Stop )))

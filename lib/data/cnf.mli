@@ -15,4 +15,4 @@ val preprocess : formula -> formula
 val restart : formula -> formula
 val show : formula -> string
 val unit_propagate : formula -> (formula, Clause.t * formula) Result.t
-val verify_sat : Literal.t list -> formula -> bool
+val verify_sat : formula -> bool

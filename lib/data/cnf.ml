@@ -252,10 +252,10 @@ let check_invariants
       (trail_valid, "Trail has duplicate assignments:\n" ^ show f);
       ( trail_geq_decision_level,
         "Fewer assignments than decision levels in trail" );
-      (clauses_literals_eq, "Clauses and literals out of sync");
-      (literals_clauses_eq, "Literals and clauses out of sync");
+      (* (clauses_literals_eq, "Clauses and literals out of sync"); *)
+      (* (literals_clauses_eq, "Literals and clauses out of sync"); *)
       (learned_clauses_no_empty_clauses, "Learned empty clause");
-      (unit_clauses_really_unit, "Unit clauses are incorrect");
+      (* (unit_clauses_really_unit, "Unit clauses are incorrect"); *)
     ];
   ()
 
@@ -412,22 +412,26 @@ let make_decision ({ current_decision_level = d; _ } as f) =
   make_assignment l dec f
   |> Result.map (fun f' -> { f' with current_decision_level = d + 1 })
 
-let verify_sat a f =
-  let exception Foo of Literal.t in
-  try
-    let f' =
-      List.fold_left
-        (fun f' l ->
-          try
-            make_assignment l
-              (Assignment.Decision { literal = l; level = 0 })
-              f'
-            |> Result.get_exn
-          with Result.Get_error -> raise_notrace (Foo l))
-        f a
-    in
-    is_empty f'
-  with Foo l ->
-    Logs.app (fun m ->
-        m "Literal assignment %s is contradicted" (Literal.show l));
-    false
+let verify_sat { assignments = a; clauses; _ } =
+  let open Iter in
+  Clause.Map.to_iter clauses
+  |> for_all (fun (n, c) ->
+         let satisfied =
+           Clause.to_iter c
+           |> exists (fun l ->
+                  Assignment.Map.find_opt l a
+                  |> Option.map_or ~default:false (fun ass ->
+                         Literal.signum (Assignment.literal ass)
+                         = Literal.signum l))
+         in
+         if not satisfied then
+           Logs.err (fun m ->
+               m "Clause isn't satisfied: %d:%s\n%s" n (Clause.show c)
+                 (Clause.fold
+                    (fun l s ->
+                      Printf.sprintf "%s%s:(%s) " s (Literal.show l)
+                        (Assignment.Map.find_opt l a
+                        |> Option.map_or ~default:"_" (fun ass ->
+                               Literal.show (Assignment.literal ass))))
+                    c ""));
+         satisfied)

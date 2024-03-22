@@ -21,7 +21,7 @@ let run filename config =
     Logs.set_level (Some Debug))
   else (
     Logs.set_reporter (Logs_fmt.reporter ());
-    Logs.set_level (Some App));
+    Logs.set_level (Some Error));
   try
     match solve p with
     | Sat _ -> print_endline "SAT"
