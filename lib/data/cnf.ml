@@ -87,16 +87,16 @@ let add_learned_clauses ({ assignments = a; _ } as f) db =
   let f' =
     let open Iter in
     List.to_iter db
-    |> filter_map (fun c ->
-           if
-             Clause.to_iter c
-             |> exists (fun l ->
-                    match Assignment.Map.find_opt l a with
-                    | Some x ->
-                        Literal.signum (Assignment.literal x) = Literal.signum l
-                    | _ -> false)
-           then None
-           else Some c)
+    (* |> filter_map (fun c -> *)
+    (*        if *)
+    (*          Clause.to_iter c *)
+    (*          |> exists (fun l -> *)
+    (*                 match Assignment.Map.find_opt l a with *)
+    (*                 | Some x -> *)
+    (*                     Literal.signum (Assignment.literal x) = Literal.signum l *)
+    (*                 | _ -> false) *)
+    (*        then None *)
+    (*        else Some c) *)
     |> fold add_clause f
   in
   { f' with database = db }
@@ -138,6 +138,7 @@ let backtrack
     |> filter (fun d' -> d' < d)
     |> max |> Option.value ~default:0
   in
+  let d' = 0 in
   let _, f' =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
