@@ -124,22 +124,26 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
-        match Assignment.(Map.find_opt l a) with
-        | Some (Decision _) -> aux q' (Clause.add l c) history
-        | Some (Implication { implicant = ls'; level = d'; _ }) ->
-            if d' < d then aux q' (Clause.add l c) history
-            else
-              let open Iter in
-              let unseen =
-                Clause.to_iter ls'
-                |> filter (fun l'' -> not Literal.(Set.mem (var l'') history))
-              in
-              let q'' = CCFQueue.add_iter_back q' unseen in
-              let history' =
-                Literal.(Set.(union history (map var (of_iter unseen))))
-              in
-              aux q'' c history'
-        | None -> aux q' c history)
+        if CCFQueue.is_empty q' then Clause.add l c
+        else
+          match Assignment.(Map.find_opt l a) with
+          | Some (Decision { literal = l'; _ }) ->
+              aux q' (Clause.add (Literal.neg l') c) history
+          | Some (Implication { literal = l'; implicant = ls'; level = d'; _ })
+            ->
+              if d' < d then aux q' (Clause.add (Literal.neg l') c) history
+              else
+                let open Iter in
+                let unseen =
+                  Clause.to_iter ls'
+                  |> filter (fun l'' -> not Literal.(Set.mem (var l'') history))
+                in
+                let q'' = CCFQueue.add_iter_back q' unseen in
+                let history' =
+                  Literal.(Set.(union history (map var (of_iter unseen))))
+                in
+                aux q'' c history'
+          | None -> aux q' c history)
   in
   aux (CCFQueue.of_list ls) Clause.empty
     (Literal.Set.of_list (List.map Literal.var ls))
@@ -157,6 +161,8 @@ let backtrack
     |> filter (fun d' -> d' < d)
     |> max |> Option.value ~default:0
   in
+  let d' = 0 in
+  (* TODO *)
   let _, f' =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
@@ -385,6 +391,59 @@ let make_assignment l ass
     Ok f'
   with Conflict (c, f) -> Error (c, f)
 
+let make_assignment l ass
+    ({
+       clauses;
+       occur;
+       frequency;
+       assignments = a;
+       unit_clauses = uc;
+       trail = t;
+       _;
+     } as f) =
+  let exception Conflict of Clause.t * formula in
+  let a' = Assignment.Map.add l ass a in
+  let t' = (ass, f) :: t in
+  let f = { f with assignments = a'; trail = t' } in
+  try
+    let uc', f' =
+      match Occurrence.Map.find_opt (Literal.neg l) occur with
+      | Some cs ->
+          IntSet.fold
+            (fun c (uc', f') ->
+              let ls = Clause.Map.find c clauses in
+              let uc'', f'', unassigned, falsified, satisfied =
+                Clause.fold
+                  (fun l (uc'', f'', unassigned', falsified', satisfied') ->
+                    match Assignment.Map.find_opt l a' with
+                    | Some ass' ->
+                        let l' = Assignment.literal ass' in
+                        let falso = Literal.signum l <> Literal.signum l' in
+                        ( uc'',
+                          f'',
+                          unassigned',
+                          falsified' && falso,
+                          satisfied' || not falso )
+                    | None ->
+                        (uc'', f'', Clause.add l unassigned', false, satisfied'))
+                  ls
+                  (uc', f', Clause.empty, true, false)
+              in
+              if satisfied then (uc'', f'')
+              else if falsified then raise_notrace (Conflict (ls, f))
+              else if Clause.size unassigned = 1 then ((c, ls) :: uc'', f'')
+              else (uc'', f''))
+            cs (uc, f)
+      | None -> (uc, f)
+    in
+    let frequency' =
+      Frequency.Map.remove_literal l frequency
+      |> Frequency.Map.remove_literal (Literal.neg l)
+    in
+    let f' = { f' with frequency = frequency'; unit_clauses = uc' } in
+    Ok f'
+  with Conflict (c, f) -> Error (c, f)
+
 let eliminate_pure_literals ({ occur; _ } as f) =
   let f' =
     let open Iter in
@@ -403,8 +462,8 @@ let eliminate_pure_literals ({ occur; _ } as f) =
   { f' with trail = [] }
 
 (* TODO *)
-(* let preprocess = eliminate_pure_literals *)
-let preprocess = Fun.id
+let preprocess = eliminate_pure_literals
+(* let preprocess = Fun.id *)
 
 let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
   match ucs with
