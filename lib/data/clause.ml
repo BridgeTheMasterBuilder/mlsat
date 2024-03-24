@@ -1,4 +1,5 @@
 (* open Common *)
+open Batteries
 include Literal.Set
 
 type clause = t
@@ -10,22 +11,25 @@ let show c =
   "( " ^ fold (fun l s -> Printf.sprintf "%s%s " s (Literal.show l)) c "" ^ ")"
 
 module Map = struct
-  type t = clause CCVector.vector
+  type t = clause BatDynArray.t
   type key = int
 
   let add c m =
-    CCVector.push m c;
+    BatDynArray.add m c;
     m
 
-  let empty = CCVector.create ()
-  let find c m = CCVector.get m c
-  let is_empty = CCVector.is_empty
+  let copy = BatDynArray.copy
+  let empty = BatDynArray.create ()
+  let find c m = BatDynArray.get m c
+  let is_empty = BatDynArray.empty
 
   let show map_str =
-    CCVector.foldi
-      (fun c s ls -> Printf.sprintf "%s%d:%s\n" s c (show ls))
+    BatDynArray.fold_lefti
+      (fun s c ls -> Printf.sprintf "%s%d:%s\n" s c (show ls))
       "" map_str
 
-  let size = CCVector.length
-  let to_iter m = CCVector.to_iter m |> Iter.mapi (fun i x -> (i, x))
+  let size = BatDynArray.length
+
+  let to_iter m =
+    BatDynArray.to_list m |> Iter.of_list |> Iter.mapi (fun i x -> (i, x))
 end

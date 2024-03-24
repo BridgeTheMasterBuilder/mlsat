@@ -2,6 +2,7 @@ open Common
 
 type formula = {
   clauses : Clause.Map.t;
+  original : Clause.Map.t;
   occur : Occurrence.Map.t;
   frequency : Frequency.Map.t;
   unit_clauses : (int * Clause.t) list;
@@ -29,6 +30,8 @@ let show
   sprintf
     "Clauses:\n\
      %s\n\
+     Original:\n\
+     %s\n\
      Literals:\n\
      %s\n\
      Frequency:\n\
@@ -43,6 +46,7 @@ let show
      Unit clauses:\n\
      %s\n"
     (if Clause.Map.is_empty clauses then "()" else Clause.Map.show clauses)
+    (if Clause.Map.is_empty clauses then "()" else Clause.Map.show f.original)
     (if Occurrence.Map.is_empty occur then "()" else Occurrence.Map.show occur)
     (if Frequency.Map.is_empty frequency then "()"
      else Frequency.Map.show frequency)
@@ -100,7 +104,7 @@ let add_clause
 
 (* TODO don't add the learned clauses twice, need to keep the original formula and the learned clauses separate, or completely
    overwrite the clauses even? *)
-let add_learned_clauses ({ assignments = a; _ } as f) db =
+let add_learned_clauses ({ original; assignments = a; _ } as f) db =
   let f' =
     let open Iter in
     List.to_iter db
@@ -114,7 +118,7 @@ let add_learned_clauses ({ assignments = a; _ } as f) db =
     (*                 | _ -> false) *)
     (*        then None *)
     (*        else Some c) *)
-    |> fold add_clause f
+    |> fold add_clause { f with clauses = Clause.Map.copy original }
   in
   { f' with database = db }
 
@@ -302,7 +306,7 @@ let choose_literal { frequency; _ } =
 
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
 
-let of_list _v _c =
+let of_list _v _c l =
   let rec aux f = function
     | [] -> f
     | c :: cs ->
@@ -310,18 +314,23 @@ let of_list _v _c =
         let f' = add_clause f clause in
         aux f' cs
   in
-  aux
-    {
-      clauses = Clause.Map.empty;
-      occur = Occurrence.Map.empty;
-      frequency = Frequency.Map.empty;
-      current_decision_level = 0;
-      assignments = Assignment.Map.empty;
-      trail = [];
-      database = [];
-      unit_clauses = [];
-      watchers = WatchedClause.Map.empty;
-    }
+  let f =
+    aux
+      {
+        clauses = Clause.Map.empty;
+        original = Clause.Map.empty;
+        occur = Occurrence.Map.empty;
+        frequency = Frequency.Map.empty;
+        current_decision_level = 0;
+        assignments = Assignment.Map.empty;
+        trail = [];
+        database = [];
+        unit_clauses = [];
+        watchers = WatchedClause.Map.empty;
+      }
+      l
+  in
+  { f with original = Clause.Map.copy f.clauses }
 
 let restart ({ trail = t; database = db; _ } as f) =
   if List.is_empty t then f

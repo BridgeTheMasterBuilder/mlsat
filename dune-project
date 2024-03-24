@@ -27,7 +27,8 @@
   (iter (>= 1.7))
   (cmdliner (>= 1.2.0))
   (psq (>= 0.2.1))
-  (logs (>= 0.7.0)))
+  (logs (>= 0.7.0))
+  (batteries (>= 3.8.0)))
  (tags
   (topics "to describe" your project)))
 
