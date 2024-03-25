@@ -95,15 +95,23 @@ let add_clause
   in
   (* TODO why does this break? *)
   let uc' =
-    let unassigned =
-      Clause.to_iter clause
-      |> Iter.filter_map (fun l ->
-             match Assignment.Map.find_opt l a with
-             | Some _ -> None
-             | None -> Some l)
-      |> Clause.of_iter
+    let unassigned, _, satisfied =
+      Clause.fold
+        (fun l (unassigned', falsified', satisfied') ->
+          match Assignment.Map.find_opt l a with
+          | Some ass' ->
+              let l' = Assignment.literal ass' in
+              let falso = Literal.signum l <> Literal.signum l' in
+              (unassigned', falsified' && falso, satisfied' || not falso)
+          | None -> (Clause.add l unassigned', false, satisfied'))
+        clause
+        (Clause.empty, true, false)
     in
-    if Clause.size unassigned = 1 then CCFQueue.snoc uc (n, clause) else uc
+    if satisfied then uc'
+    else if Clause.size unassigned = 1 then (
+      Logs.debug (fun m -> m "Clause %d is ready for unit propagation" n);
+      CCFQueue.snoc uc' (n, clause))
+    else uc'
   in
   {
     f with
@@ -142,7 +150,13 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
     | None -> c
     | Some (l, q') -> (
         Logs.debug (fun m -> m "Examining literal %s" (Literal.show l));
-        if CCFQueue.is_empty q' then Clause.add l c
+        if CCFQueue.is_empty q' then (
+          let ass =
+            Assignment.Map.find_opt l a |> Option.get_exn_or "ANALYZE"
+          in
+          Logs.debug (fun m -> m "%s" (Assignment.show ass));
+          Logs.debug (fun m -> m "Found UIP");
+          Clause.add (Literal.neg (Assignment.literal ass)) c)
         else
           match Assignment.(Map.find_opt l a) with
           | Some (Decision { literal = l'; _ } as ass) ->
@@ -184,7 +198,7 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  let d' = 0 in
+  (* let d' = 0 in *)
   (* TODO *)
   let _, f' =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
@@ -474,32 +488,29 @@ let make_assignment l ass
           IntSet.fold
             (fun c (uc', f') ->
               let ls = Clause.Map.find c clauses in
-              let uc'', f'', unassigned, falsified, satisfied =
+              let unassigned, falsified, satisfied =
                 Clause.fold
-                  (fun l (uc'', f'', unassigned', falsified', satisfied') ->
+                  (fun l (unassigned', falsified', satisfied') ->
                     match Assignment.Map.find_opt l a' with
                     | Some ass' ->
                         let l' = Assignment.literal ass' in
                         let falso = Literal.signum l <> Literal.signum l' in
-                        ( uc'',
-                          f'',
-                          unassigned',
+                        ( unassigned',
                           falsified' && falso,
                           satisfied' || not falso )
-                    | None ->
-                        (uc'', f'', Clause.add l unassigned', false, satisfied'))
+                    | None -> (Clause.add l unassigned', false, satisfied'))
                   ls
-                  (uc', f', Clause.empty, true, false)
+                  (Clause.empty, true, false)
               in
-              if satisfied then (uc'', f'')
+              if satisfied then (uc', f')
               else if falsified then (
                 Logs.debug (fun m -> m "Clause %d is falsified" c);
                 raise_notrace (Conflict (ls, f)))
               else if Clause.size unassigned = 1 then (
                 Logs.debug (fun m ->
                     m "Clause %d is ready for unit propagation" c);
-                (CCFQueue.snoc uc'' (c, ls), f''))
-              else (uc'', f''))
+                (CCFQueue.snoc uc' (c, ls), f'))
+              else (uc', f'))
             cs (uc, f)
       | None -> (uc, f)
     in
