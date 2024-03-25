@@ -93,6 +93,18 @@ let add_clause
           uc )
     | None -> (watchers, (n, clause) :: uc)
   in
+  (* TODO why does this break? *)
+  let uc' =
+    let unassigned =
+      Clause.to_iter clause
+      |> Iter.filter_map (fun l ->
+             match Assignment.Map.find_opt l a with
+             | Some _ -> None
+             | None -> Some l)
+      |> Clause.of_iter
+    in
+    if Clause.size unassigned = 1 then (n, clause) :: uc else uc
+  in
   {
     f with
     clauses = clauses';
@@ -154,6 +166,7 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
 
 let assignments { assignments = a; _ } = Assignment.Map.assignments a
 
+(* TODO wtf is going on here? *)
 let backtrack
     { current_decision_level = d; assignments = a; trail = t; database = db; _ }
     learned_clause =
@@ -162,8 +175,9 @@ let backtrack
     Clause.to_iter learned_clause
     |> filter_map (fun l -> Assignment.Map.find_opt l a)
     |> map Assignment.level
-    |> filter (fun d' -> d' < d)
-    |> max |> Option.value ~default:0
+    (* |> filter (fun d' -> d' < d) *)
+    |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
+    |> drop 1 |> max |> Option.value ~default:0
   in
   let d' = 0 in
   (* TODO *)
