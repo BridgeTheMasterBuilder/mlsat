@@ -10,6 +10,8 @@ let rec cdcl max_conflicts luby f =
       if d = 0 then Unsat
       else
         let learned_clause = analyze_conflict f clause in
+        Logs.debug (fun m ->
+            m "Learning clause %s" (Clause.show learned_clause));
         let f', d' = backtrack f learned_clause in
         (* let f' = add_clause f' learned_clause in *)
         aux d' max_conflicts' (conflicts + 1) f'

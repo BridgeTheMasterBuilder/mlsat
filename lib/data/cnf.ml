@@ -5,7 +5,7 @@ type formula = {
   original : Clause.Map.t;
   occur : Occurrence.Map.t;
   frequency : Frequency.Map.t;
-  unit_clauses : (int * Clause.t) list;
+  unit_clauses : (int * Clause.t) CCFQueue.t;
   current_decision_level : int;
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
@@ -59,7 +59,7 @@ let show
        "" database)
     (if WatchedClause.Map.is_empty watchers then "()"
      else WatchedClause.Map.show watchers)
-    (List.fold_left
+    (CCFQueue.fold
        (fun acc (_, c) -> sprintf "%s%s\n" acc (Clause.show c))
        "" unit_clauses)
 
@@ -91,7 +91,7 @@ let add_clause
         ( WatchedClause.Map.add l1 watched_clause watchers
           |> WatchedClause.Map.add l2 watched_clause,
           uc )
-    | None -> (watchers, (n, clause) :: uc)
+    | None -> (watchers, CCFQueue.snoc uc (n, clause))
   in
   (* TODO why does this break? *)
   let uc' =
@@ -103,7 +103,7 @@ let add_clause
              | None -> Some l)
       |> Clause.of_iter
     in
-    if Clause.size unassigned = 1 then (n, clause) :: uc else uc
+    if Clause.size unassigned = 1 then CCFQueue.snoc uc (n, clause) else uc
   in
   {
     f with
@@ -135,18 +135,23 @@ let add_learned_clauses ({ original; assignments = a; _ } as f) db =
   { f' with database = db }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
+  Logs.debug (fun m -> m "Analyzing clause %s" (Clause.show clause));
   let ls = Clause.to_list clause in
   let rec aux q c history =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
+        Logs.debug (fun m -> m "Examining literal %s" (Literal.show l));
         if CCFQueue.is_empty q' then Clause.add l c
         else
           match Assignment.(Map.find_opt l a) with
-          | Some (Decision { literal = l'; _ }) ->
+          | Some (Decision { literal = l'; _ } as ass) ->
+              Logs.debug (fun m -> m "%s" (Assignment.show ass));
               aux q' (Clause.add (Literal.neg l') c) history
-          | Some (Implication { literal = l'; implicant = ls'; level = d'; _ })
-            ->
+          | Some
+              (Implication { literal = l'; implicant = ls'; level = d'; _ } as
+              ass) ->
+              Logs.debug (fun m -> m "%s" (Assignment.show ass));
               if d' < d then aux q' (Clause.add (Literal.neg l') c) history
               else
                 let open Iter in
@@ -187,7 +192,38 @@ let backtrack
   in
   let f' = { f' with frequency = Frequency.Map.decay f'.frequency } in
   let f'' = add_learned_clauses f' (learned_clause :: db) in
+  Logs.debug (fun m -> m "Backtracking to level %d" d');
   (f'', d')
+
+(* let backtrack *)
+(*     { *)
+(*       current_decision_level = d; *)
+(*       assignments = a; *)
+(*       trail = t; *)
+(*       database = db; *)
+(*       watchers; *)
+(*       _; *)
+(*     } learned_clause = *)
+(*   (\* TODO need to keep throwing away assignments until it becomes non-unit? *\) *)
+(*   let f', d' = *)
+(*     (\* let open Iter in *\) *)
+(*     List.find_map *)
+(*       (fun (ass, ({ assignments = a'; current_decision_level = d'; _ } as f')) -> *)
+(*         if *)
+(*           Assignment.was_decided_on_level ass d *)
+(*           (\* && Clause.to_iter learned_clause *\) *)
+(*           (\*    |> filter_count (fun l -> not (Assignment.Map.mem l a')) *\) *)
+(*           (\*    = 1 *\) *)
+(*         then Some (f', d') *)
+(*         else None) *)
+(*       t *)
+(*     |> Option.get_or *)
+(*          ~default:(Option.get_exn_or "BACKTRACK" (List.last_opt t) |> snd, 0) *)
+(*   in *)
+(*   let f' = { f' with frequency = Frequency.Map.decay f'.frequency; watchers } in *)
+(*   let f'' = add_learned_clauses f' (learned_clause :: db) in *)
+(*   Logs.debug (fun m -> m "Backtracking to level %d" d'); *)
+(*   (f'', d') *)
 
 let check_invariants
     ({
@@ -263,12 +299,11 @@ let check_invariants
     not (List.to_iter db |> exists (fun c -> Clause.is_empty c))
   in
   let unit_clauses_really_unit =
-    List.for_all
-      (fun (_, c) ->
-        Clause.to_iter c
-        |> filter_count (fun l -> not (Assignment.Map.mem l a))
-        = 1)
-      uc
+    CCFQueue.to_iter uc
+    |> Iter.for_all (fun (_, c) ->
+           Clause.to_iter c
+           |> filter_count (fun l -> not (Assignment.Map.mem l a))
+           = 1)
   in
   let watched_literals_are_watched =
     WatchedClause.Map.to_iter watchers
@@ -339,7 +374,7 @@ let of_list _v _c l =
         assignments = Assignment.Map.empty;
         trail = [];
         database = [];
-        unit_clauses = [];
+        unit_clauses = CCFQueue.empty;
         watchers = WatchedClause.Map.empty;
       }
       l
@@ -379,7 +414,10 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
         { f' with watchers = watchers' }
     | Unit { id; _ } ->
         Logs.debug (fun m -> m "Clause %d is ready for unit propagation" id);
-        { f' with unit_clauses = (id, ls) :: uc' (* watchers = watchers'; *) }
+        {
+          f' with
+          unit_clauses = CCFQueue.snoc uc' (id, ls) (* watchers = watchers'; *);
+        }
     | Falsified { id; _ } ->
         Logs.debug (fun m -> m "Clause %d is falsified" id);
         raise_notrace (Conflict (ls, f))
@@ -428,6 +466,7 @@ let make_assignment l ass
   let a' = Assignment.Map.add l ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
+  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
   try
     let uc', f' =
       match Occurrence.Map.find_opt (Literal.neg l) occur with
@@ -453,8 +492,13 @@ let make_assignment l ass
                   (uc', f', Clause.empty, true, false)
               in
               if satisfied then (uc'', f'')
-              else if falsified then raise_notrace (Conflict (ls, f))
-              else if Clause.size unassigned = 1 then ((c, ls) :: uc'', f'')
+              else if falsified then (
+                Logs.debug (fun m -> m "Clause %d is falsified" c);
+                raise_notrace (Conflict (ls, f)))
+              else if Clause.size unassigned = 1 then (
+                Logs.debug (fun m ->
+                    m "Clause %d is ready for unit propagation" c);
+                (CCFQueue.snoc uc'' (c, ls), f''))
               else (uc'', f''))
             cs (uc, f)
       | None -> (uc, f)
@@ -489,8 +533,8 @@ let preprocess = eliminate_pure_literals
 (* let preprocess = Fun.id *)
 
 let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
-  match ucs with
-  | (_, uc) :: ucs' -> (
+  match CCFQueue.take_front ucs with
+  | Some ((_, uc), ucs') -> (
       let f' = { f with unit_clauses = ucs' } in
       match
         Clause.to_iter uc
@@ -505,12 +549,13 @@ let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
                    |> Option.map_or ~default:0 Assignment.level)
             |> max |> Option.get_or ~default:0
           in
+          let d' = f.current_decision_level in
           let i =
             Assignment.Implication { literal = l; implicant = uc; level = d' }
           in
           make_assignment l i f' |> Result.flat_map unit_propagate
       | None -> unit_propagate f')
-  | [] -> Ok f
+  | None -> Ok f
 
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in

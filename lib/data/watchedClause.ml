@@ -49,6 +49,7 @@ let of_clause c id =
   let open Iter in
   let clause = Clause.to_iter c |> to_array in
   let size = Array.length clause in
+  assert (size > 0);
   let watchers = if size >= 2 then Some (clause.(0), clause.(1)) else None in
   { id; clause; size; index = 2 mod size; watchers }
 
