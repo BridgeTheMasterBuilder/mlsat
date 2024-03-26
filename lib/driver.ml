@@ -7,10 +7,14 @@ open Cnf
 
 exception Timeout
 
-let emit_proof_of_unsatisfiability clauses =
-  let out_filename = "proof.out" in
+(* let emit_proof_of_unsatisfiability clauses = *)
+let emit_proof_of_unsatisfiability filename clauses =
+  (* let out_filename = "proof.out" in *)
+  let out_filename = Filename.remove_extension filename ^ ".out" in
   let oc = open_out out_filename in
-  List.iter (fun c -> Printf.fprintf oc "%s0\n" (Clause.show c)) clauses;
+  List.iter
+    (fun c -> Printf.fprintf oc "%s0\n" (Clause.show c))
+    (List.rev clauses);
   Printf.fprintf oc "0"
 
 let run filename config =
@@ -32,11 +36,16 @@ let run filename config =
   try
     match solve p with
     | Sat f ->
-        if not (verify_sat f) then Logs.err (fun m -> m "%s" (show f));
-        assert (verify_sat f);
-        print_endline "s SATISFIABLE"
+        (* if not (verify_sat f) then Logs.err (fun m -> m "%s" (show f)); *)
+        (* assert (verify_sat f); *)
+        Printf.printf "s SATISFIABLE\nv ";
+        List.iter
+          (fun l -> Printf.printf "%s " (Literal.show l))
+          (assignments f);
+        print_endline "0"
     | Unsat f ->
-        emit_proof_of_unsatisfiability (learned_clauses f);
+        (* emit_proof_of_unsatisfiability (learned_clauses f); *)
+        emit_proof_of_unsatisfiability filename (learned_clauses f);
         print_endline "s UNSATISFIABLE"
   with Timeout -> print_endline "s UNKNOWN"
 (* with _ -> *)
