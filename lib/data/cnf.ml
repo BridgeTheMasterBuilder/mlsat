@@ -55,12 +55,12 @@ let show
        (fun acc (ass, _) -> sprintf "%s%s" acc (Assignment.show ass))
        "" f.trail)
     (List.fold_left
-       (fun acc c -> sprintf "%s%s\n" acc (Clause.show c))
+       (fun acc c -> sprintf "%s( %s)\n" acc (Clause.show c))
        "" database)
     (if WatchedClause.Map.is_empty watchers then "()"
      else WatchedClause.Map.show watchers)
     (CCFQueue.fold
-       (fun acc (_, c) -> sprintf "%s%s\n" acc (Clause.show c))
+       (fun acc (_, c) -> sprintf "%s( %s)\n" acc (Clause.show c))
        "" unit_clauses)
 
 let add_clause
@@ -143,7 +143,7 @@ let add_learned_clauses ({ original; assignments = a; _ } as f) db =
   { f' with database = db }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
-  Logs.debug (fun m -> m "Analyzing clause %s" (Clause.show clause));
+  Logs.debug (fun m -> m "Analyzing clause ( %s)" (Clause.show clause));
   let ls = Clause.to_list clause in
   let rec aux q c history =
     match CCFQueue.take_front q with
@@ -184,6 +184,7 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
     (Literal.Set.of_list (List.map Literal.var ls))
 
 let assignments { assignments = a; _ } = Assignment.Map.assignments a
+let learned_clauses { database; _ } = database
 
 (* TODO wtf is going on here? *)
 let backtrack
@@ -590,7 +591,7 @@ let verify_sat { assignments = a; clauses; _ } =
          in
          if not satisfied then
            Logs.err (fun m ->
-               m "Clause isn't satisfied: %d:%s\n%s" n (Clause.show c)
+               m "Clause isn't satisfied: %d:%s\n( %s)" n (Clause.show c)
                  (Clause.fold
                     (fun l s ->
                       Printf.sprintf "%s%s:(%s) " s (Literal.show l)

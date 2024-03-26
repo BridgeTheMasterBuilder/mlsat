@@ -38,13 +38,13 @@ else
 	end
 
 	echo -n $file "- "
-	if test $output = "solver timed out"
+	if [ $output = "s unknown" ]
 	   	set_color -o yellow
 		echo "TIME OUT"
 	   	set_color normal
 		# TODO race condition
 		# set -Ux timeout (math $timeout + 1)
-	else if test $type != $output
+	else if [ $type = sat ] && [ $output != "s satisfiable" ] || [ $type = unsat ] && [ $output != "s unsatisfiable" ]
 	   	set_color -o red
 		echo -n "FAIL: "
 	   	set_color normal

@@ -15,7 +15,7 @@ let show (a : assignment) =
       Printf.sprintf "\t%s because of decision on level %d\n"
         (Literal.show literal) level
   | Implication { literal; level; implicant } ->
-      Printf.sprintf "\t%s because of clause %s - implied at level %d\n"
+      Printf.sprintf "\t%s because of clause ( %s) - implied at level %d\n"
         (Literal.show literal) (Clause.show implicant) level
 
 let was_decided_on_level a d =

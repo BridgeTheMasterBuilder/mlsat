@@ -2,12 +2,12 @@ open Data
 open Cnf
 open Problem
 
-type result = Sat of Literal.t list | Unsat
+type result = Sat of formula | Unsat of formula
 
 let rec cdcl max_conflicts luby f =
   let rec aux d max_conflicts' conflicts f =
     let handle (clause, f) =
-      if d = 0 then Unsat
+      if d = 0 then Unsat f
       else
         let learned_clause = analyze_conflict f clause in
         Logs.debug (fun m ->
@@ -26,10 +26,7 @@ let rec cdcl max_conflicts luby f =
       match unit_propagate f with
       | Error conflict -> handle conflict
       | Ok f -> (
-          if is_empty f then (
-            if not (verify_sat f) then Logs.err (fun m -> m "%s" (show f));
-            assert (verify_sat f);
-            Sat (assignments f))
+          if is_empty f then Sat f
           else
             match make_decision f with
             | Error conflict -> handle conflict
@@ -39,9 +36,9 @@ let rec cdcl max_conflicts luby f =
 
 let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
   match unit_propagate f with
-  | Error _ -> Unsat
+  | Error (_, f) -> Unsat f
   | Ok f ->
-      if is_empty f then Sat (assignments f)
+      if is_empty f then Sat f
       else
         let luby = Luby.create base_num_conflicts grow_factor in
         let f = preprocess f in

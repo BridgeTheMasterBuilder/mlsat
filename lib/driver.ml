@@ -2,9 +2,16 @@ open Frontend
 open Solver
 open Sys
 open Unix
-(* open Data.Common *)
+open Data
+open Cnf
 
 exception Timeout
+
+let emit_proof_of_unsatisfiability clauses =
+  let out_filename = "proof.out" in
+  let oc = open_out out_filename in
+  List.iter (fun c -> Printf.fprintf oc "%s0\n" (Clause.show c)) clauses;
+  Printf.fprintf oc "0"
 
 let run filename config =
   let lexbuf = Lexing.from_channel (open_in filename) in
@@ -24,9 +31,14 @@ let run filename config =
     Logs.set_level (Some Error));
   try
     match solve p with
-    | Sat _ -> print_endline "SAT"
-    | Unsat -> print_endline "UNSAT"
-  with Timeout -> print_endline "Solver timed out"
+    | Sat f ->
+        if not (verify_sat f) then Logs.err (fun m -> m "%s" (show f));
+        assert (verify_sat f);
+        print_endline "s SATISFIABLE"
+    | Unsat f ->
+        emit_proof_of_unsatisfiability (learned_clauses f);
+        print_endline "s UNSATISFIABLE"
+  with Timeout -> print_endline "s UNKNOWN"
 (* with _ -> *)
 (*   print_endline "ERROR"; *)
 (*   flush stdout *)
