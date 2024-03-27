@@ -413,20 +413,15 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
     Logs.debug (fun m ->
         m "Updating watchers for clause %d:(%s )" id (Clause.show ls));
     match WatchedClause.update l a c with
-    | WatcherChange (w1, w1', w2, w2', c') ->
+    | WatcherChange (w1, w1', w2, c') ->
         Logs.debug (fun m ->
             m "Moving watcher from %s to %s (other watcher is %s)"
-              (Literal.show w1) (Literal.show w1') (Literal.show w2'));
-        if not (Literal.equal w2 w2') then
-          Logs.debug (fun m ->
-              m "Moving watcher from %s to %s (other watcher is %s)"
-                (Literal.show w2) (Literal.show w2') (Literal.show w1'));
-        assert (not (Literal.equal w1' w2'));
+              (Literal.show w1) (Literal.show w1') (Literal.show w2));
         let watchers' =
           WatchedClause.Map.remove w1 c watchers'
           |> WatchedClause.Map.remove w2 c (* TODO *)
           |> WatchedClause.Map.add w1' c'
-          |> WatchedClause.Map.add w2' c'
+          |> WatchedClause.Map.add w2 c'
         in
         { f' with watchers = watchers' }
     | Unit { id; _ } ->
@@ -438,6 +433,7 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
     | Falsified { id; _ } ->
         Logs.debug (fun m -> m "Clause %d is falsified" id);
         raise_notrace (Conflict (ls, f))
+    | NoChange -> f'
   in
   match WatchedClause.Map.find_opt l watchers with
   | Some cs -> WatchedClause.Set.fold (fun c f' -> update_watcher l c f') cs f
