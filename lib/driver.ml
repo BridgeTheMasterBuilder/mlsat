@@ -45,7 +45,10 @@ let run filename config =
         print_endline "0"
     | Unsat f ->
         (* emit_proof_of_unsatisfiability (learned_clauses f); *)
-        emit_proof_of_unsatisfiability filename (learned_clauses f);
+        Option.iter
+          (fun filename ->
+            emit_proof_of_unsatisfiability filename (learned_clauses f))
+          config.emit_proof;
         print_endline "s UNSATISFIABLE"
   with Timeout -> print_endline "s UNKNOWN"
 (* with _ -> *)

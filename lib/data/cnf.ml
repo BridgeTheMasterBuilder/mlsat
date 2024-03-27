@@ -127,7 +127,7 @@ let add_clause
 let add_learned_clauses ({ original; assignments = a; _ } as f) db =
   let f' =
     let open Iter in
-    List.to_iter db
+    List.to_iter (List.rev db)
     (* |> filter_map (fun c -> *)
     (*        if *)
     (*          Clause.to_iter c *)
@@ -410,6 +410,8 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
   let update_watcher l (({ id; _ } : WatchedClause.t) as c)
       ({ unit_clauses = uc'; watchers = watchers'; _ } as f') =
     let ls = Clause.Map.find id clauses in
+    Logs.debug (fun m ->
+        m "Updating watchers for clause %d:(%s )" id (Clause.show ls));
     match WatchedClause.update l a c with
     | WatcherChange (w1, w1', w2, w2', c') ->
         Logs.debug (fun m ->
