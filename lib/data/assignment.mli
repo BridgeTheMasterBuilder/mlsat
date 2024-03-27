@@ -16,6 +16,9 @@ module Map : sig
   val to_iter : t -> (key * assignment) Iter.iter
 end
 
+val is_false : Literal.t -> Map.t -> bool
+val is_true : Literal.t -> Map.t -> bool
+val is_undefined : Literal.t -> Map.t -> bool
 val level : t -> int
 val literal : t -> Literal.t
 val show : t -> string

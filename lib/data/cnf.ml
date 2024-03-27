@@ -94,25 +94,25 @@ let add_clause
     | None -> (watchers, CCFQueue.snoc uc (n, clause))
   in
   (* TODO why does this break? *)
-  let uc' =
-    let unassigned, _, satisfied =
-      Clause.fold
-        (fun l (unassigned', falsified', satisfied') ->
-          match Assignment.Map.find_opt l a with
-          | Some ass' ->
-              let l' = Assignment.literal ass' in
-              let falso = Literal.signum l <> Literal.signum l' in
-              (unassigned', falsified' && falso, satisfied' || not falso)
-          | None -> (Clause.add l unassigned', false, satisfied'))
-        clause
-        (Clause.empty, true, false)
-    in
-    if satisfied then uc'
-    else if Clause.size unassigned = 1 then (
-      Logs.debug (fun m -> m "Clause %d is ready for unit propagation" n);
-      CCFQueue.snoc uc' (n, clause))
-    else uc'
-  in
+  (* let uc' = *)
+  (*   let unassigned, _, satisfied = *)
+  (*     Clause.fold *)
+  (*       (fun l (unassigned', falsified', satisfied') -> *)
+  (*         match Assignment.Map.find_opt l a with *)
+  (*         | Some ass' -> *)
+  (*             let l' = Assignment.literal ass' in *)
+  (*             let falso = Literal.signum l <> Literal.signum l' in *)
+  (*             (unassigned', falsified' && falso, satisfied' || not falso) *)
+  (*         | None -> (Clause.add l unassigned', false, satisfied')) *)
+  (*       clause *)
+  (*       (Clause.empty, true, false) *)
+  (*   in *)
+  (*   if satisfied then uc' *)
+  (*   else if Clause.size unassigned = 1 then ( *)
+  (*     Logs.debug (fun m -> m "Clause %d is ready for unit propagation" n); *)
+  (*     CCFQueue.snoc uc' (n, clause)) *)
+  (*   else uc' *)
+  (* in *)
   {
     f with
     clauses = clauses';
@@ -469,61 +469,61 @@ let make_assignment l ass
     Ok f'
   with Conflict (c, f) -> Error (c, f)
 
-let make_assignment l ass
-    ({
-       clauses;
-       occur;
-       frequency;
-       assignments = a;
-       unit_clauses = uc;
-       trail = t;
-       _;
-     } as f) =
-  let exception Conflict of Clause.t * formula in
-  let a' = Assignment.Map.add l ass a in
-  let t' = (ass, f) :: t in
-  let f = { f with assignments = a'; trail = t' } in
-  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
-  try
-    let uc', f' =
-      match Occurrence.Map.find_opt (Literal.neg l) occur with
-      | Some cs ->
-          IntSet.fold
-            (fun c (uc', f') ->
-              let ls = Clause.Map.find c clauses in
-              let unassigned, falsified, satisfied =
-                Clause.fold
-                  (fun l (unassigned', falsified', satisfied') ->
-                    match Assignment.Map.find_opt l a' with
-                    | Some ass' ->
-                        let l' = Assignment.literal ass' in
-                        let falso = Literal.signum l <> Literal.signum l' in
-                        ( unassigned',
-                          falsified' && falso,
-                          satisfied' || not falso )
-                    | None -> (Clause.add l unassigned', false, satisfied'))
-                  ls
-                  (Clause.empty, true, false)
-              in
-              if satisfied then (uc', f')
-              else if falsified then (
-                Logs.debug (fun m -> m "Clause %d is falsified" c);
-                raise_notrace (Conflict (ls, f)))
-              else if Clause.size unassigned = 1 then (
-                Logs.debug (fun m ->
-                    m "Clause %d is ready for unit propagation" c);
-                (CCFQueue.snoc uc' (c, ls), f'))
-              else (uc', f'))
-            cs (uc, f)
-      | None -> (uc, f)
-    in
-    let frequency' =
-      Frequency.Map.remove_literal l frequency
-      |> Frequency.Map.remove_literal (Literal.neg l)
-    in
-    let f' = { f' with frequency = frequency'; unit_clauses = uc' } in
-    Ok f'
-  with Conflict (c, f) -> Error (c, f)
+(* let make_assignment l ass *)
+(*     ({ *)
+(*        clauses; *)
+(*        occur; *)
+(*        frequency; *)
+(*        assignments = a; *)
+(*        unit_clauses = uc; *)
+(*        trail = t; *)
+(*        _; *)
+(*      } as f) = *)
+(*   let exception Conflict of Clause.t * formula in *)
+(*   let a' = Assignment.Map.add l ass a in *)
+(*   let t' = (ass, f) :: t in *)
+(*   let f = { f with assignments = a'; trail = t' } in *)
+(*   Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass)); *)
+(*   try *)
+(*     let uc', f' = *)
+(*       match Occurrence.Map.find_opt (Literal.neg l) occur with *)
+(*       | Some cs -> *)
+(*           IntSet.fold *)
+(*             (fun c (uc', f') -> *)
+(*               let ls = Clause.Map.find c clauses in *)
+(*               let unassigned, falsified, satisfied = *)
+(*                 Clause.fold *)
+(*                   (fun l (unassigned', falsified', satisfied') -> *)
+(*                     match Assignment.Map.find_opt l a' with *)
+(*                     | Some ass' -> *)
+(*                         let l' = Assignment.literal ass' in *)
+(*                         let falso = Literal.signum l <> Literal.signum l' in *)
+(*                         ( unassigned', *)
+(*                           falsified' && falso, *)
+(*                           satisfied' || not falso ) *)
+(*                     | None -> (Clause.add l unassigned', false, satisfied')) *)
+(*                   ls *)
+(*                   (Clause.empty, true, false) *)
+(*               in *)
+(*               if satisfied then (uc', f') *)
+(*               else if falsified then ( *)
+(*                 Logs.debug (fun m -> m "Clause %d is falsified" c); *)
+(*                 raise_notrace (Conflict (ls, f))) *)
+(*               else if Clause.size unassigned = 1 then ( *)
+(*                 Logs.debug (fun m -> *)
+(*                     m "Clause %d is ready for unit propagation" c); *)
+(*                 (CCFQueue.snoc uc' (c, ls), f')) *)
+(*               else (uc', f')) *)
+(*             cs (uc, f) *)
+(*       | None -> (uc, f) *)
+(*     in *)
+(*     let frequency' = *)
+(*       Frequency.Map.remove_literal l frequency *)
+(*       |> Frequency.Map.remove_literal (Literal.neg l) *)
+(*     in *)
+(*     let f' = { f' with frequency = frequency'; unit_clauses = uc' } in *)
+(*     Ok f' *)
+(*   with Conflict (c, f) -> Error (c, f) *)
 
 let eliminate_pure_literals ({ occur; _ } as f) =
   let f' =

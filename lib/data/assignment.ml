@@ -4,22 +4,8 @@ type t =
 
 type assignment = t
 
-let level = function Decision { level; _ } | Implication { level; _ } -> level
-
 let literal = function
   | Decision { literal; _ } | Implication { literal; _ } -> literal
-
-let show (a : assignment) =
-  match a with
-  | Decision { literal; level } ->
-      Printf.sprintf "\t%s because of decision on level %d\n"
-        (Literal.show literal) level
-  | Implication { literal; level; implicant } ->
-      Printf.sprintf "\t%s because of clause ( %s) - implied at level %d\n"
-        (Literal.show literal) (Clause.show implicant) level
-
-let was_decided_on_level a d =
-  match a with Decision { level = d'; _ } -> d = d' | _ -> false
 
 module Map = struct
   include Literal.Map
@@ -34,3 +20,24 @@ module Map = struct
   let find_opt l = find_opt (Literal.var l)
   let mem l = mem (Literal.var l)
 end
+
+let value l a =
+  Map.find_opt l a
+  |> Option.map (fun ass -> Literal.signum (literal ass) = Literal.signum l)
+
+let is_false l a = value l a |> Option.map_or ~default:false not
+let is_true l a = value l a |> Option.map_or ~default:false Fun.id
+let is_undefined l a = value l a |> Option.is_none
+let level = function Decision { level; _ } | Implication { level; _ } -> level
+
+let show (a : assignment) =
+  match a with
+  | Decision { literal; level } ->
+      Printf.sprintf "\t%s because of decision on level %d\n"
+        (Literal.show literal) level
+  | Implication { literal; level; implicant } ->
+      Printf.sprintf "\t%s because of clause %s - implied at level %d\n"
+        (Literal.show literal) (Clause.show implicant) level
+
+let was_decided_on_level a d =
+  match a with Decision { level = d'; _ } -> d = d' | _ -> false
