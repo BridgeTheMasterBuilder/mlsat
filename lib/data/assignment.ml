@@ -25,6 +25,7 @@ let value l a =
   Map.find_opt l a
   |> Option.map (fun ass -> Literal.signum (literal ass) = Literal.signum l)
 
+(* TODO swap arguments? *)
 let is_false l a = value l a |> Option.map_or ~default:false not
 let is_true l a = value l a |> Option.map_or ~default:false Fun.id
 let is_undefined l a = value l a |> Option.is_none

@@ -42,12 +42,20 @@ end
 
 let fold f x { clause; _ } = Array.fold f x clause
 
-let of_clause c id =
+let of_clause a c id =
   (* TODO assert clause is not empty? *)
   let open Iter in
-  let clause = Clause.to_iter c |> to_array in
+  let clause_iter = Clause.to_iter c in
+  let clause = clause_iter |> to_array in
   let size = Array.length clause in
-  let watchers = if size >= 2 then Some (clause.(0), clause.(1)) else None in
+  (* let watchers = if size >= 2 then Some (clause.(0), clause.(1)) else None in *)
+  let watchers =
+    filter (fun l -> not (Assignment.is_false l a)) clause_iter
+    |> take 2 |> to_list
+    |> function
+    | [ w1; w2 ] -> Some (w1, w2)
+    | _ -> None
+  in
   { id; clause; size; index = 2 mod size; watchers }
 
 type update_result =
@@ -145,13 +153,27 @@ type update_result =
 (*           WatcherChange (w1, w1', w2, w2, c') *)
 (*       | _ -> Unit c) *)
 
+(* TODO *)
+(* mlsat: [DEBUG] Updating watchers for clause 128:(-45 -12 11 13 37 46  ) *)
+(* mlsat: [DEBUG] 128 (watching -45 and -12 - index 2): *)
+(* mlsat: [DEBUG] -45(_) *)
+(* mlsat: [DEBUG] -12(12) *)
+(* mlsat: [DEBUG] 11(-11) *)
+(* mlsat: [DEBUG] 13(_) *)
+(* mlsat: [DEBUG] 37(_) *)
+(* mlsat: [DEBUG] 46(_) *)
+(* mlsat: [DEBUG] Clause 128 is ready for unit propagation *)
 let update l a ({ clause; size; index; watchers; _ } as c) =
   let open CCEither in
   let open Iter in
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
   let other_watcher = if Literal.equal l w1 then Right w2 else Left w1 in
   let uneither = function Left w | Right w -> w in
-  if Assignment.is_true (uneither other_watcher) a then NoChange
+  if Assignment.is_true (uneither other_watcher) a then (
+    Logs.debug (fun m ->
+        m "Clause is satisfied by %s, doing nothing"
+          (Literal.show (uneither other_watcher)));
+    NoChange)
   else (
     Logs.debug (fun m ->
         m "%d (watching %s and %s - index %d): " c.id (Literal.show w1)
@@ -165,15 +187,22 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
                      Literal.show (Assignment.literal ass)))))
       c.clause;
     let result =
+      Logs.debug (fun m -> m "Trying to find a new watcher");
       0 -- (size - 1)
       |> find_map (fun i ->
              let index' = (index + i) mod size in
-             let l' = clause.(index) in
+             let l' = clause.(index') in
              if
                Assignment.is_false l' a
                || Literal.equal l' (uneither other_watcher)
-             then None
-             else Some (index', l'))
+             then (
+               Logs.debug (fun m ->
+                   m "No good, %s is either false or already watched"
+                     (Literal.show l'));
+               None)
+             else (
+               Logs.debug (fun m -> m "Found new watcher %s" (Literal.show l'));
+               Some (index', l')))
     in
     match result with
     | None ->

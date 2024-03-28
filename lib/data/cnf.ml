@@ -1,4 +1,4 @@
-open Common
+(* open Common *)
 
 type formula = {
   clauses : Clause.Map.t;
@@ -84,7 +84,7 @@ let add_clause
       frequency
   in
   (* TODO need to pass in the assignments here to see which watchers are valid *)
-  let watched_clause = WatchedClause.of_clause clause n in
+  let watched_clause = WatchedClause.of_clause a clause n in
   let watchers', uc' =
     match WatchedClause.watched_literals watched_clause with
     | Some (l1, l2) ->
