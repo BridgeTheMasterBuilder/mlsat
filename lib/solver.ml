@@ -13,7 +13,6 @@ let rec cdcl max_conflicts luby f =
         Logs.debug (fun m ->
             m "Learning clause %s" (Clause.show learned_clause));
         let f', d' = backtrack f learned_clause in
-        (* let f' = add_clause f' learned_clause in *)
         aux d' max_conflicts' (conflicts + 1) f'
     in
     (* check_invariants f; *)
@@ -43,8 +42,3 @@ let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
         let luby = Luby.create base_num_conflicts grow_factor in
         let f = preprocess f in
         cdcl base_num_conflicts luby f
-(* match cdcl base_num_conflicts luby f with *)
-(* | Sat assignments -> *)
-(*     assert (verify_sat f); *)
-(*     Sat assignments *)
-(* | id -> id) *)

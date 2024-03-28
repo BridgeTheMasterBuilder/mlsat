@@ -7,6 +7,7 @@ end
 module Map = struct
   include Psq.Make (Literal) (Frequency)
 
+  (* TODO tweak decay factor? *)
   let decay_factor = 0.99
 
   let add_many =

@@ -9,7 +9,6 @@ module M = struct
 
   let compare { clause = c1; id = id1; _ } { clause = c2; id = id2; _ } =
     compare id1 id2
-  (* Array.compare (fun l1 l2 -> Literal.compare l1 l2) c1 c2 *)
 end
 
 type t = M.t
@@ -29,7 +28,6 @@ module Map = struct
       | None -> Some (Set.singleton n))
 
   let remove l n =
-    (* Printf.printf "Removing %d from %s's watchlist\n" n.id (Literal.show l); *)
     update l (function
       | Some s -> Some (Set.remove n s)
       | None -> failwith "REMOVE")
