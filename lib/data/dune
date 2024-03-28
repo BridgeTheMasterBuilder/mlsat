@@ -1,4 +1,4 @@
 (library
  (name data)
- (libraries containers containers-data iter psq)
+ (libraries containers containers-data iter psq logs logs.fmt batteries)
  (flags :standard -open Containers))

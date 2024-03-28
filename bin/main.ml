@@ -16,11 +16,11 @@ let parse_args () =
           ~doc:"Time limit for determining satisfiability of a formula")
   in
 
-  (* let verbose = *)
-  (*   Arg.( *)
-  (*     value & flag *)
-  (*     & info [ "v"; "verbose" ] ~doc:"Whether to print debug information") *)
-  (* in *)
+  let verbose =
+    Arg.(
+      value & flag
+      & info [ "v"; "verbose" ] ~doc:"Whether to print debug information")
+  in
 
   (* let no_validate = *)
   (*   Arg.( *)
@@ -42,23 +42,35 @@ let parse_args () =
       & info [ "g"; "grow-factor" ] ~docv:"N"
           ~doc:"Growth factor of allowed conflicts between successive restarts")
   in
+  let emit_proof =
+    Arg.(
+      value
+      & opt ~vopt:(Some "proof.out") (some string) None
+      & info [ "p"; "emit-proof" ] ~docv:"FILENAME"
+          ~doc:"Produce a proof of unsatisfiability")
+  in
   let config =
     Term.(
       const
-        (fun time_limit (* verbose no_validate *) base_num_conflicts grow_factor
+        (fun
+          time_limit
+          verbose
+          (* no_validate *) base_num_conflicts
+          grow_factor
+          emit_proof
         ->
           {
             time_limit;
-            (* verbose; *)
+            verbose;
             (* no_validate; *)
             base_num_conflicts;
             grow_factor;
+            emit_proof;
           })
-      $ time_limit
-      (* $ verbose *)
+      $ time_limit $ verbose
       (* $ no_validate *)
       $ base_num_conflicts
-      $ grow_factor)
+      $ grow_factor $ emit_proof)
   in
   let info = Cmd.info "mlsat" in
   let cmd = Cmd.v info Term.(const Driver.run $ dimacs_file $ config) in

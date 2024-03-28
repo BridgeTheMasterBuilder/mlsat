@@ -2,9 +2,18 @@ open Frontend
 open Solver
 open Sys
 open Unix
-(* open Data.Common *)
+open Data
+open Cnf
 
 exception Timeout
+
+let emit_proof_of_unsatisfiability filename clauses =
+  let out_filename = Filename.remove_extension filename ^ ".out" in
+  let oc = open_out out_filename in
+  List.iter
+    (fun c -> Printf.fprintf oc "%s0\n" (Clause.show c))
+    (List.rev clauses);
+  Printf.fprintf oc "0"
 
 let run filename config =
   let lexbuf = Lexing.from_channel (open_in filename) in
@@ -16,11 +25,24 @@ let run filename config =
   set_signal sigalrm (Signal_handle (fun _ -> raise_notrace Timeout));
   setitimer ITIMER_REAL { it_value = config.time_limit; it_interval = 0.0 }
   |> ignore;
+  if config.verbose then (
+    Logs.set_reporter (Logs_fmt.reporter ());
+    Logs.set_level (Some Debug))
+  else (
+    Logs.set_reporter (Logs_fmt.reporter ());
+    Logs.set_level (Some Error));
   try
     match solve p with
-    | Sat -> print_endline "SAT"
-    | Unsat -> print_endline "UNSAT"
-  with Timeout -> print_endline "Solver timed out"
-(* with _ -> *)
-(*   print_endline "ERROR"; *)
-(*   flush stdout *)
+    | Sat f ->
+        Printf.printf "s SATISFIABLE\nv ";
+        List.iter
+          (fun l -> Printf.printf "%s " (Literal.show l))
+          (assignments f);
+        print_endline "0"
+    | Unsat f ->
+        Option.iter
+          (fun filename ->
+            emit_proof_of_unsatisfiability filename (learned_clauses f))
+          config.emit_proof;
+        print_endline "s UNSATISFIABLE"
+  with Timeout -> print_endline "s UNKNOWN"
