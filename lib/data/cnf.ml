@@ -1,9 +1,5 @@
-(* open Common *)
-
 type formula = {
   clauses : Clause.Map.t;
-  original : Clause.Map.t;
-  (* occur : Occurrence.Map.t; *)
   frequency : Frequency.Map.t;
   unit_clauses : (int * Clause.t) CCFQueue.t;
   current_decision_level : int;
@@ -18,7 +14,6 @@ exception Conflict of Clause.t * formula
 let show
     ({
        clauses;
-       (* occur; *)
        frequency;
        current_decision_level;
        database;
@@ -29,8 +24,6 @@ let show
   let open Printf in
   sprintf
     "Clauses:\n\
-     %s\n\
-     Original:\n\
      %s\n\
      Frequency:\n\
      %s\n\
@@ -44,8 +37,6 @@ let show
      Unit clauses:\n\
      %s\n"
     (if Clause.Map.is_empty clauses then "()" else Clause.Map.show clauses)
-    (if Clause.Map.is_empty clauses then "()" else Clause.Map.show f.original)
-    (* (if Occurrence.Map.is_empty occur then "()" else Occurrence.Map.show occur) *)
     (if Frequency.Map.is_empty frequency then "()"
      else Frequency.Map.show frequency)
     current_decision_level
@@ -62,18 +53,10 @@ let show
        "" unit_clauses)
 
 let add_clause
-    ({
-       clauses;
-       (* occur; *)
-       frequency;
-       unit_clauses = uc;
-       assignments = a;
-       watchers;
-       _;
-     } as f) clause =
+    ({ clauses; frequency; unit_clauses = uc; assignments = a; watchers; _ } as
+    f) clause =
   let n = Clause.Map.size clauses in
   let clauses' = Clause.Map.add clause clauses in
-  (* let occur' = Clause.fold (fun l -> Occurrence.Map.add l n) clause occur in *)
   let frequency' =
     Frequency.Map.add_many
       (Clause.to_iter clause
@@ -93,20 +76,10 @@ let add_clause
   {
     f with
     clauses = clauses';
-    (* occur = occur'; *)
     frequency = frequency';
     unit_clauses = uc';
     watchers = watchers';
   }
-
-let add_learned_clauses ({ original; _ } as f) db =
-  let f' =
-    let open Iter in
-    List.to_iter (List.rev db)
-    (* TODO find another solution apart from copying *)
-    |> fold add_clause { f with clauses = Clause.Map.copy original }
-  in
-  { f' with database = db }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   Logs.debug (fun m -> m "Analyzing clause ( %s)" (Clause.show clause));
@@ -152,7 +125,9 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
 let assignments { assignments = a; _ } = Assignment.Map.assignments a
 let learned_clauses { database; _ } = database
 
-let backtrack { assignments = a; trail = t; database = db; _ } learned_clause =
+let backtrack
+    { clauses; assignments = a; trail = t; database = db; watchers; _ }
+    learned_clause =
   let d' =
     let open Iter in
     Clause.to_iter learned_clause
@@ -165,8 +140,16 @@ let backtrack { assignments = a; trail = t; database = db; _ } learned_clause =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
   in
-  let f' = { f' with frequency = Frequency.Map.decay f'.frequency } in
-  let f'' = add_learned_clauses f' (learned_clause :: db) in
+  let f' =
+    {
+      f' with
+      clauses;
+      frequency = Frequency.Map.decay f'.frequency;
+      watchers;
+      database = learned_clause :: db;
+    }
+  in
+  let f'' = add_clause f' learned_clause in
   Logs.debug (fun m -> m "Backtracking to level %d" d');
   (f'', d')
 
@@ -299,7 +282,7 @@ let choose_literal { frequency; _ } =
 
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
 
-let of_list _v c l =
+let of_list _v c =
   let rec aux f = function
     | [] -> f
     | c :: cs ->
@@ -307,25 +290,19 @@ let of_list _v c l =
         let f' = add_clause f clause in
         aux f' cs
   in
-  let f =
-    aux
-      {
-        clauses = Clause.Map.make c;
-        original = Clause.Map.make c;
-        (* occur = Occurrence.Map.empty; *)
-        frequency = Frequency.Map.empty;
-        current_decision_level = 0;
-        assignments = Assignment.Map.empty;
-        trail = [];
-        database = [];
-        unit_clauses = CCFQueue.empty;
-        watchers = WatchedClause.Map.empty;
-      }
-      l
-  in
-  { f with original = Clause.Map.copy f.clauses }
+  aux
+    {
+      clauses = Clause.Map.make c;
+      frequency = Frequency.Map.empty;
+      current_decision_level = 0;
+      assignments = Assignment.Map.empty;
+      trail = [];
+      database = [];
+      unit_clauses = CCFQueue.empty;
+      watchers = WatchedClause.Map.empty;
+    }
 
-let restart ({ trail = t; database = db; watchers; _ } as f) =
+let restart ({ clauses; trail = t; watchers; database = db; _ } as f) =
   if List.is_empty t then f
   else
     let f' =
@@ -334,7 +311,7 @@ let restart ({ trail = t; database = db; watchers; _ } as f) =
         |> Option.get_exn_or
              "Attempt to backtrack without previous assignments.")
     in
-    add_learned_clauses { f' with watchers } db
+    { f' with clauses; watchers; database = db }
 
 let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
   let update_watcher l (({ id; _ } : WatchedClause.t) as c)
@@ -399,7 +376,6 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
   { f' with trail = [] }
 
 let preprocess = eliminate_pure_literals
-(* let preprocess f = { f with trail = [] } *)
 
 let rec unit_propagate
     ({ unit_clauses = ucs; assignments = a; current_decision_level = d; _ } as
