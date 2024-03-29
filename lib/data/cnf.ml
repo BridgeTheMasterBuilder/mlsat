@@ -299,7 +299,7 @@ let choose_literal { frequency; _ } =
 
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
 
-let of_list _v _c l =
+let of_list _v c l =
   let rec aux f = function
     | [] -> f
     | c :: cs ->
@@ -310,8 +310,8 @@ let of_list _v _c l =
   let f =
     aux
       {
-        clauses = Clause.Map.empty;
-        original = Clause.Map.empty;
+        clauses = Clause.Map.make c;
+        original = Clause.Map.make c;
         (* occur = Occurrence.Map.empty; *)
         frequency = Frequency.Map.empty;
         current_decision_level = 0;
@@ -381,27 +381,29 @@ let make_assignment l ass ({ frequency; assignments = a; trail = t; _ } as f) =
     Ok f'
   with Conflict (c, f) -> Error (c, f)
 
-(* let eliminate_pure_literals ({ occur; _ } as f) = *)
-(*   let f' = *)
-(*     let open Iter in *)
-(*     Occurrence.Map.to_iter occur *)
-(*     |> fold *)
-(*          (fun ({ occur; _ } as f') (l, _) -> *)
-(*            if Occurrence.Map.mem (Literal.neg l) occur then f' *)
-(*            else *)
-(*              let i = *)
-(*                Assignment.Implication *)
-(*                  { literal = l; implicant = Clause.empty; level = 0 } *)
-(*              in *)
-(*              make_assignment l i f' |> Result.get_exn) *)
-(*          f *)
-(*   in *)
-(*   { f' with trail = [] } *)
+let eliminate_pure_literals ({ frequency; _ } as f) =
+  let f' =
+    let open Iter in
+    Frequency.Map.to_iter frequency
+    |> fold
+         (fun ({ frequency; _ } as f') (l, _) ->
+           if Frequency.Map.mem (Literal.neg l) frequency then f'
+           else
+             let i =
+               Assignment.Implication
+                 { literal = l; implicant = Clause.empty; level = 0 }
+             in
+             make_assignment l i f' |> Result.get_exn)
+         f
+  in
+  { f' with trail = [] }
 
-(* let preprocess = eliminate_pure_literals *)
-let preprocess f = { f with trail = [] }
+let preprocess = eliminate_pure_literals
+(* let preprocess f = { f with trail = [] } *)
 
-let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
+let rec unit_propagate
+    ({ unit_clauses = ucs; assignments = a; current_decision_level = d; _ } as
+    f) =
   match CCFQueue.take_front ucs with
   | Some ((_, uc), ucs') -> (
       let f' = { f with unit_clauses = ucs' } in
@@ -410,9 +412,8 @@ let rec unit_propagate ({ unit_clauses = ucs; assignments = a; _ } as f) =
         |> Iter.find_pred (fun l -> not (Assignment.Map.mem l a))
       with
       | Some l ->
-          let d' = f.current_decision_level in
           let i =
-            Assignment.Implication { literal = l; implicant = uc; level = d' }
+            Assignment.Implication { literal = l; implicant = uc; level = d }
           in
           make_assignment l i f' |> Result.flat_map unit_propagate
       | None -> unit_propagate f')

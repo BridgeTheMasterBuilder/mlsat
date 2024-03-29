@@ -7,6 +7,8 @@ module Map : sig
   val pop : t -> k option
   val add_many : Clause.t -> t -> t
   val decay : t -> t
+  val mem : k -> t -> bool
   val remove_literal : k -> t -> t
   val show : t -> string
+  val to_iter : t -> (Literal.t * float) Iter.iter
 end

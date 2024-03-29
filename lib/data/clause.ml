@@ -17,7 +17,7 @@ module Map = struct
     m
 
   let copy = BatDynArray.copy
-  let empty = BatDynArray.create ()
+  let make = BatDynArray.make
   let find c m = BatDynArray.get m c
   let is_empty = BatDynArray.empty
 

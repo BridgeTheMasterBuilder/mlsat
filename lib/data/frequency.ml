@@ -22,9 +22,11 @@ module Map = struct
   let pop m = pop m |> Option.map (fun ((l, _), _) -> l)
   let remove_literal = remove
 
-  let show o =
-    to_priority_list o
+  let show m =
+    to_priority_list m
     |> List.fold_left
          (fun s (l, c) -> Printf.sprintf "%s%s:%f\n" s (Literal.show l) c)
          ""
+
+  let to_iter m = to_seq m |> Iter.of_seq
 end

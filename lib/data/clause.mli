@@ -8,9 +8,9 @@ module Map : sig
 
   val add : clause -> t -> t
   val copy : t -> t
-  val empty : t
   val find : key -> t -> clause
   val is_empty : t -> bool
+  val make : int -> t
   val show : t -> string
   val size : t -> key
   val to_iter : t -> (key * clause) Iter.iter
