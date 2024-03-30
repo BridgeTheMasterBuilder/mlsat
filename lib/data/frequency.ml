@@ -16,9 +16,7 @@ module Map = struct
           (function Some count -> Some (count +. 1.0) | None -> Some 1.0)
           m')
 
-  let decay m =
-    fold (fun l f m' -> adjust l (Fun.const (f *. decay_factor)) m') m m
-
+  let decay m = map (fun _ f -> f *. decay_factor) m
   let pop m = pop m |> Option.map (fun ((l, _), _) -> l)
   let remove_literal = remove
 

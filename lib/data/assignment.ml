@@ -19,16 +19,13 @@ module Map = struct
 
   let find_opt l = find_opt (Literal.var l)
   let mem l = mem (Literal.var l)
+
+  let value l a =
+    find_opt (Literal.var l) a
+    |> Option.map (fun ass -> Literal.signum (literal ass) = Literal.signum l)
+    |> Tribool.of_bool_opt
 end
 
-let value l a =
-  Map.find_opt l a
-  |> Option.map (fun ass -> Literal.signum (literal ass) = Literal.signum l)
-
-(* TODO swap arguments? *)
-let is_false l a = value l a |> Option.map_or ~default:false not
-let is_true l a = value l a |> Option.map_or ~default:false Fun.id
-let is_undefined l a = value l a |> Option.is_none
 let level = function Decision { level; _ } | Implication { level; _ } -> level
 
 let show (a : assignment) =

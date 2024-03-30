@@ -34,6 +34,7 @@ let rec cdcl max_conflicts luby f =
   aux 0 max_conflicts 0 f
 
 let solve { formula = f; config = { base_num_conflicts; grow_factor; _ } } =
+  Logs.debug (fun m -> m "%s" (show f));
   match unit_propagate f with
   | Error (_, f) -> Unsat f
   | Ok f ->

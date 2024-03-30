@@ -47,7 +47,7 @@ let of_clause a c id =
   let clause = clause_iter |> to_array in
   let size = Array.length clause in
   let watchers =
-    filter (fun l -> not (Assignment.is_false l a)) clause_iter
+    filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a)) clause_iter
     |> take 2 |> to_list
     |> function
     | [ w1; w2 ] -> Some (w1, w2)
@@ -65,12 +65,16 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
   let open CCEither in
   let open Iter in
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
-  let other_watcher = if Literal.equal l w1 then Right w2 else Left w1 in
-  let uneither = function Left w | Right w -> w in
-  if Assignment.is_true (uneither other_watcher) a then (
+  let other_watcher, other_watcher_literal =
+    if Literal.equal l w1 then (Right w2, w2) else (Left w1, w1)
+  in
+  let other_watcher_truth_value =
+    Assignment.Map.value other_watcher_literal a
+  in
+  if Tribool.is_true other_watcher_truth_value then (
     Logs.debug (fun m ->
         m "Clause is satisfied by %s, doing nothing"
-          (Literal.show (uneither other_watcher)));
+          (Literal.show other_watcher_literal));
     NoChange)
   else (
     Logs.debug (fun m ->
@@ -91,8 +95,8 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
              let index' = (index + i) mod size in
              let l' = clause.(index') in
              if
-               Assignment.is_false l' a
-               || Literal.equal l' (uneither other_watcher)
+               Tribool.is_false (Assignment.Map.value l' a)
+               || Literal.equal l' other_watcher_literal
              then (
                Logs.debug (fun m ->
                    m "No good, %s is either false or already watched"
@@ -104,7 +108,7 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
     in
     match result with
     | None ->
-        if Assignment.is_false (uneither other_watcher) a then Falsified c
+        if Tribool.is_false other_watcher_truth_value then Falsified c
         else Unit c
     | Some (index', new_watcher) ->
         let c' =
@@ -117,6 +121,6 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
               | Right w -> Some (new_watcher, w));
           }
         in
-        WatcherChange (l, new_watcher, uneither other_watcher, c'))
+        WatcherChange (l, new_watcher, other_watcher_literal, c'))
 
 let watched_literals { watchers; _ } = watchers
