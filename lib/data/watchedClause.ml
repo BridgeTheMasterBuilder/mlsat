@@ -29,7 +29,7 @@ module Map = struct
       | Some s -> Some (Set.add n s) | None -> Some (Set.singleton n));
     m
 
-  let empty = create 1024
+  let make = create
   let find_opt l t = find_opt t l
   let is_empty m = length m = 0
   let mem l t = mem t l

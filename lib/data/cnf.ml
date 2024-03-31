@@ -274,7 +274,7 @@ let choose_literal { frequency; _ } =
 
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
 
-let of_list _v c =
+let of_list v c =
   let rec aux f = function
     | [] -> f
     | c :: cs ->
@@ -291,7 +291,7 @@ let of_list _v c =
       trail = [];
       database = [];
       unit_clauses = CCFQueue.empty;
-      watchers = WatchedClause.Map.empty;
+      watchers = WatchedClause.Map.make v;
     }
 
 let restart ({ clauses; trail = t; watchers; database = db; _ } as f) =

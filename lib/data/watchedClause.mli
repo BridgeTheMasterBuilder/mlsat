@@ -14,13 +14,12 @@ module Map : sig
   type key = Literal.t
 
   val add : key -> watched_clause -> t -> t
-  val create : int -> t
   val find_opt : key -> t -> Set.t option
-  val mem : key -> t -> bool
   val fold : (key -> Set.t -> 'a -> 'a) -> t -> 'a -> 'a
-  val update : t -> f:(key -> Set.t option -> Set.t option) -> k:key -> unit
-  val empty : t
   val is_empty : t -> bool
+  val make : int -> t
+  val mem : key -> t -> bool
+  val update : t -> f:(key -> Set.t option -> Set.t option) -> k:key -> unit
   val remove : key -> watched_clause -> t -> t
   val show : t -> string
 end
