@@ -18,11 +18,9 @@ open M
 module Set = Set.Make (M)
 
 module Map = struct
-  (* include Literal.Map *)
   module M = CCHashtbl.Make (Literal)
   include M
 
-  (* type t = Set.t Literal.Map.t *)
   type t = Set.t M.t
   type key = Literal.t
 
@@ -50,8 +48,6 @@ module Map = struct
 end
 
 let clause { id; clause; _ } = (id, clause)
-
-(* TODO *)
 let fold f x { data; _ } = Array.fold f x data
 
 let of_clause a c id =
