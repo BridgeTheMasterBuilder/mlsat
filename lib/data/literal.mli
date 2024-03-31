@@ -5,6 +5,7 @@ module Set : Iter.Set.S with type elt = t
 
 val compare : t -> t -> int
 val equal : t -> t -> bool
+val hash : t -> int
 val is_negated : t -> bool
 val neg : t -> t
 val of_int : int -> t

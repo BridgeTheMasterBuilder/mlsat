@@ -1,6 +1,6 @@
 module M = struct
   type t = {
-    id : int; (* TODO hack? *)
+    id : int;
     clause : Literal.t array;
     size : int;
     index : int;
@@ -11,25 +11,34 @@ module M = struct
 end
 
 type t = M.t
+type watched_clause = t
 
 open M
 module Set = Set.Make (M)
 
 module Map = struct
-  include Literal.Map
+  (* include Literal.Map *)
+  module M = CCHashtbl.Make (Literal)
+  include M
 
-  type t = Set.t Literal.Map.t
+  (* type t = Set.t Literal.Map.t *)
+  type t = Set.t M.t
   type key = Literal.t
 
-  let add l n =
-    update l (function
-      | Some s -> Some (Set.add n s)
-      | None -> Some (Set.singleton n))
+  let add l n m =
+    update m ~k:l ~f:(fun _ -> function
+      | Some s -> Some (Set.add n s) | None -> Some (Set.singleton n));
+    m
 
-  let remove l n =
-    update l (function
-      | Some s -> Some (Set.remove n s)
-      | None -> failwith "REMOVE")
+  let empty = create 1024
+  let find_opt l t = find_opt t l
+  let is_empty m = length m = 0
+  let mem l t = mem t l
+
+  let remove l n m =
+    update m ~k:l ~f:(fun _ -> function
+      | Some s -> Some (Set.remove n s) | None -> failwith "REMOVE");
+    m
 
   let show o =
     fold
@@ -39,6 +48,9 @@ module Map = struct
       o ""
 end
 
+let clause { id; clause; _ } = (id, Clause.of_iter (Array.to_iter clause))
+
+(* TODO *)
 let fold f x { clause; _ } = Array.fold f x clause
 
 let of_clause a c id =

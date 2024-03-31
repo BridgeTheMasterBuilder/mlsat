@@ -306,9 +306,10 @@ let restart ({ clauses; trail = t; watchers; database = db; _ } as f) =
     { f' with clauses; watchers; database = db }
 
 let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
-  let update_watcher l (({ id; _ } : WatchedClause.t) as c)
-      ({ unit_clauses = uc'; watchers = watchers'; _ } as f') =
-    let ls = Clause.Map.find id clauses in
+  let update_watcher l c ({ unit_clauses = uc'; watchers = watchers'; _ } as f')
+      =
+    (* let ls = Clause.Map.find id clauses in *)
+    let n, ls = WatchedClause.clause c in
     match WatchedClause.update l a c with
     | WatcherChange (w1, w1', w2, c') ->
         let watchers' =
@@ -318,7 +319,7 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
           |> WatchedClause.Map.add w2 c'
         in
         { f' with watchers = watchers' }
-    | Unit { id; _ } -> { f' with unit_clauses = CCFQueue.snoc uc' (id, ls) }
+    | Unit _ -> { f' with unit_clauses = CCFQueue.snoc uc' (n, ls) }
     | Falsified _ -> raise_notrace (Conflict (ls, f))
     | NoChange -> f'
   in

@@ -7,7 +7,6 @@ module Map : sig
   type key = int
 
   val add : clause -> t -> t
-  val copy : t -> t
   val find : key -> t -> clause
   val is_empty : t -> bool
   val make : int -> t
