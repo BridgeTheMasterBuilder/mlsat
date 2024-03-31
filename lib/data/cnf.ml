@@ -308,7 +308,6 @@ let restart ({ clauses; trail = t; watchers; database = db; _ } as f) =
 let update_watchers l ({ assignments = a; watchers; _ } as f) =
   let update_watcher l c ({ unit_clauses = uc'; watchers = watchers'; _ } as f')
       =
-    (* let ls = Clause.Map.find id clauses in *)
     let n, ls = WatchedClause.clause c in
     match WatchedClause.update l a c with
     | WatcherChange (w1, w1', w2, c') ->

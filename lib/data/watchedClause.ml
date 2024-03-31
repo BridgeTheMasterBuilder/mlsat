@@ -1,28 +1,31 @@
 module M = struct
   type t = {
     id : int;
-    data : Literal.t array;
+    iterator : Literal.t Iter.iter;
     clause : Clause.t;
     size : int;
-    index : int;
     watchers : (Literal.t * Literal.t) option;
   }
 
   let compare { id = id1; _ } { id = id2; _ } = compare id1 id2
 end
 
-type t = M.t
-type watched_clause = t
-
 open M
 module Set = Set.Make (M)
 
+type t = M.t
+type watched_clause = t
+
+type update_result =
+  | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
+  | Unit of t
+  | Falsified of t
+  | NoChange
+
 module Map = struct
-  (* include Literal.Map *)
   module M = CCHashtbl.Make (Literal)
   include M
 
-  (* type t = Set.t Literal.Map.t *)
   type t = Set.t M.t
   type key = Literal.t
 
@@ -51,14 +54,15 @@ end
 
 let clause { id; clause; _ } = (id, clause)
 
-(* TODO *)
-let fold f x { data; _ } = Array.fold f x data
+let fold f x { iterator; size; _ } =
+  let open Iter in
+  take size iterator |> fold f x
 
 let of_clause a c id =
   let open Iter in
   let clause_iter = Clause.to_iter c in
-  let data = clause_iter |> to_array in
-  let size = Array.length data in
+  let iterator = clause_iter |> cycle in
+  let size = Clause.size c in
   let watchers =
     filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a)) clause_iter
     |> take 2 |> to_list
@@ -66,15 +70,9 @@ let of_clause a c id =
     | [ w1; w2 ] -> Some (w1, w2)
     | _ -> None
   in
-  { id; data; clause = c; size; index = 2 mod size; watchers }
+  { id; iterator; clause = c; size; watchers }
 
-type update_result =
-  | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
-  | Unit of t
-  | Falsified of t
-  | NoChange
-
-let update l a ({ data; size; index; watchers; _ } as c) =
+let update l a ({ iterator; size; watchers; _ } as c) =
   let open CCEither in
   let open Iter in
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
@@ -87,25 +85,22 @@ let update l a ({ data; size; index; watchers; _ } as c) =
   if Tribool.is_true other_watcher_truth_value then NoChange
   else
     let result =
-      0 -- (size - 1)
-      |> find_map (fun i ->
-             let index' = (index + i) mod size in
-             let l' = data.(index') in
+      take size iterator
+      |> find_map (fun l' ->
              if
                Tribool.is_false (Assignment.Map.value l' a)
                || Literal.equal l' other_watcher_literal
              then None
-             else Some (index', l'))
+             else Some l')
     in
     match result with
     | None ->
         if Tribool.is_false other_watcher_truth_value then Falsified c
         else Unit c
-    | Some (index', new_watcher) ->
+    | Some new_watcher ->
         let c' =
           {
             c with
-            index = index';
             watchers =
               (match other_watcher with
               | Left w -> Some (w, new_watcher)
