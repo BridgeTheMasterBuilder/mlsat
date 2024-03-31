@@ -1,7 +1,7 @@
 type formula = {
   clauses : Clause.Map.t;
   frequency : Frequency.Map.t;
-  unit_clauses : (int * Clause.t) CCFQueue.t;
+  unit_clauses : UnitClauseQueue.t;
   current_decision_level : int;
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
@@ -47,7 +47,7 @@ let show
        "" database)
     (if WatchedClause.Map.is_empty watchers then "()"
      else WatchedClause.Map.show watchers)
-    (CCFQueue.fold
+    (UnitClauseQueue.fold
        (fun acc (_, c) -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" unit_clauses)
 
@@ -58,9 +58,7 @@ let add_clause
   let clauses' = Clause.Map.add clause clauses in
   let frequency' =
     Frequency.Map.add_many
-      (Clause.to_iter clause
-      |> Iter.filter (fun l -> not (Assignment.Map.mem l a))
-      |> Clause.of_iter)
+      (Clause.filter (fun l -> not (Assignment.Map.mem l a)) clause)
       frequency
   in
   let watched_clause = WatchedClause.of_clause a clause n in
@@ -70,7 +68,7 @@ let add_clause
         ( WatchedClause.Map.add l1 watched_clause watchers
           |> WatchedClause.Map.add l2 watched_clause,
           uc )
-    | None -> (watchers, CCFQueue.snoc uc (n, clause))
+    | None -> (watchers, UnitClauseQueue.snoc uc (n, clause))
   in
   {
     f with
@@ -289,7 +287,7 @@ let of_list v c =
       assignments = Assignment.Map.empty;
       trail = [];
       database = [];
-      unit_clauses = CCFQueue.empty;
+      unit_clauses = UnitClauseQueue.empty;
       watchers = WatchedClause.Map.make v;
     }
 
@@ -312,12 +310,12 @@ let update_watchers l ({ assignments = a; watchers; _ } as f) =
     | WatcherChange (w1, w1', w2, c') ->
         let watchers' =
           WatchedClause.Map.remove w1 c watchers'
-          (* |> WatchedClause.Map.remove w2 c (\* TODO *\) *)
+          |> WatchedClause.Map.remove w2 c
           |> WatchedClause.Map.add w1' c'
           |> WatchedClause.Map.add w2 c'
         in
         { f' with watchers = watchers' }
-    | Unit _ -> { f' with unit_clauses = CCFQueue.snoc uc' (n, ls) }
+    | Unit _ -> { f' with unit_clauses = UnitClauseQueue.snoc uc' (n, ls) }
     | Falsified _ -> raise_notrace (Conflict (ls, f))
     | NoChange -> f'
   in
@@ -361,7 +359,7 @@ let preprocess = eliminate_pure_literals
 let rec unit_propagate
     ({ unit_clauses = ucs; assignments = a; current_decision_level = d; _ } as
     f) =
-  match CCFQueue.take_front ucs with
+  match UnitClauseQueue.take_front ucs with
   | Some ((_, uc), ucs') -> (
       let f' = { f with unit_clauses = ucs' } in
       match

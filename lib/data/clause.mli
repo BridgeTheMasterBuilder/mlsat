@@ -18,6 +18,7 @@ end
 val add : elt -> t -> t
 val equal : t -> t -> bool
 val empty : t
+val filter : (elt -> bool) -> t -> t
 val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
 val is_empty : t -> bool
 val mem : elt -> t -> bool
