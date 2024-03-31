@@ -1,7 +1,8 @@
 module M = struct
   type t = {
     id : int;
-    clause : Literal.t array;
+    data : Literal.t array;
+    clause : Clause.t;
     size : int;
     index : int;
     watchers : (Literal.t * Literal.t) option;
@@ -48,16 +49,16 @@ module Map = struct
       o ""
 end
 
-let clause { id; clause; _ } = (id, Clause.of_iter (Array.to_iter clause))
+let clause { id; clause; _ } = (id, clause)
 
 (* TODO *)
-let fold f x { clause; _ } = Array.fold f x clause
+let fold f x { data; _ } = Array.fold f x data
 
 let of_clause a c id =
   let open Iter in
   let clause_iter = Clause.to_iter c in
-  let clause = clause_iter |> to_array in
-  let size = Array.length clause in
+  let data = clause_iter |> to_array in
+  let size = Array.length data in
   let watchers =
     filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a)) clause_iter
     |> take 2 |> to_list
@@ -65,7 +66,7 @@ let of_clause a c id =
     | [ w1; w2 ] -> Some (w1, w2)
     | _ -> None
   in
-  { id; clause; size; index = 2 mod size; watchers }
+  { id; data; clause = c; size; index = 2 mod size; watchers }
 
 type update_result =
   | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
@@ -73,7 +74,7 @@ type update_result =
   | Falsified of t
   | NoChange
 
-let update l a ({ clause; size; index; watchers; _ } as c) =
+let update l a ({ data; size; index; watchers; _ } as c) =
   let open CCEither in
   let open Iter in
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
@@ -89,7 +90,7 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
       0 -- (size - 1)
       |> find_map (fun i ->
              let index' = (index + i) mod size in
-             let l' = clause.(index') in
+             let l' = data.(index') in
              if
                Tribool.is_false (Assignment.Map.value l' a)
                || Literal.equal l' other_watcher_literal
