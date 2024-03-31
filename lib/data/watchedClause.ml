@@ -71,25 +71,9 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
   let other_watcher_truth_value =
     Assignment.Map.value other_watcher_literal a
   in
-  if Tribool.is_true other_watcher_truth_value then (
-    Logs.debug (fun m ->
-        m "Clause is satisfied by %s, doing nothing"
-          (Literal.show other_watcher_literal));
-    NoChange)
-  else (
-    Logs.debug (fun m ->
-        m "%d (watching %s and %s - index %d): " c.id (Literal.show w1)
-          (Literal.show w2) index);
-    Array.iter
-      (fun l ->
-        Logs.debug (fun m ->
-            m "%s(%s) " (Literal.show l)
-              (Assignment.Map.find_opt l a
-              |> Option.map_or ~default:"_" (fun ass ->
-                     Literal.show (Assignment.literal ass)))))
-      c.clause;
+  if Tribool.is_true other_watcher_truth_value then NoChange
+  else
     let result =
-      Logs.debug (fun m -> m "Trying to find a new watcher");
       0 -- (size - 1)
       |> find_map (fun i ->
              let index' = (index + i) mod size in
@@ -97,14 +81,8 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
              if
                Tribool.is_false (Assignment.Map.value l' a)
                || Literal.equal l' other_watcher_literal
-             then (
-               Logs.debug (fun m ->
-                   m "No good, %s is either false or already watched"
-                     (Literal.show l'));
-               None)
-             else (
-               Logs.debug (fun m -> m "Found new watcher %s" (Literal.show l'));
-               Some (index', l')))
+             then None
+             else Some (index', l'))
     in
     match result with
     | None ->
@@ -121,6 +99,6 @@ let update l a ({ clause; size; index; watchers; _ } as c) =
               | Right w -> Some (new_watcher, w));
           }
         in
-        WatcherChange (l, new_watcher, other_watcher_literal, c'))
+        WatcherChange (l, new_watcher, other_watcher_literal, c')
 
 let watched_literals { watchers; _ } = watchers

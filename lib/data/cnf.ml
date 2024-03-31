@@ -82,29 +82,22 @@ let add_clause
   }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
-  Logs.debug (fun m -> m "Analyzing clause ( %s)" (Clause.show clause));
   let ls = Clause.to_list clause in
   let rec aux q c history =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
-        Logs.debug (fun m -> m "Examining literal %s" (Literal.show l));
-        if CCFQueue.is_empty q' then (
+        if CCFQueue.is_empty q' then
           let ass =
             Assignment.Map.find_opt l a |> Option.get_exn_or "ANALYZE"
           in
-          Logs.debug (fun m -> m "%s" (Assignment.show ass));
-          Logs.debug (fun m -> m "Found UIP");
-          Clause.add (Literal.neg (Assignment.literal ass)) c)
+          Clause.add (Literal.neg (Assignment.literal ass)) c
         else
           match Assignment.(Map.find_opt l a) with
-          | Some (Decision { literal = l'; _ } as ass) ->
-              Logs.debug (fun m -> m "%s" (Assignment.show ass));
+          | Some (Decision { literal = l'; _ }) ->
               aux q' (Clause.add (Literal.neg l') c) history
-          | Some
-              (Implication { literal = l'; implicant = ls'; level = d'; _ } as
-              ass) ->
-              Logs.debug (fun m -> m "%s" (Assignment.show ass));
+          | Some (Implication { literal = l'; implicant = ls'; level = d'; _ })
+            ->
               if d' < d then aux q' (Clause.add (Literal.neg l') c) history
               else
                 let open Iter in
@@ -150,7 +143,6 @@ let backtrack
     }
   in
   let f'' = add_clause f' learned_clause in
-  Logs.debug (fun m -> m "Backtracking to level %d" d');
   (f'', d')
 
 (* let check_invariants *)
@@ -317,13 +309,8 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
   let update_watcher l (({ id; _ } : WatchedClause.t) as c)
       ({ unit_clauses = uc'; watchers = watchers'; _ } as f') =
     let ls = Clause.Map.find id clauses in
-    Logs.debug (fun m ->
-        m "Updating watchers for clause %d:(%s )" id (Clause.show ls));
     match WatchedClause.update l a c with
     | WatcherChange (w1, w1', w2, c') ->
-        Logs.debug (fun m ->
-            m "Moving watcher from %s to %s (other watcher is %s)"
-              (Literal.show w1) (Literal.show w1') (Literal.show w2));
         let watchers' =
           WatchedClause.Map.remove w1 c watchers'
           |> WatchedClause.Map.remove w2 c (* TODO *)
@@ -331,12 +318,8 @@ let update_watchers l ({ clauses; assignments = a; watchers; _ } as f) =
           |> WatchedClause.Map.add w2 c'
         in
         { f' with watchers = watchers' }
-    | Unit { id; _ } ->
-        Logs.debug (fun m -> m "Clause %d is ready for unit propagation" id);
-        { f' with unit_clauses = CCFQueue.snoc uc' (id, ls) }
-    | Falsified { id; _ } ->
-        Logs.debug (fun m -> m "Clause %d is falsified" id);
-        raise_notrace (Conflict (ls, f))
+    | Unit { id; _ } -> { f' with unit_clauses = CCFQueue.snoc uc' (id, ls) }
+    | Falsified _ -> raise_notrace (Conflict (ls, f))
     | NoChange -> f'
   in
   match WatchedClause.Map.find_opt l watchers with
@@ -347,7 +330,6 @@ let make_assignment l ass ({ frequency; assignments = a; trail = t; _ } as f) =
   let a' = Assignment.Map.add l ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
-  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
   try
     let f' = update_watchers (Literal.neg l) f in
     let frequency' =
