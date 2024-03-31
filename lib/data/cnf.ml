@@ -116,8 +116,15 @@ let assignments { assignments = a; _ } = Assignment.Map.assignments a
 let learned_clauses { database; _ } = database
 
 let backtrack
-    { clauses; assignments = a; trail = t; database = db; watchers; _ }
-    learned_clause =
+    {
+      clauses;
+      assignments = a;
+      trail = t;
+      database = db;
+      watchers;
+      unit_clauses = uc;
+      _;
+    } learned_clause =
   let d' =
     let open Iter in
     Clause.to_iter learned_clause
@@ -137,6 +144,7 @@ let backtrack
       frequency = Frequency.Map.decay f'.frequency;
       watchers;
       database = learned_clause :: db;
+      unit_clauses = UnitClauseQueue.clear uc;
     }
   in
   let f'' = add_clause f' learned_clause in
@@ -291,7 +299,9 @@ let of_list v c =
       watchers = WatchedClause.Map.make v;
     }
 
-let restart ({ clauses; trail = t; watchers; database = db; _ } as f) =
+let restart
+    ({ clauses; trail = t; watchers; database = db; unit_clauses = uc; _ } as f)
+    =
   if List.is_empty t then f
   else
     let f' =
@@ -300,7 +310,13 @@ let restart ({ clauses; trail = t; watchers; database = db; _ } as f) =
         |> Option.get_exn_or
              "Attempt to backtrack without previous assignments.")
     in
-    { f' with clauses; watchers; database = db }
+    {
+      f' with
+      clauses;
+      watchers;
+      database = db;
+      unit_clauses = UnitClauseQueue.clear uc;
+    }
 
 let update_watchers l ({ assignments = a; watchers; _ } as f) =
   let update_watcher l c ({ unit_clauses = uc'; watchers = watchers'; _ } as f')
