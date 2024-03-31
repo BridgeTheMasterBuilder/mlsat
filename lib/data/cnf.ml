@@ -21,8 +21,7 @@ let show
        unit_clauses;
        _;
      } as f) =
-  let open Printf in
-  sprintf
+  Printf.sprintf
     "Clauses:\n\
      %s\n\
      Frequency:\n\
@@ -41,15 +40,15 @@ let show
      else Frequency.Map.show frequency)
     current_decision_level
     (List.fold_left
-       (fun acc (ass, _) -> sprintf "%s%s" acc (Assignment.show ass))
+       (fun acc (ass, _) -> Printf.sprintf "%s%s" acc (Assignment.show ass))
        "" f.trail)
     (List.fold_left
-       (fun acc c -> sprintf "%s( %s)\n" acc (Clause.show c))
+       (fun acc c -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" database)
     (if WatchedClause.Map.is_empty watchers then "()"
      else WatchedClause.Map.show watchers)
     (CCFQueue.fold
-       (fun acc (_, c) -> sprintf "%s( %s)\n" acc (Clause.show c))
+       (fun acc (_, c) -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" unit_clauses)
 
 let add_clause
@@ -313,7 +312,7 @@ let update_watchers l ({ assignments = a; watchers; _ } as f) =
     | WatcherChange (w1, w1', w2, c') ->
         let watchers' =
           WatchedClause.Map.remove w1 c watchers'
-          |> WatchedClause.Map.remove w2 c (* TODO *)
+          (* |> WatchedClause.Map.remove w2 c (\* TODO *\) *)
           |> WatchedClause.Map.add w1' c'
           |> WatchedClause.Map.add w2 c'
         in

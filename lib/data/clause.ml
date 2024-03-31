@@ -16,14 +16,14 @@ module Map = struct
     BatDynArray.add m c;
     m
 
-  let make = BatDynArray.make
   let find c m = BatDynArray.get m c
   let is_empty = BatDynArray.empty
+  let make = BatDynArray.make
 
-  let show map_str =
+  let show =
     BatDynArray.fold_lefti
       (fun s c ls -> Printf.sprintf "%s%d:%s\n" s c (show ls))
-      "" map_str
+      ""
 
   let size = BatDynArray.length
 

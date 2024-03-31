@@ -15,16 +15,16 @@ module Map : sig
   val to_iter : t -> (key * clause) Iter.iter
 end
 
-val empty : t
-val is_empty : t -> bool
-val mem : elt -> t -> bool
 val add : elt -> t -> t
 val equal : t -> t -> bool
-val remove : elt -> t -> t
+val empty : t
 val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
-val to_iter : t -> elt Iter.iter
-val to_list : t -> elt list
+val is_empty : t -> bool
+val mem : elt -> t -> bool
 val of_int_list : int list -> t
 val of_iter : elt Iter.iter -> t
-val size : t -> int
+val remove : elt -> t -> t
 val show : t -> string
+val size : t -> int
+val to_iter : t -> elt Iter.iter
+val to_list : t -> elt list

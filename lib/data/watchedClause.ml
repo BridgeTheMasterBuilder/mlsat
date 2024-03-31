@@ -14,6 +14,12 @@ end
 type t = M.t
 type watched_clause = t
 
+type update_result =
+  | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
+  | Unit of t
+  | Falsified of t
+  | NoChange
+
 open M
 module Set = Set.Make (M)
 
@@ -63,12 +69,6 @@ let of_clause a c id =
     | _ -> None
   in
   { id; data; clause = c; size; index = 2 mod size; watchers }
-
-type update_result =
-  | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
-  | Unit of t
-  | Falsified of t
-  | NoChange
 
 let update l a ({ data; size; index; watchers; _ } as c) =
   let open CCEither in
