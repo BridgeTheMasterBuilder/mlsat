@@ -4,8 +4,6 @@ val add_clause : formula -> Clause.t -> formula
 val analyze_conflict : formula -> Clause.t -> Clause.t
 val assignments : formula -> Literal.t list
 val backtrack : formula -> Clause.t -> formula * int
-
-(* val check_invariants : formula -> unit *)
 val choose_literal : formula -> Literal.t
 val is_empty : formula -> bool
 val learned_clauses : formula -> Clause.t list

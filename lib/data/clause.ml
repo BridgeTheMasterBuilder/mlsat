@@ -17,7 +17,7 @@ module Map = struct
     BatDynArray.add m c;
     m
 
-  let find c m = BatDynArray.unsafe_get m c
+  let find = Fun.flip BatDynArray.unsafe_get
   let is_empty = BatDynArray.empty
   let make = BatDynArray.make
 
