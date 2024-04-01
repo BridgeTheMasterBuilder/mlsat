@@ -87,7 +87,7 @@ let update l a ({ data; size; index; watchers; _ } as c) =
       0 -- (size - 1)
       |> find_map (fun i ->
              let index' = (index + i) mod size in
-             let l' = data.(index') in
+             let l' = Array.unsafe_get data index' in
              if
                Tribool.is_false (Assignment.Map.value l' a)
                || Literal.equal l' other_watcher_literal

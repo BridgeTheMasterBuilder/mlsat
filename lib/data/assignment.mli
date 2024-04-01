@@ -5,7 +5,7 @@ type t =
 type assignment = t
 
 module Map : sig
-  type key = Literal.t
+  type key = Variable.t
   type t
 
   val add : key -> assignment -> t -> t
@@ -15,7 +15,7 @@ module Map : sig
   val find_opt : key -> t -> assignment option
   val mem : key -> t -> bool
   val to_iter : t -> (key * assignment) Iter.iter
-  val value : key -> t -> Tribool.t
+  val value : Literal.t -> t -> Tribool.t
 end
 
 val level : t -> int

@@ -8,4 +8,4 @@ let of_int i = if i = 0 then failwith "Invalid literal" else i
 let show = string_of_int
 let signum = sign
 let to_int = Fun.id
-let var = abs
+let var = Variable.of_int_unchecked

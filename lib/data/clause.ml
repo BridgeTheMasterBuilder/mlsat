@@ -4,6 +4,7 @@ include Literal.Set
 
 type clause = t
 
+(* TODO lbd a c *)
 let of_int_list ls = Iter.(of_list ls |> map Literal.of_int |> of_iter)
 let size = cardinal
 let show c = fold (fun l s -> Printf.sprintf "%s%s " s (Literal.show l)) c ""
@@ -16,7 +17,7 @@ module Map = struct
     BatDynArray.add m c;
     m
 
-  let find c m = BatDynArray.get m c
+  let find c m = BatDynArray.unsafe_get m c
   let is_empty = BatDynArray.empty
   let make = BatDynArray.make
 

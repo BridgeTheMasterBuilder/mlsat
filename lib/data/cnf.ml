@@ -12,6 +12,9 @@ type formula = {
 
 exception Conflict of Clause.t * formula
 
+module VariableWorkqueue : Workqueue.S with type elt = Variable.t =
+  Workqueue.Make (Variable)
+
 let show
     ({
        clauses;
@@ -60,7 +63,9 @@ let add_clause
   (* TODO make a Frequency.Map.add function and use Iter.filter to add the unassigned literals instead *)
   let frequency' =
     Frequency.Map.add_many
-      (Clause.filter (fun l -> not (Assignment.Map.mem l a)) clause)
+      (Clause.filter
+         (fun l -> not (Assignment.Map.mem (Literal.var l) a))
+         clause)
       frequency
   in
   let watched_clause = WatchedClause.of_clause a clause n in
@@ -81,37 +86,34 @@ let add_clause
   }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
-  (* TODO mutable queue, module alias for UnitClauseQueue *)
+  let open Iter in
   let ls = Clause.to_list clause in
-  let rec aux q c history =
-    match CCFQueue.take_front q with
+  let rec aux q c =
+    match VariableWorkqueue.pop q with
     | None -> c
     | Some (l, q') -> (
-        if CCFQueue.is_empty q' then
+        if VariableWorkqueue.is_empty q' then
           let ass = Assignment.Map.find l a in
           Clause.add (Literal.neg (Assignment.literal ass)) c
         else
           match Assignment.(Map.find_opt l a) with
           | Some (Decision { literal = l'; _ }) ->
-              aux q' (Clause.add (Literal.neg l') c) history
+              aux q' (Clause.add (Literal.neg l') c)
           | Some (Implication { literal = l'; implicant = ls'; level = d'; _ })
             ->
-              if d' < d then aux q' (Clause.add (Literal.neg l') c) history
+              if d' < d then aux q' (Clause.add (Literal.neg l') c)
               else
-                let open Iter in
-                let unseen =
-                  Clause.to_iter ls'
-                  |> filter (fun l'' -> not Literal.(Set.mem (var l'') history))
+                let q'' =
+                  VariableWorkqueue.push_iter
+                    (Clause.to_iter ls' |> map Literal.var)
+                    q'
                 in
-                let q'' = CCFQueue.add_iter_back q' unseen in
-                let history' =
-                  Literal.(Set.(union history (map var (of_iter unseen))))
-                in
-                aux q'' c history'
-          | None -> aux q' c history)
+                aux q'' c
+          | None -> aux q' c)
   in
-  aux (CCFQueue.of_list ls) Clause.empty
-    (Literal.Set.of_list (List.map Literal.var ls))
+  aux
+    (VariableWorkqueue.of_iter (List.to_iter ls |> map Literal.var))
+    Clause.empty
 
 let assignments { assignments = a; _ } = Assignment.Map.assignments a
 let learned_clauses { database; _ } = database
@@ -128,8 +130,8 @@ let backtrack
     } learned_clause =
   let d' =
     let open Iter in
-    Clause.to_iter learned_clause (* TODO combine filter_map and map? *)
-    |> filter_map (fun l -> Assignment.Map.find_opt l a)
+    Clause.to_iter learned_clause
+    |> filter_map (fun l -> Assignment.Map.find_opt (Literal.var l) a)
     |> map Assignment.level
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
@@ -341,7 +343,7 @@ let update_watchers l ({ assignments = a; watchers; _ } as f) =
   | None -> f
 
 let make_assignment l ass ({ frequency; assignments = a; trail = t; _ } as f) =
-  let a' = Assignment.Map.add l ass a in
+  let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
   try
@@ -381,7 +383,7 @@ let rec unit_propagate
       let f' = { f with unit_clauses = ucs' } in
       match
         Clause.to_iter uc
-        |> Iter.find_pred (fun l -> not (Assignment.Map.mem l a))
+        |> Iter.find_pred (fun l -> not (Assignment.Map.mem (Literal.var l) a))
       with
       | Some l ->
           let i =

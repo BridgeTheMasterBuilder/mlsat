@@ -44,5 +44,6 @@ let run filename config =
           (fun filename ->
             emit_proof_of_unsatisfiability filename (learned_clauses f))
           config.emit_proof;
-        print_endline "s UNSATISFIABLE"
+        Printf.printf "s UNSATISFIABLE\nc Learned %d clauses\n"
+          (List.length (learned_clauses f))
   with Timeout -> print_endline "s UNKNOWN"

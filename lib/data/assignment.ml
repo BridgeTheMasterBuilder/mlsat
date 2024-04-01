@@ -8,18 +8,12 @@ let literal = function
   | Decision { literal; _ } | Implication { literal; _ } -> literal
 
 module Map = struct
-  include Literal.Map
+  include Variable.Map
 
-  type t = assignment Literal.Map.t
-
-  let add l = add (Literal.var l)
+  type t = assignment Variable.Map.t
 
   let assignments m =
     to_iter m |> Iter.map (fun (_, ass) -> literal ass) |> Iter.to_list
-
-  let find l = find (Literal.var l)
-  let find_opt l = find_opt (Literal.var l)
-  let mem l = mem (Literal.var l)
 
   let value l a =
     find_opt (Literal.var l) a
