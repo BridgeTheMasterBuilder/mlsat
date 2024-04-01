@@ -11,16 +11,15 @@ module Map = struct
   (* TODO tweak decay factor? *)
   let decay_factor = 0.99
 
-  let add_iter iterator m =
+  let add_iter =
     let open Iter in
-    fold
-      (fun m' l ->
-        update l
-          (function Some count -> Some (count +. 1.0) | None -> Some 1.0)
-          m')
-      m iterator
+    Fun.flip
+    @@ fold (fun m' l ->
+           update l
+             (function Some count -> Some (count +. 1.0) | None -> Some 1.0)
+             m')
 
-  let decay m = map (fun _ f -> f *. decay_factor) m
+  let decay = map (fun _ f -> f *. decay_factor)
   let pop m = pop_exn m |> fst |> fst
   let remove_literal = remove
 
