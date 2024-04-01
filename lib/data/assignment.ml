@@ -17,6 +17,7 @@ module Map = struct
   let assignments m =
     to_iter m |> Iter.map (fun (_, ass) -> literal ass) |> Iter.to_list
 
+  let find l = find (Literal.var l)
   let find_opt l = find_opt (Literal.var l)
   let mem l = mem (Literal.var l)
 

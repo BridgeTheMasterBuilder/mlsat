@@ -1,3 +1,4 @@
+(* TODO use integer instead of float *)
 module Frequency = struct
   type t = float
 

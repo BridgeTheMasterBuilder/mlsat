@@ -16,8 +16,8 @@ type watched_clause = t
 
 type update_result =
   | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
-  | Unit of t
-  | Falsified of t
+  | Unit
+  | Falsified
   | NoChange
 
 open M
@@ -74,6 +74,7 @@ let update l a ({ data; size; index; watchers; _ } as c) =
   let open CCEither in
   let open Iter in
   let w1, w2 = Option.get_exn_or "UPDATE" watchers in
+  (* TODO boolean other_watcher_is_on_left instead? *)
   let other_watcher, other_watcher_literal =
     if Literal.equal l w1 then (Right w2, w2) else (Left w1, w1)
   in
@@ -95,8 +96,7 @@ let update l a ({ data; size; index; watchers; _ } as c) =
     in
     match result with
     | None ->
-        if Tribool.is_false other_watcher_truth_value then Falsified c
-        else Unit c
+        if Tribool.is_false other_watcher_truth_value then Falsified else Unit
     | Some (index', new_watcher) ->
         let c' =
           {

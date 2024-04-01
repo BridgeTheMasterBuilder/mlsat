@@ -3,8 +3,8 @@ type watched_clause = t
 
 type update_result =
   | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
-  | Unit of t
-  | Falsified of t
+  | Unit
+  | Falsified
   | NoChange
 
 module Set : sig

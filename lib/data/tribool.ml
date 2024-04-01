@@ -1,3 +1,4 @@
+(* TODO integer representation *)
 type t = True | False | Unknown
 
 let is_false = function False -> true | _ -> false

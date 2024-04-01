@@ -5,6 +5,7 @@ type formula = {
   current_decision_level : int;
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
+  (* TODO rename to trace and include clause deletion too *)
   database : Clause.t list;
   watchers : WatchedClause.Map.t;
 }
@@ -56,6 +57,7 @@ let add_clause
     f) clause =
   let n = Clause.Map.size clauses in
   let clauses' = Clause.Map.add clause clauses in
+  (* TODO make a Frequency.Map.add function and use Iter.filter to add the unassigned literals instead *)
   let frequency' =
     Frequency.Map.add_many
       (Clause.filter (fun l -> not (Assignment.Map.mem l a)) clause)
@@ -79,15 +81,14 @@ let add_clause
   }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
+  (* TODO mutable queue, module alias for UnitClauseQueue *)
   let ls = Clause.to_list clause in
   let rec aux q c history =
     match CCFQueue.take_front q with
     | None -> c
     | Some (l, q') -> (
         if CCFQueue.is_empty q' then
-          let ass =
-            Assignment.Map.find_opt l a |> Option.get_exn_or "ANALYZE"
-          in
+          let ass = Assignment.Map.find l a in
           Clause.add (Literal.neg (Assignment.literal ass)) c
         else
           match Assignment.(Map.find_opt l a) with
@@ -127,7 +128,7 @@ let backtrack
     } learned_clause =
   let d' =
     let open Iter in
-    Clause.to_iter learned_clause
+    Clause.to_iter learned_clause (* TODO combine filter_map and map? *)
     |> filter_map (fun l -> Assignment.Map.find_opt l a)
     |> map Assignment.level
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
@@ -331,12 +332,12 @@ let update_watchers l ({ assignments = a; watchers; _ } as f) =
           |> WatchedClause.Map.add w2 c'
         in
         { f' with watchers = watchers' }
-    | Unit _ -> { f' with unit_clauses = UnitClauseQueue.snoc uc' (n, ls) }
-    | Falsified _ -> raise_notrace (Conflict (ls, f))
+    | Unit -> { f' with unit_clauses = UnitClauseQueue.snoc uc' (n, ls) }
+    | Falsified -> raise_notrace (Conflict (ls, f))
     | NoChange -> f'
   in
   match WatchedClause.Map.find_opt l watchers with
-  | Some cs -> WatchedClause.Set.fold (fun c f' -> update_watcher l c f') cs f
+  | Some cs -> WatchedClause.Set.fold (update_watcher l) cs f
   | None -> f
 
 let make_assignment l ass ({ frequency; assignments = a; trail = t; _ } as f) =

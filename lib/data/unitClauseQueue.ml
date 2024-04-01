@@ -2,7 +2,7 @@ include Queue
 
 type t = (int * Clause.t) Queue.t
 
-let clear q = create ()
+let clear _ = create ()
 let empty : t = create ()
 
 let snoc q x =
