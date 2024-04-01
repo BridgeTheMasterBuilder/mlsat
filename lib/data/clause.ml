@@ -21,6 +21,10 @@ module Map = struct
   let is_empty = BatDynArray.empty
   let make = BatDynArray.make
 
+  let remove n m =
+    BatDynArray.delete m n;
+    m
+
   let show =
     BatDynArray.fold_lefti
       (fun s c ls -> Printf.sprintf "%s%d:%s\n" s c (show ls))

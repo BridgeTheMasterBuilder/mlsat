@@ -4,8 +4,8 @@ module M = struct
     data : Literal.t array;
     clause : Clause.t;
     size : int;
-    index : int;
-    watchers : (Literal.t * Literal.t) option;
+    mutable index : int;
+    mutable watchers : Literal.t * Literal.t;
   }
 
   let compare { id = id1; _ } { id = id2; _ } = compare id1 id2
@@ -15,7 +15,7 @@ type t = M.t
 type watched_clause = t
 
 type update_result =
-  | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
+  | WatcherChange of (Literal.t * Literal.t * t)
   | Unit
   | Falsified
   | NoChange
@@ -61,26 +61,18 @@ let of_clause a c id =
   let clause_iter = Clause.to_iter c in
   let data = clause_iter |> to_array in
   let size = Array.length data in
-  let watchers =
-    filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a)) clause_iter
-    |> take 2 |> to_list
-    |> function
-    | [ w1; w2 ] -> Some (w1, w2)
-    | _ -> None
-  in
-  { id; data; clause = c; size; index = 2 mod size; watchers }
+  filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a)) clause_iter
+  |> take 2 |> to_list
+  |> function
+  | [ w1; w2 ] ->
+      Some
+        { id; data; clause = c; size; index = 2 mod size; watchers = (w1, w2) }
+  | _ -> None
 
-let update l a ({ data; size; index; watchers; _ } as c) =
-  let open CCEither in
+let update l a ({ data; size; index; watchers = w1, w2; _ } as c) =
   let open Iter in
-  let w1, w2 = Option.get_exn_or "UPDATE" watchers in
-  (* TODO boolean other_watcher_is_on_left instead? *)
-  let other_watcher, other_watcher_literal =
-    if Literal.equal l w1 then (Right w2, w2) else (Left w1, w1)
-  in
-  let other_watcher_truth_value =
-    Assignment.Map.value other_watcher_literal a
-  in
+  let other_watcher = if Literal.equal l w1 then w2 else w1 in
+  let other_watcher_truth_value = Assignment.Map.value other_watcher a in
   if Tribool.is_true other_watcher_truth_value then NoChange
   else
     let result =
@@ -90,7 +82,7 @@ let update l a ({ data; size; index; watchers; _ } as c) =
              let l' = Array.unsafe_get data index' in
              if
                Tribool.is_false (Assignment.Map.value l' a)
-               || Literal.equal l' other_watcher_literal
+               || Literal.equal l' other_watcher
              then None
              else Some (index', l'))
     in
@@ -98,16 +90,22 @@ let update l a ({ data; size; index; watchers; _ } as c) =
     | None ->
         if Tribool.is_false other_watcher_truth_value then Falsified else Unit
     | Some (index', new_watcher) ->
-        let c' =
-          {
-            c with
-            index = index';
-            watchers =
-              (match other_watcher with
-              | Left w -> Some (w, new_watcher)
-              | Right w -> Some (new_watcher, w));
-          }
-        in
-        WatcherChange (l, new_watcher, other_watcher_literal, c')
+        c.index <- index';
+        c.watchers <- (other_watcher, new_watcher);
+        (* let c' = *)
+        (*   { *)
+        (*     c with *)
+        (*     index = index'; *)
+        (*     watchers = *)
+        (*       (match other_watcher with *)
+        (*       | Left w -> *)
+        (*           c.watchers <- Some (w, new_watcher); *)
+        (*           Some (w, new_watcher) *)
+        (*       | Right w -> *)
+        (*           c.watchers <- Some (w, new_watcher); *)
+        (*           Some (new_watcher, w)); *)
+        (*   } *)
+        (* in *)
+        WatcherChange (l, new_watcher, c)
 
 let watched_literals { watchers; _ } = watchers

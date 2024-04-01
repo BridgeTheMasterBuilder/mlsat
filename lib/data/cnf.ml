@@ -55,24 +55,24 @@ let show
        (fun acc (_, c) -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" unit_clauses)
 
-let add_clause
+let add_clause clause
     ({ clauses; frequency; unit_clauses = uc; assignments = a; watchers; _ } as
-    f) clause =
+    f) =
   let n = Clause.Map.size clauses in
   let clauses' = Clause.Map.add clause clauses in
   let frequency' =
     let open Iter in
-    Frequency.Map.add_iter
+    Frequency.Map.incr_iter
       (Clause.to_iter clause
       |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
       frequency
   in
-  let watched_clause = WatchedClause.of_clause a clause n in
   let watchers', uc' =
-    match WatchedClause.watched_literals watched_clause with
-    | Some (l1, l2) ->
-        ( WatchedClause.Map.add l1 watched_clause watchers
-          |> WatchedClause.Map.add l2 watched_clause,
+    match WatchedClause.of_clause a clause n with
+    | Some watched_clause ->
+        let w1, w2 = WatchedClause.watched_literals watched_clause in
+        ( WatchedClause.Map.add w1 watched_clause watchers
+          |> WatchedClause.Map.add w2 watched_clause,
           uc )
     | None -> (watchers, UnitClauseQueue.snoc uc (n, clause))
   in
@@ -149,7 +149,7 @@ let backtrack
       unit_clauses = UnitClauseQueue.clear uc;
     }
   in
-  let f'' = add_clause f' learned_clause in
+  let f'' = add_clause learned_clause f' in
   (f'', d')
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
@@ -160,7 +160,7 @@ let of_list v c =
     | [] -> f
     | c :: cs ->
         let clause = Clause.of_int_list c in
-        let f' = add_clause f clause in
+        let f' = add_clause clause f in
         aux f' cs
   in
   aux
@@ -174,6 +174,27 @@ let of_list v c =
       unit_clauses = UnitClauseQueue.empty;
       watchers = WatchedClause.Map.make v;
     }
+
+let remove_clause (n, clause)
+    ({ clauses; frequency; assignments = a; watchers; _ } as f) =
+  let clauses' = Clause.Map.remove n clauses in
+  (* TODO *)
+  let frequency' =
+    let open Iter in
+    Frequency.Map.decr_iter
+      (Clause.to_iter clause
+      |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
+      frequency
+  in
+  let watchers' =
+    watchers
+    (* match WatchedClause.watched_literals watched_clause with *)
+    (* | Some (l1, l2) -> *)
+    (*     WatchedClause.Map.add l1 watched_clause watchers *)
+    (*     |> WatchedClause.Map.add l2 watched_clause *)
+    (* | None -> watchers *)
+  in
+  { f with clauses = clauses'; frequency = frequency'; watchers = watchers' }
 
 let restart
     ({ clauses; trail = t; watchers; database = db; unit_clauses = uc; _ } as f)
@@ -199,12 +220,9 @@ let update_watchers l ({ assignments = a; watchers; _ } as f) =
       =
     let n, ls = WatchedClause.clause c in
     match WatchedClause.update l a c with
-    | WatcherChange (w1, w1', w2, c') ->
+    | WatcherChange (w, w', c') ->
         let watchers' =
-          WatchedClause.Map.remove w1 c watchers'
-          |> WatchedClause.Map.remove w2 c
-          |> WatchedClause.Map.add w1' c'
-          |> WatchedClause.Map.add w2 c'
+          WatchedClause.Map.remove w c watchers' |> WatchedClause.Map.add w' c'
         in
         { f' with watchers = watchers' }
     | Unit -> { f' with unit_clauses = UnitClauseQueue.snoc uc' (n, ls) }

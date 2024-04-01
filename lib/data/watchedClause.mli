@@ -2,7 +2,7 @@ type t
 type watched_clause = t
 
 type update_result =
-  | WatcherChange of (Literal.t * Literal.t * Literal.t * t)
+  | WatcherChange of (Literal.t * Literal.t * t)
   | Unit
   | Falsified
   | NoChange
@@ -32,6 +32,6 @@ end
 
 val clause : t -> int * Clause.t
 val fold : ('a -> Literal.t -> 'a) -> 'a -> t -> 'a
-val of_clause : Assignment.Map.t -> Clause.t -> int -> t
+val of_clause : Assignment.Map.t -> Clause.t -> int -> t option
 val update : Literal.t -> Assignment.Map.t -> t -> update_result
-val watched_literals : t -> (Literal.t * Literal.t) option
+val watched_literals : t -> Literal.t * Literal.t

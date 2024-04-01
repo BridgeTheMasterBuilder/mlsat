@@ -2,9 +2,10 @@ module Map : sig
   type t
   type k = Literal.t
 
-  val add_iter : k Iter.iter -> t -> t
   val decay : t -> t
+  val decr_iter : k Iter.iter -> t -> t
   val empty : t
+  val incr_iter : k Iter.iter -> t -> t
   val is_empty : t -> bool
   val mem : k -> t -> bool
   val pop : t -> k
