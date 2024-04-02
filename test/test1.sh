@@ -42,7 +42,7 @@ else
 	echo -n $file "- "
 	if test $result = "s UNKNOWN"
 	   	set_color -o yellow
-		echo "TIME OUT"
+		echo -n "TIME OUT - "
 	   	set_color normal
 		# TODO race condition
 		# set -Ux timeout (math $timeout + 1)

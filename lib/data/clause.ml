@@ -13,7 +13,7 @@ let show c = fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
 
 (* let show c = fold (fun l s -> Printf.sprintf "%s%s " s (Literal.show l)) c "" *)
 (* let to_array = Fun.id *)
-(* let of_list list = List.sort Literal.compare list |> Array.of_list *)
+let of_list list = List.sort Literal.compare list |> Array.of_list
 
 module Map = struct
   type t = clause BatDynArray.t
