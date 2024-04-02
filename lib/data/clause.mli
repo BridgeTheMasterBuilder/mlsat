@@ -1,4 +1,3 @@
-type elt = Literal.t
 type t
 type clause = t
 
@@ -16,17 +15,11 @@ module Map : sig
   val to_iter : t -> (key * clause) Iter.iter
 end
 
-val add : elt -> t -> t
-val equal : t -> t -> bool
 val empty : t
-val filter : (elt -> bool) -> t -> t
-val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
-val is_empty : t -> bool
-val mem : elt -> t -> bool
-val of_int_list : int list -> t
-val of_iter : elt Iter.iter -> t
-val remove : elt -> t -> t
+val of_list : Literal.t list -> t
 val show : t -> string
 val size : t -> int
-val to_iter : t -> elt Iter.iter
-val to_list : t -> elt list
+
+(* val to_array : t -> Literal.t Array.t *)
+val to_iter : t -> Literal.t Iter.iter
+val to_list : t -> Literal.t list

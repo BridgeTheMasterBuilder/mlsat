@@ -1,13 +1,18 @@
-(* open Common *)
 open Batteries
+
+(* include CCArray *)
 include Literal.Set
 
+(* type t = Literal.t Array.t *)
 type clause = t
 
 (* TODO lbd a c *)
-let of_int_list ls = Iter.(of_list ls |> map Literal.of_int |> of_iter)
+(* let size = length *)
 let size = cardinal
+
+(* let show c = fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c *)
 let show c = fold (fun l s -> Printf.sprintf "%s%s " s (Literal.show l)) c ""
+(* let to_array = Fun.id *)
 
 module Map = struct
   type t = clause BatDynArray.t
