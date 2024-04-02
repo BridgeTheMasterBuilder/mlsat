@@ -28,7 +28,7 @@ else
 	   set -x GROW_FACTOR 2
 	end
 
-	set output (./_build/default/bin/main.exe $file -t 10.0 -c $NUM_CONFLICTS -g $GROW_FACTOR -p $outfile) #) -t 10.0 -n -c $NUM_CONFLICTS -g $GROW_FACTOR))
+	set output (/usr/bin/time -f"Took %e seconds (user:%U system:%S) %P CPU usage" ./_build/default/bin/main.exe $file -t 10.0 -c $NUM_CONFLICTS -g $GROW_FACTOR -p $outfile) #) -t 10.0 -n -c $NUM_CONFLICTS -g $GROW_FACTOR))
 	# set output (string lower (cabal run -v0 sat $file -- -t 10.0 -n))
 	set result (echo $output | head -n 1)
 
@@ -62,10 +62,10 @@ else
 				set_color -o red
 				echo -n "FAIL: "
 				set_color normal
-				echo "Expected SAT but got UNSAT"
+				echo -n "Expected SAT but got UNSAT - "
 		   else
 				set_color -o green
-				echo "OK"
+				echo -n "OK - "
 				set_color normal
 		   end
 		   rm $satfile
@@ -77,10 +77,10 @@ else
 				set_color -o red
 				echo -n "FAIL: "
 				set_color normal
-				echo "Expected UNSAT but got SAT"
+				echo -n "Expected UNSAT but got SAT - "
 		   else
 				set_color -o green
-				echo "OK"
+				echo -n "OK - "
 				set_color normal
 		   end
 		   rm $outfile
