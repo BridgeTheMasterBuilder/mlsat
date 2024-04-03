@@ -230,6 +230,7 @@ let restart
     }
 
 let update_watchers l ({ assignments = a; watchers; _ } as f) =
+  (* TODO inline? *)
   let update_watcher l c ({ unit_clauses = uc'; watchers = watchers'; _ } as f')
       =
     match WatchedClause.update l a c watchers' with

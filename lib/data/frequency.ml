@@ -17,7 +17,8 @@ module Map = struct
            update l
              (function
                | Some count -> Some (count -. 1.0)
-               | None -> failwith "Impossible")
+               (* | None -> failwith "Impossible") *)
+               | None -> None)
              m')
 
   let incr_iter =
