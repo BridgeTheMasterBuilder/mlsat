@@ -1,6 +1,10 @@
 type t =
   | Decision of { literal : Literal.t; level : int }
-  | Implication of { literal : Literal.t; level : int; implicant : Clause.t }
+  | Implication of {
+      literal : Literal.t;
+      level : int;
+      implicant : Literal.t Array.t;
+    }
 
 type assignment = t
 

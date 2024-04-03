@@ -7,7 +7,7 @@ type formula = {
   trail : (Assignment.t * formula) list;
   (* TODO rename to trace and include clause deletion too *)
   database : (int * Clause.t) list;
-  watchers : WatchedClause.Map.t;
+  watchers : Clause.Watched.Map.t;
 }
 
 exception Conflict of Clause.t * formula
@@ -49,8 +49,8 @@ let show
     (List.fold_left
        (fun acc (_, c) -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" database)
-    (if WatchedClause.Map.is_empty watchers then "()"
-     else WatchedClause.Map.show watchers)
+    (if Clause.Watched.Map.is_empty watchers then "()"
+     else Clause.Watched.Map.show watchers)
     (UnitClauseQueue.fold
        (fun acc (_, c) -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" unit_clauses)
@@ -58,7 +58,6 @@ let show
 let add_clause (n, clause)
     ({ clauses; frequency; unit_clauses = uc; assignments = a; watchers; _ } as
     f) =
-  let clauses' = Clause.Map.add clause clauses in
   let frequency' =
     let open Iter in
     Frequency.Map.incr_iter
@@ -66,14 +65,17 @@ let add_clause (n, clause)
       |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
       frequency
   in
-  let watchers', uc' =
-    match WatchedClause.of_clause a clause n with
+  (* TODO instead of of_clause, watch_clause which takes in the watchers map and returns a new one *)
+  let watchers', uc', clauses' =
+    match Clause.Watched.of_clause a clause n with
     | Some watched_clause ->
-        let w1, w2 = WatchedClause.watched_literals watched_clause in
-        ( WatchedClause.Map.add w1 watched_clause watchers
-          |> WatchedClause.Map.add w2 watched_clause,
-          uc )
-    | None -> (watchers, UnitClauseQueue.snoc uc (n, clause))
+        let clauses' = Clause.Map.add watched_clause clauses in
+        let w1, w2 = Clause.Watched.watched_literals watched_clause in
+        ( Clause.Watched.Map.add w1 watched_clause watchers
+          |> Clause.Watched.Map.add w2 watched_clause,
+          uc,
+          clauses' )
+    | None -> (watchers, UnitClauseQueue.snoc uc (n, clause), clauses)
   in
   {
     f with
@@ -101,7 +103,7 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
               else
                 let q'' =
                   VariableWorkqueue.push_iter
-                    (Clause.to_iter ls' |> map Literal.var)
+                    (Array.to_iter ls' |> map Literal.var)
                     q'
                 in
                 aux q'' c
@@ -123,9 +125,12 @@ let remove_clause (n, clause)
       |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
       frequency
   in
+  (* TODO unwatch_clause, pass in the watcher map and the watched clause *)
   let watchers' =
     Clause.to_iter clause
-    |> fold (fun watchers' l -> WatchedClause.Map.remove l n watchers') watchers
+    |> fold
+         (fun watchers' l -> Clause.Watched.Map.remove l n watchers')
+         watchers
   in
   { f with clauses = clauses'; frequency = frequency'; watchers = watchers' }
 
@@ -190,7 +195,7 @@ let of_list v c =
       trail = [];
       database = [];
       unit_clauses = UnitClauseQueue.empty;
-      watchers = WatchedClause.Map.make v;
+      watchers = Clause.Watched.Map.make v;
     }
 
 let remove_clause (n, clause)
@@ -206,7 +211,9 @@ let remove_clause (n, clause)
   (* TODO is there a way to know which literals are watched? *)
   let watchers' =
     Clause.to_iter clause
-    |> fold (fun watchers' l -> WatchedClause.Map.remove l n watchers') watchers
+    |> fold
+         (fun watchers' l -> Clause.Watched.Map.remove l n watchers')
+         watchers
   in
   { f with clauses = clauses'; frequency = frequency'; watchers = watchers' }
 
@@ -233,7 +240,7 @@ let update_watchers l ({ assignments = a; watchers; _ } as f) =
   (* TODO inline? *)
   let update_watcher l c ({ unit_clauses = uc'; watchers = watchers'; _ } as f')
       =
-    match WatchedClause.update l a c watchers' with
+    match Clause.Watched.update l a c watchers' with
     | WatchedLiteralChange watchers' -> { f' with watchers = watchers' }
     | Unit (n, ls) ->
         { f' with unit_clauses = UnitClauseQueue.snoc uc' (n, ls) }
@@ -242,8 +249,8 @@ let update_watchers l ({ assignments = a; watchers; _ } as f) =
   in
   try
     Ok
-      (match WatchedClause.Map.find_opt l watchers with
-      | Some cs -> WatchedClause.Set.fold (update_watcher l) cs f
+      (match Clause.Watched.Map.find_opt l watchers with
+      | Some cs -> Clause.Watched.Set.fold (update_watcher l) cs f
       | None -> f)
   with Conflict (c, f) -> Error (c, f)
 
@@ -269,7 +276,7 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
            else
              let i =
                Assignment.Implication
-                 { literal = l; implicant = Clause.empty; level = 0 }
+                 { literal = l; implicant = Array.empty; level = 0 }
              in
              make_assignment l i f' |> Result.get_exn)
          f
@@ -290,7 +297,8 @@ let rec unit_propagate
       with
       | Some l ->
           let i =
-            Assignment.Implication { literal = l; implicant = uc; level = d }
+            Assignment.Implication
+              { literal = l; implicant = Clause.to_array uc; level = d }
           in
           make_assignment l i f' |> Result.flat_map unit_propagate
       | None -> unit_propagate f')

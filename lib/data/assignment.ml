@@ -1,6 +1,10 @@
 type t =
   | Decision of { literal : Literal.t; level : int }
-  | Implication of { literal : Literal.t; level : int; implicant : Clause.t }
+  | Implication of {
+      literal : Literal.t;
+      level : int;
+      implicant : Literal.t Array.t;
+    }
 
 type assignment = t
 
@@ -44,14 +48,17 @@ end
 
 let level = function Decision { level; _ } | Implication { level; _ } -> level
 
-let show (a : assignment) =
+let show a =
+  let show_clause =
+    Array.fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) ""
+  in
   match a with
   | Decision { literal; level } ->
       Printf.sprintf "\t%s because of decision on level %d\n"
         (Literal.show literal) level
   | Implication { literal; level; implicant } ->
       Printf.sprintf "\t%s because of clause %s - implied at level %d\n"
-        (Literal.show literal) (Clause.show implicant) level
+        (Literal.show literal) (show_clause implicant) level
 
 let was_decided_on_level a d =
   match a with Decision { level = d'; _ } -> d = d' | _ -> false
