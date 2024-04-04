@@ -66,14 +66,15 @@ module Watched = struct
 
   type update_result =
     | WatchedLiteralChange of Map.t
-    | Unit of (int * clause)
-    | Falsified of (int * clause)
+    | Unit of (Literal.t * clause)
+    | Falsified of clause
     | NoChange
 
   let clause { id; clause; _ } = (id, clause)
   let fold f x { clause; _ } = clause |> Array.fold f x
 
   let of_clause a c id =
+    let open Either in
     let open Iter in
     let size = size c in
     to_iter c
@@ -81,7 +82,7 @@ module Watched = struct
     |> take 2 |> to_list
     |> function
     | [ w1; w2 ] ->
-        Some
+        Right
           {
             id;
             clause = c;
@@ -89,7 +90,11 @@ module Watched = struct
             index = 2 mod size;
             watched_literals = (w1, w2);
           }
-    | _ -> None
+    | [ w ] ->
+        if Tribool.is_unknown (Assignment.Map.value w a) then Left (Some w)
+        else Left None
+    (* | _ -> None *)
+    | _ -> failwith "Nope!"
 
   let update l a
       ({ id; clause; size; index; watched_literals = w1, w2; _ } as c) watchers
@@ -116,8 +121,8 @@ module Watched = struct
       match result with
       | None ->
           if Tribool.is_false other_watched_literal_truth_value then
-            Falsified (id, clause)
-          else Unit (id, clause)
+            Falsified clause
+          else Unit (other_watched_literal, clause)
       | Some (index', new_watched_literal) ->
           c.index <- index';
           c.watched_literals <- (other_watched_literal, new_watched_literal);

@@ -67,15 +67,17 @@ let add_clause (n, clause)
   in
   (* TODO instead of of_clause, watch_clause which takes in the watchers map and returns a new one *)
   let watchers', uc', clauses' =
+    let open Either in
     match Clause.Watched.of_clause a clause n with
-    | Some watched_clause ->
+    | Right watched_clause ->
         let clauses' = Clause.Map.add watched_clause clauses in
         let w1, w2 = Clause.Watched.watched_literals watched_clause in
         ( Clause.Watched.Map.add w1 watched_clause watchers
           |> Clause.Watched.Map.add w2 watched_clause,
           uc,
           clauses' )
-    | None -> (watchers, UnitClauseQueue.snoc uc (n, clause), clauses)
+    | Left (Some l) -> (watchers, UnitClauseQueue.snoc uc (l, clause), clauses)
+    | Left None -> (watchers, uc, clauses)
   in
   {
     f with
@@ -242,9 +244,9 @@ let update_watchers l ({ assignments = a; watchers; _ } as f) =
       =
     match Clause.Watched.update l a c watchers' with
     | WatchedLiteralChange watchers' -> { f' with watchers = watchers' }
-    | Unit (n, ls) ->
-        { f' with unit_clauses = UnitClauseQueue.snoc uc' (n, ls) }
-    | Falsified (_, ls) -> raise_notrace (Conflict (ls, f))
+    | Unit (l, ls) ->
+        { f' with unit_clauses = UnitClauseQueue.snoc uc' (l, ls) }
+    | Falsified ls -> raise_notrace (Conflict (ls, f))
     | NoChange -> f'
   in
   try
@@ -286,22 +288,15 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
 let preprocess = eliminate_pure_literals
 
 let rec unit_propagate
-    ({ unit_clauses = ucs; assignments = a; current_decision_level = d; _ } as
-    f) =
+    ({ unit_clauses = ucs; current_decision_level = d; _ } as f) =
   match UnitClauseQueue.take_front ucs with
-  | Some ((_, uc), ucs') -> (
+  | Some ((l, uc), ucs') ->
       let f' = { f with unit_clauses = ucs' } in
-      match
-        Clause.to_iter uc
-        |> Iter.find_pred (fun l -> not (Assignment.Map.mem (Literal.var l) a))
-      with
-      | Some l ->
-          let i =
-            Assignment.Implication
-              { literal = l; implicant = Clause.to_array uc; level = d }
-          in
-          make_assignment l i f' |> Result.flat_map unit_propagate
-      | None -> unit_propagate f')
+      let i =
+        Assignment.Implication
+          { literal = l; implicant = Clause.to_array uc; level = d }
+      in
+      make_assignment l i f' |> Result.flat_map unit_propagate
   | None -> Ok f
 
 let make_decision ({ current_decision_level = d; _ } as f) =

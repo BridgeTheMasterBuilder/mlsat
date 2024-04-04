@@ -30,13 +30,16 @@ module Watched : sig
 
   type update_result =
     | WatchedLiteralChange of Map.t
-    | Unit of (int * clause)
-    | Falsified of (int * clause)
+    | Unit of (Literal.t * clause)
+    | Falsified of clause
     | NoChange
 
   val clause : t -> int * clause
   val fold : ('a -> Literal.t -> 'a) -> 'a -> t -> 'a
-  val of_clause : Assignment.Map.t -> clause -> int -> t option
+
+  val of_clause :
+    Assignment.Map.t -> clause -> int -> (Literal.t option, t) Either.t
+
   val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
   val watched_literals : t -> Literal.t * Literal.t
 end
