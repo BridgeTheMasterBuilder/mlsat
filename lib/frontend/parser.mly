@@ -1,8 +1,5 @@
 %{
     open Data
-    open Common
-
-    let variable_set = ref IntSet.empty
 %}
 
 %token CNF "cnf"
@@ -22,26 +19,32 @@
 %%
 
 problem: problem_line clauses EOF {
+                        let open Problem in
                         let (v, c) = $1 in
-                        (* let v' = IntSet.cardinal !variable_set in
-                        let c' = List.length $2 in
-                        if v <> v' || c <> c' then
-                            failwith "Malformed DIMACS file"
-                        else *)
-                            ({
+                        {
                             formula = Cnf.of_list v c $2;
                             config=Config.empty
-                            } : Problem.t)
+                        }
+                      }
+       | problem_line EOF {
+                        let open Problem in
+                        let (v, c) = $1 in
+                        {
+                            formula = Cnf.of_list v c [];
+                            config=Config.empty
+                        }
                       }
 
 problem_line: "p" "cnf" INT INT { ($3, $4) }
+            | "p" "cnf" END INT { (0, $4) }
+            | "p" "cnf" END END { (0, 0) }
 
 clauses: clause clauses { $1 :: $2 }
        | clause { [$1] }
-       | clause "0" { [$1] }
        | clause "%" "0" { [$1] }
+       | "0" { [] }
 
 clause: literals "0" { $1 }
 
-literals: INT literals { variable_set := IntSet.add (abs $1) !variable_set; $1 :: $2 }
-        | INT { variable_set := IntSet.add (abs $1) !variable_set; [$1] }
+literals: INT literals { $1 :: $2 }
+        | INT { [$1] }
