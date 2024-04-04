@@ -1,7 +1,7 @@
 open Batteries
 include CCArray
 
-type t = Literal.t Array.t
+type t = Literal.t array
 type clause = t
 
 (* TODO lbd a c *)
@@ -130,7 +130,7 @@ module Watched = struct
 end
 
 module Map = struct
-  type t = clause BatDynArray.t
+  type t = Watched.t BatDynArray.t
   type key = int
 
   let add c m =
@@ -146,8 +146,9 @@ module Map = struct
     m
 
   let show =
+    let open Watched.Clause in
     BatDynArray.fold_lefti
-      (fun s c clause -> Printf.sprintf "%s%d:%s\n" s c (show clause))
+      (fun s c { clause; _ } -> Printf.sprintf "%s%d:%s\n" s c (show clause))
       ""
 
   let size = BatDynArray.length

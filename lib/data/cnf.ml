@@ -58,7 +58,6 @@ let show
 let add_clause (n, clause)
     ({ clauses; frequency; unit_clauses = uc; assignments = a; watchers; _ } as
     f) =
-  let clauses' = Clause.Map.add clause clauses in
   let frequency' =
     let open Iter in
     Frequency.Map.incr_iter
@@ -70,6 +69,7 @@ let add_clause (n, clause)
   let watchers', uc', clauses' =
     match Clause.Watched.of_clause a clause n with
     | Some watched_clause ->
+        let clauses' = Clause.Map.add watched_clause clauses in
         let w1, w2 = Clause.Watched.watched_literals watched_clause in
         ( Clause.Watched.Map.add w1 watched_clause watchers
           |> Clause.Watched.Map.add w2 watched_clause,

@@ -3,7 +3,7 @@ type t =
   | Implication of {
       literal : Literal.t;
       level : int;
-      implicant : Literal.t Array.t;
+      implicant : Literal.t array;
     }
 
 type assignment = t

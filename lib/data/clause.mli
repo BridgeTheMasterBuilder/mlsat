@@ -45,21 +45,21 @@ module Map : sig
   type t
   type key = int
 
-  val add : clause -> t -> t
-  val find : key -> t -> clause
+  val add : Watched.watched_clause -> t -> t
+  val find : key -> t -> Watched.watched_clause
   val is_empty : t -> bool
   val make : int -> t
   val remove : int -> t -> t
   val show : t -> string
   val size : t -> key
-  val to_iter : t -> (key * clause) Iter.iter
+  val to_iter : t -> (key * Watched.watched_clause) Iter.iter
 end
 
 val empty : t
 val of_list : Literal.t list -> t
-val of_array : Literal.t Array.t -> t
+val of_array : Literal.t array -> t
 val show : t -> string
 val size : t -> int
-val to_array : t -> Literal.t Array.t
+val to_array : t -> Literal.t array
 val to_iter : t -> Literal.t Iter.iter
 val to_list : t -> Literal.t list
