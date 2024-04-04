@@ -1,7 +1,7 @@
 include Queue
 
 (* TODO API *)
-type t = (int * Clause.t) Queue.t
+type t = (Literal.t * Clause.t) Queue.t
 
 let clear _ = create ()
 let empty : t = create ()

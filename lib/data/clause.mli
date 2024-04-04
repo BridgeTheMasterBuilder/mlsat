@@ -30,8 +30,8 @@ module Watched : sig
 
   type update_result =
     | WatchedLiteralChange of Map.t
-    | Unit of (int * clause)
-    | Falsified of (int * clause)
+    | Unit of (Literal.t * clause)
+    | Falsified of clause
     | NoChange
 
   val clause : t -> int * clause
@@ -45,14 +45,14 @@ module Map : sig
   type t
   type key = int
 
-  val add : Watched.watched_clause -> t -> t
-  val find : key -> t -> Watched.watched_clause
+  val add : clause -> t -> t
+  val find : key -> t -> clause
   val is_empty : t -> bool
   val make : int -> t
   val remove : int -> t -> t
   val show : t -> string
   val size : t -> key
-  val to_iter : t -> (key * Watched.watched_clause) Iter.iter
+  val to_iter : t -> (key * clause) Iter.iter
 end
 
 val empty : t

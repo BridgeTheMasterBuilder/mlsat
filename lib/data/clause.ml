@@ -66,8 +66,8 @@ module Watched = struct
 
   type update_result =
     | WatchedLiteralChange of Map.t
-    | Unit of (int * clause)
-    | Falsified of (int * clause)
+    | Unit of (Literal.t * clause)
+    | Falsified of clause
     | NoChange
 
   let clause { id; clause; _ } = (id, clause)
@@ -116,8 +116,8 @@ module Watched = struct
       match result with
       | None ->
           if Tribool.is_false other_watched_literal_truth_value then
-            Falsified (id, clause)
-          else Unit (id, clause)
+            Falsified clause
+          else Unit (other_watched_literal, clause)
       | Some (index', new_watched_literal) ->
           c.index <- index';
           c.watched_literals <- (other_watched_literal, new_watched_literal);
@@ -130,7 +130,7 @@ module Watched = struct
 end
 
 module Map = struct
-  type t = Watched.t BatDynArray.t
+  type t = clause BatDynArray.t
   type key = int
 
   let add c m =
@@ -146,9 +146,8 @@ module Map = struct
     m
 
   let show =
-    let open Watched.Clause in
     BatDynArray.fold_lefti
-      (fun s c { clause; _ } -> Printf.sprintf "%s%d:%s\n" s c (show clause))
+      (fun s c clause -> Printf.sprintf "%s%d:%s\n" s c (show clause))
       ""
 
   let size = BatDynArray.length
