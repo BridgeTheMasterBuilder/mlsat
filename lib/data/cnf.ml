@@ -269,6 +269,29 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
 
 let preprocess = eliminate_pure_literals
 
+(* TODO Fix inconsistent unit propagations, e.g.
+
+   mlsat: [DEBUG] Clauses:
+   ()
+   Frequency:
+   -1:1.000000
+   1:1.000000
+
+   Decision level: 0
+   Assignments:
+
+   Learned clauses:
+
+   Watched literals:
+   ()
+   Unit clauses:
+   ( 1 )
+   ( -1 )
+
+
+   s SATISFIABLE
+   v -1 1 0
+*)
 let rec unit_propagate
     ({ unit_clauses = ucs; current_decision_level = d; _ } as f) =
   match UnitClauseQueue.take_front ucs with

@@ -44,14 +44,10 @@ module Watched = struct
     let make = create
     let find_opt l t = find_opt t l
     let is_empty m = length m = 0
-    let mem l t = mem t l
 
-    let remove l id m =
-      let dummy =
-        { id; clause = empty; size = 0; index = 0; watched_literals = (l, l) }
-      in
+    let remove l c m =
       update m ~k:l ~f:(fun _ -> function
-        | Some s -> Some (Set.remove dummy s) (* TODO *) | None -> None);
+        | Some s -> Some (Set.remove c s) (* TODO *) | None -> None);
       m
 
     let show o =
@@ -70,7 +66,6 @@ module Watched = struct
     | Falsified of clause
     | NoChange
 
-  let clause { id; clause; _ } = (id, clause)
   let fold f x { clause; _ } = clause |> Array.fold f x
 
   let watch_clause a c id watchers =
@@ -102,9 +97,8 @@ module Watched = struct
     (*      watchers *)
     watchers
 
-  let update l a
-      ({ id; clause; size; index; watched_literals = w1, w2; _ } as c) watchers
-      =
+  let update l a ({ clause; size; index; watched_literals = w1, w2; _ } as c)
+      watchers =
     let other_watched_literal = if Literal.equal l w1 then w2 else w1 in
     let other_watched_literal_truth_value =
       Assignment.Map.value other_watched_literal a
@@ -133,11 +127,9 @@ module Watched = struct
           c.index <- index';
           c.watched_literals <- (other_watched_literal, new_watched_literal);
           let watchers' =
-            Map.remove l id watchers |> Map.add new_watched_literal c
+            Map.remove l c watchers |> Map.add new_watched_literal c
           in
           WatchedLiteralChange watchers'
-
-  let watched_literals { watched_literals; _ } = watched_literals
 end
 
 module Map = struct

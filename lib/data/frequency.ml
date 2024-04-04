@@ -15,10 +15,7 @@ module Map = struct
     Fun.flip
     @@ fold (fun m' l ->
            update l
-             (function
-               | Some count -> Some (count -. 1.0)
-               (* | None -> failwith "Impossible") *)
-               | None -> None)
+             (function Some count -> Some (count -. 1.0) | None -> None)
              m')
 
   let incr_iter =

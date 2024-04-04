@@ -10,10 +10,7 @@ end
 val compare : t -> t -> int
 val equal : t -> t -> bool
 val hash : t -> int
-val is_negated : t -> bool
 val neg : t -> t
-val of_int : int -> t
 val show : t -> string
 val signum : t -> int
-val to_int : t -> int
 val var : t -> Variable.t

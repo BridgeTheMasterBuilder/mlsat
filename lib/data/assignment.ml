@@ -11,19 +11,6 @@ type assignment = t
 let literal = function
   | Decision { literal; _ } | Implication { literal; _ } -> literal
 
-(* module Map = struct *)
-(*   include Variable.Map *)
-
-(*   type t = assignment Variable.Map.t *)
-
-(*   let assignments m = *)
-(*     to_iter m |> Iter.map (fun (_, ass) -> literal ass) |> Iter.to_list *)
-
-(*   let value l a = *)
-(*     find_opt (Literal.var l) a *)
-(*     |> Option.map (fun ass -> Literal.signum (literal ass) = Literal.signum l) *)
-(*     |> Tribool.of_bool_opt *)
-(* end *)
 module Map = struct
   module M = CCPersistentHashtbl.Make (Variable)
   include M

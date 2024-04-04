@@ -1,10 +1,11 @@
 include Queue
 
 (* TODO API *)
-type t = (Literal.t * Clause.t) Queue.t
+type key = Literal.t * Clause.t
+type t = key Queue.t
 
 let clear _ = create ()
-let empty : t = create ()
+let empty = create ()
 
 let snoc q x =
   add x q;
