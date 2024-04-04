@@ -4,6 +4,7 @@ open Sys
 open Unix
 open Data
 open Cnf
+open Config
 
 exception Timeout
 
@@ -17,33 +18,36 @@ let emit_proof_of_unsatisfiability filename clauses =
 
 let run filename config =
   let lexbuf = Lexing.from_channel (open_in filename) in
-  let p =
-    (* try Parser.problem Lexer.initial lexbuf *)
-    Parser.problem Lexer.initial lexbuf
-  in
-  let p = { p with config } in
-  set_signal sigalrm (Signal_handle (fun _ -> raise_notrace Timeout));
-  setitimer ITIMER_REAL { it_value = config.time_limit; it_interval = 0.0 }
-  |> ignore;
-  if config.verbose then (
-    Logs.set_reporter (Logs_fmt.reporter ());
-    Logs.set_level (Some Debug))
-  else (
-    Logs.set_reporter (Logs_fmt.reporter ());
-    Logs.set_level (Some Error));
-  try
-    match solve p with
-    | Sat f ->
-        Printf.printf "s SATISFIABLE\nv ";
-        List.iter
-          (fun l -> Printf.printf "%s " (Literal.show l))
-          (assignments f);
-        print_endline "0"
-    | Unsat f ->
-        Option.iter
-          (fun filename ->
-            emit_proof_of_unsatisfiability filename (learned_clauses f))
-          config.emit_proof;
-        Printf.printf "s UNSATISFIABLE\nc Learned %d clauses\n"
-          (List.length (learned_clauses f))
-  with Timeout -> print_endline "s UNKNOWN"
+  match Parser.problem Lexer.initial lexbuf with
+  | None ->
+      Option.iter
+        (fun filename -> emit_proof_of_unsatisfiability filename [])
+        config.emit_proof;
+      Printf.printf "s UNSATISFIABLE\nc Learned 0 clauses\n"
+  | Some p -> (
+      let p = { p with config } in
+      set_signal sigalrm (Signal_handle (fun _ -> raise_notrace Timeout));
+      setitimer ITIMER_REAL { it_value = config.time_limit; it_interval = 0.0 }
+      |> ignore;
+      if config.verbose then (
+        Logs.set_reporter (Logs_fmt.reporter ());
+        Logs.set_level (Some Debug))
+      else (
+        Logs.set_reporter (Logs_fmt.reporter ());
+        Logs.set_level (Some Error));
+      try
+        match solve p with
+        | Sat f ->
+            Printf.printf "s SATISFIABLE\nv ";
+            List.iter
+              (fun l -> Printf.printf "%s " (Literal.show l))
+              (assignments f);
+            print_endline "0"
+        | Unsat f ->
+            Option.iter
+              (fun filename ->
+                emit_proof_of_unsatisfiability filename (learned_clauses f))
+              config.emit_proof;
+            Printf.printf "s UNSATISFIABLE\nc Learned %d clauses\n"
+              (List.length (learned_clauses f))
+      with Timeout -> print_endline "s UNKNOWN")

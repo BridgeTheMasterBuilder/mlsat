@@ -73,15 +73,14 @@ module Watched = struct
   let clause { id; clause; _ } = (id, clause)
   let fold f x { clause; _ } = clause |> Array.fold f x
 
-  let of_clause a c id =
-    let open Iter in
+  let watch_clause a c id watchers =
     let size = size c in
     to_iter c
-    |> filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a))
-    |> take 2 |> to_list
+    |> Iter.filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a))
+    |> Iter.take 2 |> Iter.to_list
     |> function
     | [ w1; w2 ] ->
-        Some
+        let watched_clause =
           {
             id;
             clause = c;
@@ -89,7 +88,19 @@ module Watched = struct
             index = 2 mod size;
             watched_literals = (w1, w2);
           }
+        in
+        let watchers' =
+          Map.add w1 watched_clause watchers |> Map.add w2 watched_clause
+        in
+        Some (watched_clause, watchers')
     | _ -> None
+
+  let unwatch_clause c watchers =
+    (* Clause.to_iter clause *)
+    (* |> fold *)
+    (*      (fun watchers' l -> Clause.Watched.Map.remove l n watchers') *)
+    (*      watchers *)
+    watchers
 
   let update l a
       ({ id; clause; size; index; watched_literals = w1, w2; _ } as c) watchers

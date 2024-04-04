@@ -36,7 +36,11 @@ module Watched : sig
 
   val clause : t -> int * clause
   val fold : ('a -> Literal.t -> 'a) -> 'a -> t -> 'a
-  val of_clause : Assignment.Map.t -> clause -> int -> t option
+
+  val watch_clause :
+    Assignment.Map.t -> clause -> int -> Map.t -> (t * Map.t) option
+
+  val unwatch_clause : clause -> Map.t -> Map.t
   val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
   val watched_literals : t -> Literal.t * Literal.t
 end
