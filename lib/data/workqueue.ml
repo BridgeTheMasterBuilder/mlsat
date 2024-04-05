@@ -3,6 +3,8 @@ module type S = sig
   type t
   type elt_set
 
+  val empty : t
+  val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
   val is_empty : t -> bool
   val of_iter : elt Iter.iter -> t
   val pop : t -> (elt * t) option
@@ -17,6 +19,8 @@ module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
   type elt_set = M.t
   type t = { queue : elt CCDeque.t; seen : elt_set }
 
+  let empty = { queue = CCDeque.create (); seen = M.empty }
+  let fold f init { queue; _ } = CCDeque.fold f init queue
   let is_empty { queue; _ } = CCDeque.is_empty queue
 
   let of_iter iterator =
@@ -28,8 +32,10 @@ module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
   let push x { queue; seen } =
     {
       queue =
-        (CCDeque.push_back queue x;
-         queue);
+        (if M.mem x seen then queue
+         else (
+           CCDeque.push_back queue x;
+           queue));
       seen = M.add x seen;
     }
 

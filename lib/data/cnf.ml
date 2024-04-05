@@ -55,9 +55,52 @@ let show
        (fun acc (_, c) -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" unit_clauses)
 
+let rec make_assignment l ass
+    ({ frequency; assignments = a; trail = t; _ } as f) =
+  let update_watchers l ({ assignments = a; watchers; _ } as f) =
+    (* TODO inline? *)
+    let update_watcher l c ({ watchers = watchers'; _ } as f') =
+      match Clause.Watched.update l a c watchers' with
+      | WatchedLiteralChange (_, watchers') ->
+          Ok { f' with watchers = watchers' }
+      | Unit (l, uc) -> unit_propagate (l, uc) f'
+      | Falsified ls -> Error (ls, f)
+      | NoChange -> Ok f'
+    in
+    try
+      Ok
+        (match Clause.Watched.Map.find_opt l watchers with
+        | Some cs ->
+            Clause.Watched.Set.fold
+              (fun c f' ->
+                match update_watcher l c f' with
+                | Ok f' -> f'
+                | Error (c, f) -> raise_notrace (Conflict (c, f)))
+              cs f
+        | None -> f)
+    with Conflict (c, f) -> Error (c, f)
+  in
+  let a' = Assignment.Map.add (Literal.var l) ass a in
+  let t' = (ass, f) :: t in
+  let f = { f with assignments = a'; trail = t' } in
+  update_watchers (Literal.neg l) f
+  |> Result.map (fun f' ->
+         let frequency' =
+           Frequency.Map.remove_literal l frequency
+           |> Frequency.Map.remove_literal (Literal.neg l)
+         in
+         { f' with frequency = frequency' })
+
+and unit_propagate (l, uc) ({ current_decision_level = d; _ } as f) =
+  let f' = f in
+  let i =
+    Assignment.Implication
+      { literal = l; implicant = Clause.to_array uc; level = d }
+  in
+  make_assignment l i f'
+
 let add_clause (n, clause)
-    ({ clauses; frequency; unit_clauses = uc; assignments = a; watchers; _ } as
-    f) =
+    ({ clauses; frequency; assignments = a; watchers; _ } as f) =
   let frequency' =
     let open Iter in
     Frequency.Map.incr_iter
@@ -65,28 +108,24 @@ let add_clause (n, clause)
       |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
       frequency
   in
-  let watchers', uc', clauses' =
+  let watchers', f', clauses' =
     match Clause.Watched.watch_clause a clause n watchers with
-    | Some (watched_clause, watchers') ->
+    | WatchedLiteralChange (watched_clause, watchers') ->
         let clauses' = Clause.Map.add watched_clause clauses in
-        (watchers', uc, clauses')
-    | None -> (
-        (* TODO Check what the assignment is, if there is already a conflicting assignment, then conflict *)
-        match
-          Clause.to_iter clause
-          |> Iter.find_pred (fun l ->
-                 not (Assignment.Map.mem (Literal.var l) a))
-        with
-        | Some l -> (watchers, UnitClauseQueue.snoc uc (l, clause), clauses)
-        | None -> (watchers, uc, clauses))
+        (watchers', Ok f, clauses')
+    | Unit (l, clause) -> (watchers, unit_propagate (l, clause) f, clauses)
+    | Falsified clause -> (watchers, Error (clause, f), clauses)
+    | NoChange -> (watchers, Ok f, clauses)
   in
-  {
-    f with
-    clauses = clauses';
-    frequency = frequency';
-    unit_clauses = uc';
-    watchers = watchers';
-  }
+  Result.map
+    (fun f' ->
+      {
+        f' with
+        clauses = clauses';
+        frequency = frequency';
+        watchers = watchers';
+      })
+    f'
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   let open Iter in
@@ -164,10 +203,11 @@ let backtrack
       unit_clauses = UnitClauseQueue.clear uc;
     }
   in
+
   (* let f' = add_clause (n, learned_clause) f' in *)
   (* let f' = remove_clause (n, learned_clause) f' in *)
-  let f'' = add_clause (n, learned_clause) f' in
-  (f'', d')
+  (* let f'' = add_clause (n, learned_clause) f' in *)
+  add_clause (n, learned_clause) f' |> Result.map (fun f'' -> (f'', d'))
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
@@ -181,9 +221,13 @@ let of_list v c list =
         if Clause.size clause = 0 then raise_notrace (Conflict (clause, f))
         else
           let n = Clause.Map.size clauses in
-          let f' = add_clause (n, clause) f in
+          let f' =
+            add_clause (n, clause) f
+            |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f)))
+          in
           aux f' cs
   in
+
   try
     Some
       (aux
@@ -219,36 +263,6 @@ let restart
       database = db;
       unit_clauses = UnitClauseQueue.clear uc;
     }
-
-let update_watchers l ({ assignments = a; watchers; _ } as f) =
-  (* TODO inline? *)
-  let update_watcher l c ({ unit_clauses = uc'; watchers = watchers'; _ } as f')
-      =
-    match Clause.Watched.update l a c watchers' with
-    | WatchedLiteralChange watchers' -> { f' with watchers = watchers' }
-    | Unit (l, ls) ->
-        { f' with unit_clauses = UnitClauseQueue.snoc uc' (l, ls) }
-    | Falsified ls -> raise_notrace (Conflict (ls, f))
-    | NoChange -> f'
-  in
-  try
-    Ok
-      (match Clause.Watched.Map.find_opt l watchers with
-      | Some cs -> Clause.Watched.Set.fold (update_watcher l) cs f
-      | None -> f)
-  with Conflict (c, f) -> Error (c, f)
-
-let make_assignment l ass ({ frequency; assignments = a; trail = t; _ } as f) =
-  let a' = Assignment.Map.add (Literal.var l) ass a in
-  let t' = (ass, f) :: t in
-  let f = { f with assignments = a'; trail = t' } in
-  update_watchers (Literal.neg l) f
-  |> Result.map (fun f' ->
-         let frequency' =
-           Frequency.Map.remove_literal l frequency
-           |> Frequency.Map.remove_literal (Literal.neg l)
-         in
-         { f' with frequency = frequency' })
 
 let eliminate_pure_literals ({ frequency; _ } as f) =
   let f' =
@@ -292,18 +306,6 @@ let preprocess = eliminate_pure_literals
    s SATISFIABLE
    v -1 1 0
 *)
-let rec unit_propagate
-    ({ unit_clauses = ucs; current_decision_level = d; _ } as f) =
-  match UnitClauseQueue.take_front ucs with
-  | Some ((l, uc), ucs') ->
-      let f' = { f with unit_clauses = ucs' } in
-      let i =
-        Assignment.Implication
-          { literal = l; implicant = Clause.to_array uc; level = d }
-      in
-      make_assignment l i f' |> Result.flat_map unit_propagate
-  | None -> Ok f
-
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in

@@ -23,16 +23,13 @@ module Watched : sig
   end
 
   type update_result =
-    | WatchedLiteralChange of Map.t
+    | WatchedLiteralChange of (watched_clause * Map.t)
     | Unit of (Literal.t * clause)
     | Falsified of clause
     | NoChange
 
   val fold : ('a -> Literal.t -> 'a) -> 'a -> t -> 'a
-
-  val watch_clause :
-    Assignment.Map.t -> clause -> int -> Map.t -> (t * Map.t) option
-
+  val watch_clause : Assignment.Map.t -> clause -> int -> Map.t -> update_result
   val unwatch_clause : clause -> Map.t -> Map.t
   val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
 end
