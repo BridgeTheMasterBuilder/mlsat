@@ -22,7 +22,7 @@ let rec cdcl max_conflicts luby f =
         | Error conflict -> handle conflict
     in
     (* check_invariants f; *)
-    (* Logs.debug (fun m -> m "%s" (show f)); *)
+    Logs.debug (fun m -> m "%s" (show f));
     if conflicts = max_conflicts' then
       let f = restart f in
       let max_conflicts', luby' = Luby.next luby in

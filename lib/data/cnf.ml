@@ -58,25 +58,46 @@ let show
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) =
   let update_watchers l ({ assignments = a; watchers; _ } as f) =
+    let ucs = ref [] in
     (* TODO inline? *)
     let update_watcher l c ({ watchers = watchers'; _ } as f') =
+      Logs.debug (fun m ->
+          let open Clause.Watched.Clause in
+          m "Updating watchers for clause %d:(%s )" c.id (Clause.show c.clause));
       match Clause.Watched.update l a c watchers' with
       | WatchedLiteralChange (_, watchers') ->
           Ok { f' with watchers = watchers' }
-      | Unit (l, uc) -> unit_propagate (l, uc) f'
-      | Falsified ls -> Error (ls, f)
+      | Unit (l, uc) ->
+          Logs.debug (fun m ->
+              m "Unit propagating %s because of %s" (Literal.show l)
+                (Clause.show uc));
+          (* TODO can't unit propagate immediately, need to collect into a queue *)
+          (* unit_propagate (l, uc) f' *)
+          ucs := (l, uc) :: !ucs;
+          Ok f'
+      | Falsified ls ->
+          Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show ls));
+          Error (ls, f)
       | NoChange -> Ok f'
     in
     try
       Ok
         (match Clause.Watched.Map.find_opt l watchers with
         | Some cs ->
-            Clause.Watched.Set.fold
-              (fun c f' ->
-                match update_watcher l c f' with
-                | Ok f' -> f'
-                | Error (c, f) -> raise_notrace (Conflict (c, f)))
-              cs f
+            let f'' =
+              Clause.Watched.Set.fold
+                (fun c f' ->
+                  match update_watcher l c f' with
+                  | Ok f' -> f'
+                  | Error (c, f) -> raise_notrace (Conflict (c, f)))
+                cs f
+            in
+            List.fold_left
+              (fun f''' x ->
+                unit_propagate x f'''
+                |> Result.get_lazy (fun (c, f) ->
+                       raise_notrace (Conflict (c, f))))
+              f'' (List.rev !ucs)
         | None -> f)
     with Conflict (c, f) -> Error (c, f)
   in
@@ -113,8 +134,14 @@ let add_clause (n, clause)
     | WatchedLiteralChange (watched_clause, watchers') ->
         let clauses' = Clause.Map.add watched_clause clauses in
         (watchers', Ok f, clauses')
-    | Unit (l, clause) -> (watchers, unit_propagate (l, clause) f, clauses)
-    | Falsified clause -> (watchers, Error (clause, f), clauses)
+    | Unit (l, clause) ->
+        Logs.debug (fun m ->
+            m "Unit propagating %s because of %s" (Literal.show l)
+              (Clause.show clause));
+        (watchers, unit_propagate (l, clause) f, clauses)
+    | Falsified clause ->
+        Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
+        (watchers, Error (clause, f), clauses)
     | NoChange -> (watchers, Ok f, clauses)
   in
   Result.map

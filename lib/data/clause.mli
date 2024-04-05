@@ -2,7 +2,18 @@ type t
 type clause = t
 
 module Watched : sig
-  type t
+  (* type t *)
+  module Clause : sig
+    type t = {
+      id : int;
+      clause : clause;
+      size : int;
+      mutable index : int;
+      mutable watched_literals : Literal.t * Literal.t;
+    }
+  end
+
+  type t = Clause.t
   type watched_clause = t
 
   module Set : sig
