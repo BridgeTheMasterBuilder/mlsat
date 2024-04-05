@@ -92,6 +92,7 @@ let rec make_assignment l ass
                   | Error (c, f) -> raise_notrace (Conflict (c, f)))
                 cs f
             in
+            (* TODO !!! *)
             List.fold_left
               (fun f''' x ->
                 unit_propagate x f'''
@@ -104,13 +105,13 @@ let rec make_assignment l ass
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t' } in
-  update_watchers (Literal.neg l) f
-  |> Result.map (fun f' ->
-         let frequency' =
-           Frequency.Map.remove_literal l frequency
-           |> Frequency.Map.remove_literal (Literal.neg l)
-         in
-         { f' with frequency = frequency' })
+  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
+  let frequency' =
+    Frequency.Map.remove_literal l frequency
+    |> Frequency.Map.remove_literal (Literal.neg l)
+  in
+  let f' = { f with frequency = frequency' } in
+  update_watchers (Literal.neg l) f'
 
 and unit_propagate (l, uc) ({ current_decision_level = d; _ } as f) =
   let f' = f in
@@ -138,7 +139,9 @@ let add_clause (n, clause)
         Logs.debug (fun m ->
             m "Unit propagating %s because of %s" (Literal.show l)
               (Clause.show clause));
-        (watchers, unit_propagate (l, clause) f, clauses)
+        ( watchers,
+          unit_propagate (l, clause) { f with frequency = frequency' },
+          clauses )
     | Falsified clause ->
         Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
         (watchers, Error (clause, f), clauses)
@@ -336,5 +339,5 @@ let preprocess = eliminate_pure_literals
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  make_assignment l dec f
-  |> Result.map (fun f' -> { f' with current_decision_level = d + 1 })
+  let f' = { f with current_decision_level = d + 1 } in
+  make_assignment l dec f'
