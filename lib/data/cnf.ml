@@ -56,7 +56,7 @@ let show
        "" unit_clauses)
 
 let rec make_assignment l ass
-    ({ frequency; assignments = a; trail = t; _ } as f) =
+    ({ frequency; assignments = a; trail = t; _ } as f) d =
   let update_watchers l ({ assignments = a; watchers; _ } as f) =
     let ucs = ref [] in
     (* TODO inline? *)
@@ -104,7 +104,7 @@ let rec make_assignment l ass
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
-  let f = { f with assignments = a'; trail = t' } in
+  let f = { f with assignments = a'; trail = t'; current_decision_level = d } in
   Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
   let frequency' =
     Frequency.Map.remove_literal l frequency
@@ -119,7 +119,7 @@ and unit_propagate (l, uc) ({ current_decision_level = d; _ } as f) =
     Assignment.Implication
       { literal = l; implicant = Clause.to_array uc; level = d }
   in
-  make_assignment l i f'
+  make_assignment l i f' d
 
 let add_clause (n, clause)
     ({ clauses; frequency; assignments = a; watchers; _ } as f) =
@@ -130,32 +130,20 @@ let add_clause (n, clause)
       |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
       frequency
   in
-  let watchers', f', clauses' =
-    match Clause.Watched.watch_clause a clause n watchers with
-    | WatchedLiteralChange (watched_clause, watchers') ->
-        let clauses' = Clause.Map.add watched_clause clauses in
-        (watchers', Ok f, clauses')
-    | Unit (l, clause) ->
-        Logs.debug (fun m ->
-            m "Unit propagating %s because of %s" (Literal.show l)
-              (Clause.show clause));
-        ( watchers,
-          unit_propagate (l, clause) { f with frequency = frequency' },
-          clauses )
-    | Falsified clause ->
-        Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
-        (watchers, Error (clause, f), clauses)
-    | NoChange -> (watchers, Ok f, clauses)
-  in
-  Result.map
-    (fun f' ->
-      {
-        f' with
-        clauses = clauses';
-        frequency = frequency';
-        watchers = watchers';
-      })
-    f'
+  let f' = { f with frequency = frequency' } in
+  match Clause.Watched.watch_clause a clause n watchers with
+  | WatchedLiteralChange (watched_clause, watchers') ->
+      let clauses' = Clause.Map.add watched_clause clauses in
+      Ok { f' with watchers = watchers'; clauses = clauses' }
+  | Unit (l, clause) ->
+      Logs.debug (fun m ->
+          m "Unit propagating %s because of %s" (Literal.show l)
+            (Clause.show clause));
+      unit_propagate (l, clause) f'
+  | Falsified clause ->
+      Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
+      Error (clause, f)
+  | NoChange -> Ok f'
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   let open Iter in
@@ -218,6 +206,7 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
+  Logs.debug (fun m -> m "Backtracking to level %d" d');
   let _, f' =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
@@ -233,7 +222,6 @@ let backtrack
       unit_clauses = UnitClauseQueue.clear uc;
     }
   in
-
   (* let f' = add_clause (n, learned_clause) f' in *)
   (* let f' = remove_clause (n, learned_clause) f' in *)
   (* let f'' = add_clause (n, learned_clause) f' in *)
@@ -306,7 +294,7 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
                Assignment.Implication
                  { literal = l; implicant = Array.empty; level = 0 }
              in
-             make_assignment l i f' |> Result.get_exn)
+             make_assignment l i f' 0 |> Result.get_exn)
          f
   in
   { f' with trail = [] }
@@ -339,5 +327,6 @@ let preprocess = eliminate_pure_literals
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  let f' = { f with current_decision_level = d + 1 } in
-  make_assignment l dec f'
+  (* let f' = { f with current_decision_level = d + 1 } in *)
+  let f' = f in
+  make_assignment l dec f' (d + 1)
