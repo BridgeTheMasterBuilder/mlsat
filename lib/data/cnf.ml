@@ -55,6 +55,8 @@ let show
        (fun acc (_, c) -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" unit_clauses)
 
+let decision_level { current_decision_level = d; _ } = d
+
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) d =
   let update_watchers l ({ assignments = a; watchers; _ } as f) =
@@ -76,7 +78,9 @@ let rec make_assignment l ass
           ucs := (l, uc) :: !ucs;
           Ok f'
       | Falsified ls ->
-          Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show ls));
+          Logs.debug (fun m ->
+              m "(%d) Clause %s is falsified" f.current_decision_level
+                (Clause.show ls));
           Error (ls, f)
       | NoChange -> Ok f'
     in

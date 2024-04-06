@@ -1,3 +1,4 @@
+(* TODO t *)
 type formula
 
 val analyze_conflict : formula -> Clause.t -> Clause.t
@@ -8,6 +9,7 @@ val backtrack :
 (* TODO result instead of Result.t *)
 
 val choose_literal : formula -> Literal.t
+val decision_level : formula -> int
 val is_empty : formula -> bool
 val learned_clauses : formula -> Clause.t list
 val make_decision : formula -> (formula, Clause.t * formula) Result.t
