@@ -150,19 +150,27 @@ let add_clause (n, clause)
   | NoChange -> Ok f'
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
+  Logs.debug (fun m -> m "Analyzing clause ( %s)" (Clause.show clause));
   let open Iter in
   let rec aux q c =
     match VariableWorkqueue.pop q with
     | None -> c
     | Some (l, q') -> (
-        if VariableWorkqueue.is_empty q' then
+        Logs.debug (fun m -> m "Examining variable %s" (Variable.show l));
+        if VariableWorkqueue.is_empty q' then (
           let ass = Assignment.Map.find l a in
-          Literal.neg (Assignment.literal ass) :: c
+          Logs.debug (fun m -> m "%s" (Assignment.show ass));
+          Logs.debug (fun m -> m "Found UIP");
+          Literal.neg (Assignment.literal ass) :: c)
         else
           match Assignment.(Map.find_opt l a) with
-          | Some (Decision { literal = l'; _ }) -> aux q' (Literal.neg l' :: c)
-          | Some (Implication { literal = l'; implicant = ls'; level = d'; _ })
-            ->
+          | Some (Decision { literal = l'; _ } as ass) ->
+              Logs.debug (fun m -> m "%s" (Assignment.show ass));
+              aux q' (Literal.neg l' :: c)
+          | Some
+              (Implication { literal = l'; implicant = ls'; level = d'; _ } as
+              ass) ->
+              Logs.debug (fun m -> m "%s" (Assignment.show ass));
               if d' < d then aux q' (Literal.neg l' :: c)
               else
                 let q'' =
@@ -172,6 +180,25 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
                 in
                 aux q'' c
           | None -> aux q' c)
+  in
+  let clause =
+    Clause.to_array clause
+    |> Array.sorted (fun l1 l2 ->
+           let ass1 = Assignment.Map.find (Literal.var l1) a in
+           let ass2 = Assignment.Map.find (Literal.var l2) a in
+           match (ass1, ass2) with
+           | Decision { level = d1; _ }, Implication { level = d2; _ }
+             when d1 = d2 ->
+               1
+           | Implication { level = d1; _ }, Decision { level = d2; _ }
+             when d1 = d2 ->
+               -1
+           | Decision { level = d1; _ }, Decision { level = d2; _ }
+           | Decision { level = d1; _ }, Implication { level = d2; _ }
+           | Implication { level = d1; _ }, Decision { level = d2; _ }
+           | Implication { level = d1; _ }, Implication { level = d2; _ } ->
+               -Int.compare d1 d2)
+    |> Clause.of_array
   in
   aux (VariableWorkqueue.of_iter (Clause.to_iter clause |> map Literal.var)) []
   |> Clause.of_list
@@ -222,13 +249,26 @@ let backtrack
       clauses;
       frequency = Frequency.Map.decay f'.frequency;
       watchers;
-      database = (n, learned_clause) :: db;
+      database =
+        ( n,
+          Clause.of_array
+            (Clause.to_array learned_clause |> Array.sorted Literal.compare) )
+        :: db;
       unit_clauses = UnitClauseQueue.clear uc;
     }
   in
   (* let f' = add_clause (n, learned_clause) f' in *)
   (* let f' = remove_clause (n, learned_clause) f' in *)
   (* let f'' = add_clause (n, learned_clause) f' in *)
+  assert (
+    not
+      (Clause.Map.to_iter clauses
+      |> Iter.exists (fun (_, (c : Clause.Watched.Clause.t)) ->
+             let c = c.clause in
+             Array.equal Literal.equal
+               (Clause.to_array c |> Array.sorted Literal.compare)
+               (Clause.to_array learned_clause |> Array.sorted Literal.compare))
+      ));
   add_clause (n, learned_clause) f' |> Result.map (fun f'' -> (f'', d'))
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
