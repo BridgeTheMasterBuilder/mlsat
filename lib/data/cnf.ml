@@ -125,20 +125,15 @@ let rec make_assignment l ass
 
 and unit_propagate ({ current_decision_level = d; unit_clauses = ucs; _ } as f)
     =
-  try
-    let f' =
-      UnitClauseQueue.fold
-        (fun f' (l, uc) ->
-          let i =
-            Assignment.Implication
-              { literal = l; implicant = Clause.to_array uc; level = d }
-          in
-          make_assignment l i f' d
-          |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f))))
-        f ucs
-    in
-    Ok { f' with unit_clauses = UnitClauseQueue.clear ucs }
-  with Conflict (c, f) -> Error (c, f)
+  match UnitClauseQueue.take_front ucs with
+  | None -> Ok f
+  | Some ((l, uc), ucs') ->
+      let i =
+        Assignment.Implication
+          { literal = l; implicant = Clause.to_array uc; level = d }
+      in
+      let f' = { f with unit_clauses = ucs' } in
+      make_assignment l i f' d |> Result.flat_map unit_propagate
 
 let add_clause (n, clause)
     ({ clauses; frequency; assignments = a; watchers; unit_clauses = uc; _ } as
@@ -286,7 +281,7 @@ let backtrack
       frequency = Frequency.Map.decay f'.frequency;
       watchers;
       database = (n, learned_clause) :: db;
-      unit_clauses = UnitClauseQueue.clear uc;
+      (* unit_clauses = UnitClauseQueue.clear uc; *)
     }
   in
   (* let f' = add_clause (n, learned_clause) f' in *)
@@ -356,7 +351,7 @@ let restart
       clauses;
       watchers;
       database = db;
-      unit_clauses = UnitClauseQueue.clear uc;
+      (* unit_clauses = UnitClauseQueue.clear uc; *)
     }
 
 let eliminate_pure_literals ({ frequency; _ } as f) =
@@ -378,29 +373,6 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
 
 let preprocess = eliminate_pure_literals
 
-(* TODO Fix inconsistent unit propagations, e.g.
-
-   mlsat: [DEBUG] Clauses:
-   ()
-   Frequency:
-   -1:1.000000
-   1:1.000000
-
-   Decision level: 0
-   Assignments:
-
-   Learned clauses:
-
-   Watched literals:
-   ()
-   Unit clauses:
-   ( 1 )
-   ( -1 )
-
-
-   s SATISFIABLE
-   v -1 1 0
-*)
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
