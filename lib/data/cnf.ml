@@ -60,9 +60,11 @@ let decision_level { current_decision_level = d; _ } = d
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) d =
   let update_watchers l ({ assignments = a; watchers; _ } as f) =
-    let ucs = ref [] in
+    (* TODO *)
+    (* let ucs = ref [] in *)
     (* TODO inline? *)
-    let update_watcher l c ({ watchers = watchers'; _ } as f') =
+    let update_watcher l c
+        ({ watchers = watchers'; unit_clauses = ucs; _ } as f') =
       Logs.debug (fun m ->
           let open Clause.Watched.Clause in
           m "Updating watchers for clause %d:(%s )" c.id (Clause.show c.clause));
@@ -75,8 +77,10 @@ let rec make_assignment l ass
                 (Clause.show uc));
           (* TODO can't unit propagate immediately, need to collect into a queue *)
           (* unit_propagate (l, uc) f' *)
-          ucs := (l, uc) :: !ucs;
-          Ok f'
+          (* TODO *)
+          (* ucs := (l, uc) :: !ucs; *)
+          let ucs' = UnitClauseQueue.snoc ucs (l, uc) in
+          Ok { f' with unit_clauses = ucs' }
       | Falsified ls ->
           Logs.debug (fun m ->
               m "(%d) Clause %s is falsified" f.current_decision_level
@@ -97,12 +101,14 @@ let rec make_assignment l ass
                 cs f
             in
             (* TODO !!! *)
-            List.fold_left
-              (fun f''' x ->
-                unit_propagate x f'''
-                |> Result.get_lazy (fun (c, f) ->
-                       raise_notrace (Conflict (c, f))))
-              f'' (List.rev !ucs)
+            unit_propagate f''
+            |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f)))
+            (* List.fold_left *)
+            (*   (fun f''' x -> *)
+            (*     unit_propagate x f''' *)
+            (*     |> Result.get_lazy (fun (c, f) -> *)
+            (*            raise_notrace (Conflict (c, f)))) *)
+            (*   f'' (List.rev !ucs) *)
         | None -> f)
     with Conflict (c, f) -> Error (c, f)
   in
@@ -117,16 +123,26 @@ let rec make_assignment l ass
   let f' = { f with frequency = frequency' } in
   update_watchers (Literal.neg l) f'
 
-and unit_propagate (l, uc) ({ current_decision_level = d; _ } as f) =
-  let f' = f in
-  let i =
-    Assignment.Implication
-      { literal = l; implicant = Clause.to_array uc; level = d }
-  in
-  make_assignment l i f' d
+and unit_propagate ({ current_decision_level = d; unit_clauses = ucs; _ } as f)
+    =
+  try
+    let f' =
+      UnitClauseQueue.fold
+        (fun f' (l, uc) ->
+          let i =
+            Assignment.Implication
+              { literal = l; implicant = Clause.to_array uc; level = d }
+          in
+          make_assignment l i f' d
+          |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f))))
+        f ucs
+    in
+    Ok { f' with unit_clauses = UnitClauseQueue.clear ucs }
+  with Conflict (c, f) -> Error (c, f)
 
 let add_clause (n, clause)
-    ({ clauses; frequency; assignments = a; watchers; _ } as f) =
+    ({ clauses; frequency; assignments = a; watchers; unit_clauses = uc; _ } as
+    f) =
   let frequency' =
     let open Iter in
     Frequency.Map.incr_iter
@@ -143,7 +159,8 @@ let add_clause (n, clause)
       Logs.debug (fun m ->
           m "Unit propagating %s because of %s" (Literal.show l)
             (Clause.show clause));
-      unit_propagate (l, clause) f'
+      let uc' = UnitClauseQueue.snoc uc (l, clause) in
+      unit_propagate { f' with unit_clauses = uc' }
   | Falsified clause ->
       Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
       Error (clause, f)
@@ -181,6 +198,7 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
                 aux q'' c
           | None -> aux q' c)
   in
+  (* TODO create set (or unit Hashtbl) from clause, iterate through trail and do a membership test on each literal seen? *)
   let clause =
     Clause.to_array clause
     |> Array.sorted (fun l1 l2 ->
@@ -242,6 +260,24 @@ let backtrack
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
   in
+  (* let _, f' = *)
+  (*   if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL" *)
+  (*   else *)
+  (*     List.find_map *)
+  (*       (fun ((_, { trail; _ }) as ass) -> *)
+  (*         match trail with *)
+  (*         | [] -> failwith "Impossible" *)
+  (*         | (_, { assignments = a'; _ }) :: _ -> *)
+  (*             let open Iter in *)
+  (*             let unassigned = *)
+  (*               Clause.to_iter learned_clause *)
+  (*               |> filter_count (fun l -> *)
+  (*                      not (Assignment.Map.mem (Literal.var l) a')) *)
+  (*             in *)
+  (*             if unassigned = 2 then Some ass else None) *)
+  (*       t *)
+  (*     |> Option.get_exn_or "BACKTRACK" *)
+  (* in *)
   let n = Clause.Map.size clauses in
   let f' =
     {
@@ -249,26 +285,22 @@ let backtrack
       clauses;
       frequency = Frequency.Map.decay f'.frequency;
       watchers;
-      database =
-        ( n,
-          Clause.of_array
-            (Clause.to_array learned_clause |> Array.sorted Literal.compare) )
-        :: db;
+      database = (n, learned_clause) :: db;
       unit_clauses = UnitClauseQueue.clear uc;
     }
   in
   (* let f' = add_clause (n, learned_clause) f' in *)
   (* let f' = remove_clause (n, learned_clause) f' in *)
   (* let f'' = add_clause (n, learned_clause) f' in *)
-  assert (
-    not
-      (Clause.Map.to_iter clauses
-      |> Iter.exists (fun (_, (c : Clause.Watched.Clause.t)) ->
-             let c = c.clause in
-             Array.equal Literal.equal
-               (Clause.to_array c |> Array.sorted Literal.compare)
-               (Clause.to_array learned_clause |> Array.sorted Literal.compare))
-      ));
+  (* assert ( *)
+  (*   not *)
+  (*     (Clause.Map.to_iter clauses *)
+  (*     |> Iter.exists (fun (_, (c : Clause.Watched.Clause.t)) -> *)
+  (*            let c = c.clause in *)
+  (*            Array.equal Literal.equal *)
+  (*              (Clause.to_array c |> Array.sorted Literal.compare) *)
+  (*              (Clause.to_array learned_clause |> Array.sorted Literal.compare)) *)
+  (*     )); *)
   add_clause (n, learned_clause) f' |> Result.map (fun f'' -> (f'', d'))
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
@@ -318,6 +350,7 @@ let restart
         |> Option.get_exn_or
              "Attempt to backtrack without previous assignments.")
     in
+    (* TODO merge freqs? *)
     {
       f' with
       clauses;

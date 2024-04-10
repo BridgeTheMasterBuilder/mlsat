@@ -4,6 +4,7 @@ type clause = t
 module Watched : sig
   (* type t *)
   module Clause : sig
+    (* TODO *)
     type t = {
       id : int;
       clause : clause;
