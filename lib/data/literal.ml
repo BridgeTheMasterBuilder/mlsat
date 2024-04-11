@@ -7,7 +7,10 @@ end
 
 include Int
 
+let compare = ( - )
 let hash = Fun.id
+let of_int_unchecked = Fun.id
+let of_var = Variable.to_int
 let show = string_of_int
 let signum = sign
 let var = Variable.of_int_unchecked

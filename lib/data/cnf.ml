@@ -1,7 +1,6 @@
 type formula = {
   clauses : Clause.Map.t;
   frequency : Frequency.Map.t;
-  unit_clauses : UnitClauseQueue.t;
   current_decision_level : int;
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
@@ -16,15 +15,8 @@ module VariableWorkqueue : Workqueue.S with type elt = Variable.t =
   Workqueue.Make (Variable)
 
 let show
-    ({
-       clauses;
-       frequency;
-       current_decision_level;
-       database;
-       watchers;
-       unit_clauses;
-       _;
-     } as f) =
+    ({ clauses; frequency; current_decision_level; database; watchers; _ } as f)
+    =
   Printf.sprintf
     "Clauses:\n\
      %s\n\
@@ -36,8 +28,6 @@ let show
      Learned clauses:\n\
      %s\n\
      Watched literals:\n\
-     %s\n\
-     Unit clauses:\n\
      %s\n"
     (if Clause.Map.is_empty clauses then "()" else Clause.Map.show clauses)
     (if Frequency.Map.is_empty frequency then "()"
@@ -51,64 +41,52 @@ let show
        "" database)
     (if Clause.Watched.Map.is_empty watchers then "()"
      else Clause.Watched.Map.show watchers)
-    (UnitClauseQueue.fold
-       (fun acc (_, c) -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
-       "" unit_clauses)
 
 let decision_level { current_decision_level = d; _ } = d
 
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) d =
   let update_watchers l ({ assignments = a; watchers; _ } as f) =
-    (* TODO *)
-    (* let ucs = ref [] in *)
     (* TODO inline? *)
-    let update_watcher l c
-        ({ watchers = watchers'; unit_clauses = ucs; _ } as f') =
-      Logs.debug (fun m ->
-          let open Clause.Watched.Clause in
-          m "Updating watchers for clause %d:(%s )" c.id (Clause.show c.clause));
+    let update_watcher l c ({ watchers = watchers'; _ } as f') ucs' =
+      (* Logs.debug (fun m -> *)
+      (*     let open Clause.Watched.Clause in *)
+      (*     m "Updating watchers for clause %d:(%s )" c.id (Clause.show c.clause)); *)
       match Clause.Watched.update l a c watchers' with
       | WatchedLiteralChange (_, watchers') ->
-          Ok { f' with watchers = watchers' }
+          Ok ({ f' with watchers = watchers' }, ucs')
       | Unit (l, uc) ->
           Logs.debug (fun m ->
               m "Unit propagating %s because of %s" (Literal.show l)
                 (Clause.show uc));
-          (* TODO can't unit propagate immediately, need to collect into a queue *)
-          (* unit_propagate (l, uc) f' *)
-          (* TODO *)
-          (* ucs := (l, uc) :: !ucs; *)
-          let ucs' = UnitClauseQueue.snoc ucs (l, uc) in
-          Ok { f' with unit_clauses = ucs' }
+          let ucs' = (l, uc) :: ucs' in
+          Ok (f', ucs')
       | Falsified ls ->
           Logs.debug (fun m ->
               m "(%d) Clause %s is falsified" f.current_decision_level
                 (Clause.show ls));
           Error (ls, f)
-      | NoChange -> Ok f'
+      | NoChange -> Ok (f', ucs')
     in
     try
       Ok
         (match Clause.Watched.Map.find_opt l watchers with
         | Some cs ->
-            let f'' =
+            let f'', ucs =
               Clause.Watched.Set.fold
-                (fun c f' ->
-                  match update_watcher l c f' with
-                  | Ok f' -> f'
-                  | Error (c, f) -> raise_notrace (Conflict (c, f)))
-                cs f
+                (fun c (f', ucs) ->
+                  update_watcher l c f' ucs
+                  |> Result.get_lazy (fun (c, f) ->
+                         raise_notrace (Conflict (c, f))))
+                cs (f, [])
             in
-            (* TODO !!! *)
-            unit_propagate f''
-            |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f)))
-            (* List.fold_left *)
-            (*   (fun f''' x -> *)
-            (*     unit_propagate x f''' *)
-            (*     |> Result.get_lazy (fun (c, f) -> *)
-            (*            raise_notrace (Conflict (c, f)))) *)
-            (*   f'' (List.rev !ucs) *)
+            List.fold_left
+              (fun f' (l, uc) ->
+                unit_propagate (l, uc) f'
+                |> Result.get_lazy (fun (c, f) ->
+                       raise_notrace (Conflict (c, f))))
+              f'' ucs
+            (* f'' (List.rev ucs) *)
         | None -> f)
     with Conflict (c, f) -> Error (c, f)
   in
@@ -123,21 +101,16 @@ let rec make_assignment l ass
   let f' = { f with frequency = frequency' } in
   update_watchers (Literal.neg l) f'
 
-and unit_propagate ({ current_decision_level = d; unit_clauses = ucs; _ } as f)
-    =
-  match UnitClauseQueue.take_front ucs with
-  | None -> Ok f
-  | Some ((l, uc), ucs') ->
-      let i =
-        Assignment.Implication
-          { literal = l; implicant = Clause.to_array uc; level = d }
-      in
-      let f' = { f with unit_clauses = ucs' } in
-      make_assignment l i f' d |> Result.flat_map unit_propagate
+and unit_propagate (l, uc) ({ current_decision_level = d; _ } as f) =
+  let f' = f in
+  let i =
+    Assignment.Implication
+      { literal = l; implicant = Clause.to_array uc; level = d }
+  in
+  make_assignment l i f' d
 
 let add_clause (n, clause)
-    ({ clauses; frequency; assignments = a; watchers; unit_clauses = uc; _ } as
-    f) =
+    ({ clauses; frequency; assignments = a; watchers; _ } as f) =
   let frequency' =
     let open Iter in
     Frequency.Map.incr_iter
@@ -154,8 +127,7 @@ let add_clause (n, clause)
       Logs.debug (fun m ->
           m "Unit propagating %s because of %s" (Literal.show l)
             (Clause.show clause));
-      let uc' = UnitClauseQueue.snoc uc (l, clause) in
-      unit_propagate { f' with unit_clauses = uc' }
+      unit_propagate (l, clause) f'
   | Falsified clause ->
       Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
       Error (clause, f)
@@ -194,25 +166,26 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
           | None -> aux q' c)
   in
   (* TODO create set (or unit Hashtbl) from clause, iterate through trail and do a membership test on each literal seen? *)
-  let clause =
-    Clause.to_array clause
-    |> Array.sorted (fun l1 l2 ->
-           let ass1 = Assignment.Map.find (Literal.var l1) a in
-           let ass2 = Assignment.Map.find (Literal.var l2) a in
-           match (ass1, ass2) with
-           | Decision { level = d1; _ }, Implication { level = d2; _ }
-             when d1 = d2 ->
-               1
-           | Implication { level = d1; _ }, Decision { level = d2; _ }
-             when d1 = d2 ->
-               -1
-           | Decision { level = d1; _ }, Decision { level = d2; _ }
-           | Decision { level = d1; _ }, Implication { level = d2; _ }
-           | Implication { level = d1; _ }, Decision { level = d2; _ }
-           | Implication { level = d1; _ }, Implication { level = d2; _ } ->
-               -Int.compare d1 d2)
-    |> Clause.of_array
-  in
+  (* TODO Is destructively sorting the clause here safe? *)
+  let clause = Clause.to_array clause in
+  Array.sort
+    (fun l1 l2 ->
+      let ass1 = Assignment.Map.find (Literal.var l1) a in
+      let ass2 = Assignment.Map.find (Literal.var l2) a in
+      match (ass1, ass2) with
+      | Decision { level = d1; _ }, Implication { level = d2; _ } when d1 = d2
+        ->
+          1
+      | Implication { level = d1; _ }, Decision { level = d2; _ } when d1 = d2
+        ->
+          -1
+      | Decision { level = d1; _ }, Decision { level = d2; _ }
+      | Decision { level = d1; _ }, Implication { level = d2; _ }
+      | Implication { level = d1; _ }, Decision { level = d2; _ }
+      | Implication { level = d1; _ }, Implication { level = d2; _ } ->
+          -Int.compare d1 d2)
+    clause;
+  let clause = Clause.of_array clause in
   aux (VariableWorkqueue.of_iter (Clause.to_iter clause |> map Literal.var)) []
   |> Clause.of_list
 
@@ -233,15 +206,8 @@ let remove_clause (n, clause)
   { f with clauses = clauses'; frequency = frequency'; watchers = watchers' }
 
 let backtrack
-    {
-      clauses;
-      assignments = a;
-      trail = t;
-      database = db;
-      watchers;
-      unit_clauses = uc;
-      _;
-    } learned_clause =
+    { clauses; assignments = a; trail = t; database = db; watchers; _ }
+    learned_clause =
   let d' =
     let open Iter in
     Clause.to_iter learned_clause
@@ -255,24 +221,7 @@ let backtrack
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
   in
-  (* let _, f' = *)
-  (*   if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL" *)
-  (*   else *)
-  (*     List.find_map *)
-  (*       (fun ((_, { trail; _ }) as ass) -> *)
-  (*         match trail with *)
-  (*         | [] -> failwith "Impossible" *)
-  (*         | (_, { assignments = a'; _ }) :: _ -> *)
-  (*             let open Iter in *)
-  (*             let unassigned = *)
-  (*               Clause.to_iter learned_clause *)
-  (*               |> filter_count (fun l -> *)
-  (*                      not (Assignment.Map.mem (Literal.var l) a')) *)
-  (*             in *)
-  (*             if unassigned = 2 then Some ass else None) *)
-  (*       t *)
-  (*     |> Option.get_exn_or "BACKTRACK" *)
-  (* in *)
+
   let n = Clause.Map.size clauses in
   let f' =
     {
@@ -281,12 +230,8 @@ let backtrack
       frequency = Frequency.Map.decay f'.frequency;
       watchers;
       database = (n, learned_clause) :: db;
-      (* unit_clauses = UnitClauseQueue.clear uc; *)
     }
   in
-  (* let f' = add_clause (n, learned_clause) f' in *)
-  (* let f' = remove_clause (n, learned_clause) f' in *)
-  (* let f'' = add_clause (n, learned_clause) f' in *)
   (* assert ( *)
   (*   not *)
   (*     (Clause.Map.to_iter clauses *)
@@ -328,15 +273,12 @@ let of_list v c list =
            assignments = Assignment.Map.empty;
            trail = [];
            database = [];
-           unit_clauses = UnitClauseQueue.empty;
            watchers = Clause.Watched.Map.make v;
          }
          list)
   with Conflict _ -> None
 
-let restart
-    ({ clauses; trail = t; watchers; database = db; unit_clauses = uc; _ } as f)
-    =
+let restart ({ clauses; trail = t; watchers; database = db; _ } as f) =
   if List.is_empty t then f
   else
     let f' =
@@ -346,13 +288,7 @@ let restart
              "Attempt to backtrack without previous assignments.")
     in
     (* TODO merge freqs? *)
-    {
-      f' with
-      clauses;
-      watchers;
-      database = db;
-      (* unit_clauses = UnitClauseQueue.clear uc; *)
-    }
+    { f' with clauses; watchers; database = db }
 
 let eliminate_pure_literals ({ frequency; _ } as f) =
   let f' =
@@ -376,6 +312,4 @@ let preprocess = eliminate_pure_literals
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  (* let f' = { f with current_decision_level = d + 1 } in *)
-  let f' = f in
-  make_assignment l dec f' (d + 1)
+  make_assignment l dec f (d + 1)

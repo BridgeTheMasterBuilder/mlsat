@@ -11,6 +11,8 @@ val compare : t -> t -> int
 val equal : t -> t -> bool
 val hash : t -> int
 val neg : t -> t
+val of_int_unchecked : int -> t
+val of_var : Variable.t -> t
 val show : t -> string
 val signum : t -> int
 val var : t -> Variable.t

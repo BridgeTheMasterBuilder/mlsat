@@ -8,3 +8,4 @@ val equal : t -> t -> bool
 val hash : t -> int
 val of_int_unchecked : int -> t
 val show : t -> string
+val to_int : t -> int
