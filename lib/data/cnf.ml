@@ -55,17 +55,8 @@ let rec make_assignment l ass
       match Clause.Watched.update l a c watchers' with
       | WatchedLiteralChange (_, watchers') ->
           Ok ({ f' with watchers = watchers' }, ucs')
-      | Unit (l, uc) ->
-          Logs.debug (fun m ->
-              m "Unit propagating %s because of %s" (Literal.show l)
-                (Clause.show uc));
-          let ucs' = (l, uc) :: ucs' in
-          Ok (f', ucs')
-      | Falsified ls ->
-          Logs.debug (fun m ->
-              m "(%d) Clause %s is falsified" f.current_decision_level
-                (Clause.show ls));
-          Error (ls, f)
+      | Unit (l, uc) -> Ok (f', (l, uc) :: ucs')
+      | Falsified ls -> Error (ls, f)
       | NoChange -> Ok (f', ucs')
     in
     try
@@ -93,7 +84,6 @@ let rec make_assignment l ass
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t'; current_decision_level = d } in
-  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
   let frequency' =
     Frequency.Map.remove_literal l frequency
     |> Frequency.Map.remove_literal (Literal.neg l)
@@ -123,38 +113,25 @@ let add_clause (n, clause)
   | WatchedLiteralChange (watched_clause, watchers') ->
       let clauses' = Clause.Map.add watched_clause clauses in
       Ok { f' with watchers = watchers'; clauses = clauses' }
-  | Unit (l, clause) ->
-      Logs.debug (fun m ->
-          m "Unit propagating %s because of %s" (Literal.show l)
-            (Clause.show clause));
-      unit_propagate (l, clause) f'
-  | Falsified clause ->
-      Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
-      Error (clause, f)
+  | Unit (l, clause) -> unit_propagate (l, clause) f'
+  | Falsified clause -> Error (clause, f)
   | NoChange -> Ok f'
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
-  Logs.debug (fun m -> m "Analyzing clause ( %s)" (Clause.show clause));
   let open Iter in
   let rec aux q c =
     match VariableWorkqueue.pop q with
     | None -> c
     | Some (l, q') -> (
-        Logs.debug (fun m -> m "Examining variable %s" (Variable.show l));
-        if VariableWorkqueue.is_empty q' then (
+        if VariableWorkqueue.is_empty q' then
           let ass = Assignment.Map.find l a in
-          Logs.debug (fun m -> m "%s" (Assignment.show ass));
-          Logs.debug (fun m -> m "Found UIP");
-          Literal.neg (Assignment.literal ass) :: c)
+
+          Literal.neg (Assignment.literal ass) :: c
         else
           match Assignment.(Map.find_opt l a) with
-          | Some (Decision { literal = l'; _ } as ass) ->
-              Logs.debug (fun m -> m "%s" (Assignment.show ass));
-              aux q' (Literal.neg l' :: c)
-          | Some
-              (Implication { literal = l'; implicant = ls'; level = d'; _ } as
-              ass) ->
-              Logs.debug (fun m -> m "%s" (Assignment.show ass));
+          | Some (Decision { literal = l'; _ }) -> aux q' (Literal.neg l' :: c)
+          | Some (Implication { literal = l'; implicant = ls'; level = d'; _ })
+            ->
               if d' < d then aux q' (Literal.neg l' :: c)
               else
                 let q'' =
@@ -216,7 +193,6 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  Logs.debug (fun m -> m "Backtracking to level %d" d');
   let _, f' =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
