@@ -5,7 +5,7 @@ type formula = {
   assignments : Assignment.Map.t;
   trail : (Assignment.t * formula) list;
   (* TODO rename to trace and include clause deletion too *)
-  database : Clause.Watched.watched_clause list;
+  database : Clause.t list;
   watchers : Clause.Watched.Map.t;
 }
 
@@ -49,7 +49,7 @@ let show
        (fun acc (ass, _) -> Printf.sprintf "%s%s" acc (Assignment.show ass))
        "" f.trail)
     (List.fold_left
-       (fun acc c -> Printf.sprintf "%s( %s)\n" acc (Clause.Watched.show c))
+       (fun acc c -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" database)
     (if Clause.Watched.Map.is_empty watchers then "()"
      else Clause.Watched.Map.show watchers)
@@ -61,7 +61,7 @@ let rec make_assignment l ass
   let update_watchers l ({ assignments = a; watchers; _ } as f) =
     let update_watcher l c ({ watchers = watchers'; _ } as f') ucs' =
       match Clause.Watched.update l a c watchers' with
-      | WatchedLiteralChange (_, watchers') ->
+      | WatchedLiteralChange watchers' ->
           Ok ({ f' with watchers = watchers' }, ucs')
       | Unit (l, uc) -> Ok (f', (l, uc) :: ucs')
       | Falsified ls -> Error (ls, f)
@@ -91,7 +91,6 @@ let rec make_assignment l ass
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t'; current_decision_level = d } in
-  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
   let frequency' =
     Frequency.Map.remove_literal l frequency
     |> Frequency.Map.remove_literal (Literal.neg l)
@@ -107,7 +106,6 @@ and unit_propagate (l, uc) ({ current_decision_level = d; _ } as f) =
   in
   make_assignment l i f' d
 
-(* TODO *)
 let add_clause clause ({ frequency; assignments = a; watchers; _ } as f) =
   let frequency' =
     let open Iter in
@@ -118,98 +116,26 @@ let add_clause clause ({ frequency; assignments = a; watchers; _ } as f) =
   in
   let f' = { f with frequency = frequency' } in
   match Clause.Watched.watch_clause a clause watchers with
-  | WatchedLiteralChange (_, watchers') -> Ok { f' with watchers = watchers' }
+  | WatchedLiteralChange watchers' -> Ok { f' with watchers = watchers' }
   | Unit (l, clause) -> unit_propagate (l, clause) f'
   | Falsified clause -> Error (clause, f)
   | NoChange -> Ok f'
-
-let add_learned_clause learned_clause
-    ({ frequency; assignments = a; watchers; database; _ } as f) =
-  let frequency' =
-    let open Iter in
-    Frequency.Map.incr_iter
-      (Clause.to_iter learned_clause
-      |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
-      frequency
-  in
-  let f' = { f with frequency = frequency' } in
-  match Clause.Watched.watch_clause a learned_clause watchers with
-  | WatchedLiteralChange (watched_clause, watchers') ->
-      Ok { f' with watchers = watchers'; database = watched_clause :: database }
-  | Unit (l, clause) -> unit_propagate (l, clause) f'
-  | Falsified clause -> Error (clause, f)
-  | NoChange -> Ok f'
-
-(* let analyze_conflict { current_decision_level = d; assignments = a; _ } clause = *)
-(*   let open Iter in *)
-(*   let rec aux q c = *)
-(*     match VariableWorkqueue.pop q with *)
-(*     | None -> c *)
-(*     | Some (l, q') -> ( *)
-(*         if VariableWorkqueue.is_empty q' then *)
-(*           let ass = Assignment.Map.find l a in *)
-
-(*           Literal.neg (Assignment.literal ass) :: c *)
-(*         else *)
-(*           match Assignment.(Map.find_opt l a) with *)
-(*           | Some (Decision { literal = l'; _ }) -> aux q' (Literal.neg l' :: c) *)
-(*           | Some (Implication { literal = l'; implicant = ls'; level = d'; _ }) *)
-(*             -> *)
-(*               if d' < d then aux q' (Literal.neg l' :: c) *)
-(*               else *)
-(*                 let q'' = *)
-(*                   VariableWorkqueue.push_iter *)
-(*                     (Array.to_iter ls' |> map Literal.var) *)
-(*                     q' *)
-(*                 in *)
-(*                 aux q'' c *)
-(*           | None -> aux q' c) *)
-(*   in *)
-(*   (\* TODO Is destructively sorting the clause here safe? *\) *)
-(*   let clause = Clause.to_array clause in *)
-(*   Array.sort *)
-(*     (fun l1 l2 -> *)
-(*       let ass1 = Assignment.Map.find (Literal.var l1) a in *)
-(*       let ass2 = Assignment.Map.find (Literal.var l2) a in *)
-(*       match (ass1, ass2) with *)
-(*       | Decision { level = d1; _ }, Implication { level = d2; _ } when d1 = d2 *)
-(*         -> *)
-(*           1 *)
-(*       | Implication { level = d1; _ }, Decision { level = d2; _ } when d1 = d2 *)
-(*         -> *)
-(*           -1 *)
-(*       | Decision { level = d1; _ }, Decision { level = d2; _ } *)
-(*       | Decision { level = d1; _ }, Implication { level = d2; _ } *)
-(*       | Implication { level = d1; _ }, Decision { level = d2; _ } *)
-(*       | Implication { level = d1; _ }, Implication { level = d2; _ } -> *)
-(*           -Int.compare d1 d2) *)
-(*     clause; *)
-(*   let clause = Clause.of_array clause in *)
-(*   aux (VariableWorkqueue.of_iter (Clause.to_iter clause |> map Literal.var)) [] *)
-(*   |> Clause.of_list *)
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
-  Logs.debug (fun m -> m "Analyzing clause ( %s)" (Clause.show clause));
   let open Iter in
   let rec aux q c =
     match VariableWorkqueue.pop q with
     | None -> c
     | Some (l, q') -> (
-        Logs.debug (fun m -> m "Examining variable %s" (Variable.show l));
-        if VariableWorkqueue.is_empty q' then (
+        if VariableWorkqueue.is_empty q' then
           let ass = Assignment.Map.find l a in
-          Logs.debug (fun m -> m "%s" (Assignment.show ass));
-          Logs.debug (fun m -> m "Found UIP");
-          Literal.neg (Assignment.literal ass) :: c)
+
+          Literal.neg (Assignment.literal ass) :: c
         else
           match Assignment.(Map.find_opt l a) with
-          | Some (Decision { literal = l'; _ } as ass) ->
-              Logs.debug (fun m -> m "%s" (Assignment.show ass));
-              aux q' (Literal.neg l' :: c)
-          | Some
-              (Implication { literal = l'; implicant = ls'; level = d'; _ } as
-              ass) ->
-              Logs.debug (fun m -> m "%s" (Assignment.show ass));
+          | Some (Decision { literal = l'; _ }) -> aux q' (Literal.neg l' :: c)
+          | Some (Implication { literal = l'; implicant = ls'; level = d'; _ })
+            ->
               if d' < d then aux q' (Literal.neg l' :: c)
               else
                 let q'' =
@@ -220,7 +146,6 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
                 aux q'' c
           | None -> aux q' c)
   in
-  (* TODO create set (or unit Hashtbl) from clause, iterate through trail and do a membership test on each literal seen? *)
   (* TODO Is destructively sorting the clause here safe? *)
   let clause = Clause.to_array clause in
   Array.sort
@@ -245,7 +170,7 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   |> Clause.of_list
 
 let assignments { assignments = a; _ } = Assignment.Map.assignments a
-let learned_clauses { database; _ } = List.map Clause.Watched.to_clause database
+let learned_clauses { database; _ } = database
 
 (* let remove_clause clause ({ frequency; assignments = a; watchers; _ } as f) = *)
 (*   let open Iter in *)
@@ -258,7 +183,7 @@ let learned_clauses { database; _ } = List.map Clause.Watched.to_clause database
 (*   let watchers' = Clause.Watched.unwatch_clause clause watchers in *)
 (*   { f with frequency = frequency'; watchers = watchers' } *)
 
-let backtrack { assignments = a; trail = t; watchers; database; _ }
+let backtrack { assignments = a; trail = t; database = db; watchers; _ }
     learned_clause =
   let d' =
     let open Iter in
@@ -273,17 +198,24 @@ let backtrack { assignments = a; trail = t; watchers; database; _ }
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
   in
   let f' =
-    { f with frequency = Frequency.Map.decay f.frequency; watchers; database }
+    {
+      f with
+      frequency = Frequency.Map.decay f.frequency;
+      watchers;
+      database = learned_clause :: db;
+    }
   in
-  assert (
-    not
-      (List.to_iter f.database
-      |> Iter.exists (fun c ->
-             Array.equal Literal.equal
-               (Clause.Watched.to_array c |> Array.sorted Literal.compare)
-               (Clause.to_array learned_clause |> Array.sorted Literal.compare))
-      ));
-  add_learned_clause learned_clause f' |> Result.map (fun f'' -> (f'', d'))
+  Logs.debug (fun m -> m "%s" (show f'));
+
+  (* assert ( *)
+  (*   not *)
+  (*     (List.to_iter f.database *)
+  (*     |> Iter.exists (fun c -> *)
+  (*            Array.equal Literal.equal *)
+  (*              (Clause.to_array c |> Array.sorted Literal.compare) *)
+  (*              (Clause.to_array learned_clause |> Array.sorted Literal.compare)) *)
+  (*     )); *)
+  add_clause learned_clause f' |> Result.map (fun f'' -> (f'', d'))
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency

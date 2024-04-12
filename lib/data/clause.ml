@@ -6,7 +6,7 @@ type clause = t
 (* TODO lbd a c *)
 let of_array = Fun.id
 let size = length
-let show = fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) ""
+let show c = fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
 let to_array = Fun.id
 
 module Watched = struct
@@ -63,15 +63,12 @@ module Watched = struct
   end
 
   type update_result =
-    | WatchedLiteralChange of (watched_clause * Map.t)
+    | WatchedLiteralChange of Map.t
     | Unit of (Literal.t * clause)
     | Falsified of clause
     | NoChange
 
   let fold f x { clause; _ } = clause |> Array.fold f x
-  let show { clause; _ } = show clause
-  let to_array { clause; _ } = clause
-  let to_clause { clause; _ } = clause
 
   let watch_clause a c watchers =
     let size = size c in
@@ -93,13 +90,13 @@ module Watched = struct
         let watchers' =
           Map.add w1 watched_clause watchers' |> Map.add w2 watched_clause
         in
-        WatchedLiteralChange (watched_clause, watchers')
+        WatchedLiteralChange watchers'
     | [ w ] ->
         if Tribool.is_unknown (Assignment.Map.value w a) then Unit (w, c)
         else NoChange
     | _ -> Falsified c
 
-  let unwatch_clause _c watchers =
+  let unwatch_clause c watchers =
     (* Clause.to_iter clause *)
     (* |> fold *)
     (*      (fun watchers' l -> Clause.Watched.Map.remove l n watchers') *)
@@ -138,7 +135,7 @@ module Watched = struct
           let watchers' =
             Map.remove l c watchers |> Map.add new_watched_literal c
           in
-          WatchedLiteralChange (c, watchers')
+          WatchedLiteralChange watchers'
 end
 
 (* TODO Can get rid of this entirely *)
