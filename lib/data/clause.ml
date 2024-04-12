@@ -6,7 +6,7 @@ type clause = t
 (* TODO lbd a c *)
 let of_array = Fun.id
 let size = length
-let show c = fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
+let show = fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) ""
 let to_array = Fun.id
 
 module Watched = struct
@@ -32,31 +32,34 @@ module Watched = struct
     module M = CCHashtbl.Make (Literal)
     include M
 
-    type t = Set.t M.t
+    type t = Set.t M.t * int
     type key = Literal.t
 
-    let add l n m =
-      update m ~k:l ~f:(fun _ -> function
-        | Some s -> Some (Set.add n s) | None -> Some (Set.singleton n));
-      m
+    let add l n =
+      Pair.map_fst (fun m ->
+          update m ~k:l ~f:(fun _ -> function
+            | Some s -> Some (Set.add n s) | None -> Some (Set.singleton n));
+          m)
 
-    let make = create
-    let find_opt l t = find_opt t l
-    let is_empty m = length m = 0
+    let make n = (create n, 0)
+    let new_id = Pair.map_snd (fun x -> x + 1)
+    let find_opt l (m, _) = find_opt m l
+    let is_empty (m, _) = length m = 0
 
-    let remove l c m =
-      update m ~k:l ~f:(fun _ -> function
-        | Some s -> Some (Set.remove c s) (* TODO *) | None -> None);
-      m
+    let remove l c =
+      Pair.map_fst (fun m ->
+          update m ~k:l ~f:(fun _ -> function
+            | Some s -> Some (Set.remove c s) (* TODO *) | None -> None);
+          m)
 
-    let show o =
+    let show (m, _) =
       fold
         (fun l cs s ->
           Printf.sprintf "%s%s:%s\n" s (Literal.show l)
             (Set.fold
                (fun { id; _ } acc -> Printf.sprintf "%s%d " acc id)
                cs ""))
-        o ""
+        m ""
   end
 
   type update_result =
@@ -66,14 +69,18 @@ module Watched = struct
     | NoChange
 
   let fold f x { clause; _ } = clause |> Array.fold f x
+  let show { clause; _ } = show clause
+  let to_array { clause; _ } = clause
+  let to_clause { clause; _ } = clause
 
-  let watch_clause a c id watchers =
+  let watch_clause a c watchers =
     let size = size c in
     to_iter c
     |> Iter.filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a))
     |> Iter.take 2 |> Iter.to_list
     |> function
     | [ w1; w2 ] ->
+        let ((_, id) as watchers') = Map.new_id watchers in
         let watched_clause =
           {
             id;
@@ -84,7 +91,7 @@ module Watched = struct
           }
         in
         let watchers' =
-          Map.add w1 watched_clause watchers |> Map.add w2 watched_clause
+          Map.add w1 watched_clause watchers' |> Map.add w2 watched_clause
         in
         WatchedLiteralChange (watched_clause, watchers')
     | [ w ] ->
@@ -92,7 +99,7 @@ module Watched = struct
         else NoChange
     | _ -> Falsified c
 
-  let unwatch_clause c watchers =
+  let unwatch_clause _c watchers =
     (* Clause.to_iter clause *)
     (* |> fold *)
     (*      (fun watchers' l -> Clause.Watched.Map.remove l n watchers') *)
@@ -134,6 +141,7 @@ module Watched = struct
           WatchedLiteralChange (c, watchers')
 end
 
+(* TODO Can get rid of this entirely *)
 module Map = struct
   open Batteries
 

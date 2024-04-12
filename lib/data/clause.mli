@@ -42,7 +42,10 @@ module Watched : sig
     | NoChange
 
   val fold : ('a -> Literal.t -> 'a) -> 'a -> t -> 'a
-  val watch_clause : Assignment.Map.t -> clause -> int -> Map.t -> update_result
+  val show : t -> string
+  val to_array : t -> Literal.t array
+  val to_clause : t -> clause
+  val watch_clause : Assignment.Map.t -> clause -> Map.t -> update_result
   val unwatch_clause : clause -> Map.t -> Map.t
   val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
 end
