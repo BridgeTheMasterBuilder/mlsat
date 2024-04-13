@@ -8,6 +8,7 @@ module Map : sig
   val incr_iter : k Iter.iter -> t -> t
   val is_empty : t -> bool
   val mem : k -> t -> bool
+  val merge : t -> t -> t
   val pop : t -> k
   val remove_literal : k -> t -> t
   val show : t -> string

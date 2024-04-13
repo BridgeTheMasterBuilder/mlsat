@@ -137,34 +137,3 @@ module Watched = struct
           in
           WatchedLiteralChange watchers'
 end
-
-(* TODO Can get rid of this entirely *)
-module Map = struct
-  open Batteries
-
-  type t = Watched.t BatDynArray.t
-  type key = int
-
-  let add c m =
-    BatDynArray.add m c;
-    m
-
-  let find = Fun.flip BatDynArray.unsafe_get
-  let is_empty = BatDynArray.empty
-  let make = BatDynArray.make
-
-  let remove n m =
-    BatDynArray.delete m n;
-    m
-
-  let show =
-    let open Watched.Clause in
-    BatDynArray.fold_lefti
-      (fun s c { clause; _ } -> Printf.sprintf "%s%d:%s\n" s c (show clause))
-      ""
-
-  let size = BatDynArray.length
-
-  let to_iter m =
-    BatDynArray.to_list m |> Iter.of_list |> Iter.mapi (fun i x -> (i, x))
-end

@@ -47,20 +47,6 @@ module Watched : sig
   val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
 end
 
-module Map : sig
-  type t
-  type key = int
-
-  val add : Watched.watched_clause -> t -> t
-  val find : key -> t -> Watched.watched_clause
-  val is_empty : t -> bool
-  val make : int -> t
-  val remove : int -> t -> t
-  val show : t -> string
-  val size : t -> key
-  val to_iter : t -> (key * Watched.watched_clause) Iter.iter
-end
-
 val empty : t
 val of_list : Literal.t list -> t
 val of_array : Literal.t array -> t

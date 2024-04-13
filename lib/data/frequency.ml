@@ -26,6 +26,7 @@ module Map = struct
              (function Some count -> Some (count +. 1.0) | None -> Some 1.0)
              m')
 
+  let merge = ( ++ )
   let pop m = pop_exn m |> fst |> fst
   let remove_literal = remove
 

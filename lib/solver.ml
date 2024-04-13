@@ -13,14 +13,17 @@ type result = Sat of formula | Unsat of formula
 let rec cdcl max_conflicts luby f =
   let rec aux d max_conflicts' conflicts f =
     let rec handle (clause, f) =
+      (* Logs.debug (fun m -> m "%s" (show f)); *)
       if decision_level f = 0 then Unsat f
       else
         let learned_clause = analyze_conflict f clause in
+        Logs.debug (fun m ->
+            m "Learning clause %s" (Clause.show learned_clause));
         match backtrack f learned_clause with
         | Ok (f', d') -> aux d' max_conflicts' (conflicts + 1) f'
         | Error conflict -> handle conflict
     in
-    Logs.debug (fun m -> m "%s" (show f));
+    (* Logs.debug (fun m -> m "%s" (show f)); *)
     if conflicts = max_conflicts' then
       let f = restart f in
       let max_conflicts', luby' = Luby.next luby in
