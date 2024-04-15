@@ -22,6 +22,7 @@ module Map : sig
   val value : Literal.t -> t -> Tribool.t
 end
 
+val compare : t -> t -> int
 val level : t -> int
 val literal : t -> Literal.t
 val show : t -> string

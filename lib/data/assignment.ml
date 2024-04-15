@@ -33,6 +33,16 @@ module Map = struct
     |> Tribool.of_bool_opt
 end
 
+let compare ass1 ass2 =
+  match (ass1, ass2) with
+  | Decision { level = d1; _ }, Implication { level = d2; _ } when d1 = d2 -> 1
+  | Implication { level = d1; _ }, Decision { level = d2; _ } when d1 = d2 -> -1
+  | Decision { level = d1; _ }, Decision { level = d2; _ }
+  | Decision { level = d1; _ }, Implication { level = d2; _ }
+  | Implication { level = d1; _ }, Decision { level = d2; _ }
+  | Implication { level = d1; _ }, Implication { level = d2; _ } ->
+      -Int.compare d1 d2
+
 let level = function Decision { level; _ } | Implication { level; _ } -> level
 
 let show a =
