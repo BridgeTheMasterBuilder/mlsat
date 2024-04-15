@@ -5,7 +5,7 @@ module List = struct
   let of_int_list = Fun.id
 end
 
-include Int
+include Int [@@deriving show]
 
 let compare = ( - )
 let hash = Fun.id

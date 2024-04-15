@@ -1,18 +1,18 @@
-type t
+type t [@@deriving show]
 type clause = t
 
 module Watched : sig
-  type t
+  (* type t *)
 
   (* module Clause : sig *)
   (*   type t *)
-  (*   type t = { *)
-  (*     id : int; *)
-  (*     clause : clause; *)
-  (*     size : int; *)
-  (*     mutable index : int; *)
-  (*     mutable watched_literals : Literal.t * Literal.t; *)
-  (*   } *)
+  type t = {
+    id : int;
+    clause : clause;
+    size : int;
+    mutable index : int;
+    mutable watched_literals : Literal.t * Literal.t;
+  }
   (* end *)
 
   (* type t = Clause.t *)
@@ -54,3 +54,9 @@ val show : t -> string
 val size : t -> int
 val to_array : t -> Literal.t array
 val to_iter : t -> Literal.t Iter.iter
+
+module Set : sig
+  include Iter.Set.S with type elt = clause
+
+  val show : t -> string
+end

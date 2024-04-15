@@ -1,3 +1,4 @@
+fish test/basic.sh
 fish test/aim.sh
 fish test/ais.sh
 # fish test/beijing.sh

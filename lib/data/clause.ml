@@ -1,6 +1,6 @@
 include CCArray
 
-type t = Literal.t array
+type t = Literal.t array [@@deriving show]
 type clause = t
 
 (* TODO lbd a c *)
@@ -10,23 +10,24 @@ let show c = fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
 let to_array = Fun.id
 
 module Watched = struct
-  module Clause = struct
-    type t = {
-      id : int;
-      clause : clause;
-      size : int;
-      mutable index : int;
-      mutable watched_literals : Literal.t * Literal.t;
-    }
+  type t = {
+    id : int;
+    clause : clause;
+    size : int;
+    mutable index : int;
+    mutable watched_literals : Literal.t * Literal.t;
+  }
 
-    let compare { id = id1; _ } { id = id2; _ } = Int.compare id1 id2
-  end
-
-  type t = Clause.t
   type watched_clause = t
 
-  open Clause
-  module Set = Set.Make (Clause)
+  module Set = Set.Make (struct
+    type t = watched_clause
+
+    (* TODO *)
+    (* let compare { id = id1; _ } { id = id2; _ } = Int.compare id1 id2 *)
+    let compare { clause = c1; _ } { clause = c2; _ } =
+      Array.compare Literal.compare c1 c2
+  end)
 
   module Map = struct
     module M = CCHashtbl.Make (Literal)
@@ -71,6 +72,14 @@ module Watched = struct
   let fold f x { clause; _ } = clause |> Array.fold f x
 
   let watch_clause a c watchers =
+    Array.iter
+      (fun l ->
+        Logs.debug (fun m ->
+            m "%s(%s) " (Literal.show l)
+              (Assignment.Map.find_opt (Literal.var l) a
+              |> Option.map_or ~default:"_" (fun ass ->
+                     Literal.show (Assignment.literal ass)))))
+      c;
     let size = size c in
     to_iter c
     |> Iter.filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a))
@@ -87,13 +96,19 @@ module Watched = struct
             watched_literals = (w1, w2);
           }
         in
+        Logs.debug (fun m ->
+            m "Watching clause %s (%s and %s)" (show c) (Literal.show w1)
+              (Literal.show w2));
         let watchers' =
           Map.add w1 watched_clause watchers' |> Map.add w2 watched_clause
         in
         WatchedLiteralChange watchers'
     | [ w ] ->
         if Tribool.is_unknown (Assignment.Map.value w a) then Unit (w, c)
-        else NoChange
+        else (
+          Logs.debug (fun m -> m "Clause %s seems to be satisfied" (show c));
+
+          NoChange)
     | _ -> Falsified c
 
   let unwatch_clause c watchers =
@@ -136,4 +151,14 @@ module Watched = struct
             Map.remove l c watchers |> Map.add new_watched_literal c
           in
           WatchedLiteralChange watchers'
+end
+
+module Set = struct
+  include Iter.Set.Make (struct
+    type t = clause
+
+    let compare c1 c2 = Array.compare Literal.compare c1 c2
+  end)
+
+  let show s = fold (fun c s -> Printf.sprintf "%s:%s\n" s (show c)) s ""
 end

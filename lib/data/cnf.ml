@@ -7,7 +7,7 @@ type formula = {
   (* TODO rename to trace and include clause deletion too *)
   database : Clause.t list;
   watchers : Clause.Watched.Map.t;
-  unwatched : Clause.t list;
+  unwatched : Clause.Set.t;
 }
 
 exception Conflict of Clause.t * formula
@@ -63,12 +63,18 @@ let rec make_assignment l ass
     let update_watcher l c ({ watchers = watchers'; unwatched; _ } as f') ucs' =
       match Clause.Watched.update l a c watchers' with
       | WatchedLiteralChange watchers' ->
-          Ok ({ f' with watchers = watchers' }, ucs')
+          Ok
+            ( {
+                f' with
+                watchers = watchers';
+                unwatched = Clause.Set.remove c.clause unwatched;
+              },
+              ucs' )
       | Unit (l, clause) ->
           Logs.debug (fun m ->
               m "Unit propagating %s because of %s" (Literal.show l)
                 (Clause.show clause));
-          let f' = { f' with unwatched = clause :: unwatched } in
+          (* let f' = { f' with unwatched = Clause.Set.add clause unwatched } in *)
           Ok (f', (l, clause) :: ucs')
       | Falsified clause ->
           Logs.debug (fun m ->
@@ -129,7 +135,13 @@ let add_clause clause
   in
   let f' = { f with frequency = frequency' } in
   match Clause.Watched.watch_clause a clause watchers with
-  | WatchedLiteralChange watchers' -> Ok { f' with watchers = watchers' }
+  | WatchedLiteralChange watchers' ->
+      Ok
+        {
+          f' with
+          watchers = watchers';
+          unwatched = Clause.Set.remove clause unwatched;
+        }
   | Unit (l, clause) ->
       Array.iter
         (fun l ->
@@ -142,7 +154,7 @@ let add_clause clause
       Logs.debug (fun m ->
           m "Unit propagating %s because of %s" (Literal.show l)
             (Clause.show clause));
-      let f' = { f' with unwatched = clause :: unwatched } in
+      let f' = { f' with unwatched = Clause.Set.add clause unwatched } in
       unit_propagate (l, clause) f'
   | Falsified clause ->
       Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
@@ -245,38 +257,13 @@ let backtrack
   (*           ))) *)
   (*   f'.database; *)
   try
-    let f', unwatched' =
-      List.fold_left
-        (fun (({ watchers; assignments = a; _ } as f'), unwatched') clause ->
-          match Clause.Watched.watch_clause a clause watchers with
-          | WatchedLiteralChange watchers' ->
-              ({ f' with watchers = watchers' }, unwatched')
-          | Unit (l, clause) ->
-              Array.iter
-                (fun l ->
-                  Logs.debug (fun m ->
-                      m "%s(%s) " (Literal.show l)
-                        (Assignment.Map.find_opt (Literal.var l) a
-                        |> Option.map_or ~default:"_" (fun ass ->
-                               Literal.show (Assignment.literal ass)))))
-                (Clause.to_array clause);
-              Logs.debug (fun m ->
-                  m "Unit propagating %s because of %s" (Literal.show l)
-                    (Clause.show clause));
-              (* let f' = { f' with unwatched = clause :: unwatched } in *)
-              ( unit_propagate (l, clause) f'
-                |> Result.get_lazy (fun (c, f) ->
-                       raise_notrace (Conflict (c, f))),
-                clause :: unwatched' )
-          | Falsified clause ->
-              Logs.debug (fun m ->
-                  m "Clause %s is falsified" (Clause.show clause));
-              (* let f' = { f with unwatched = clause :: unwatched } in *)
-              raise_notrace (Conflict (clause, f))
-          | NoChange -> (f', unwatched'))
-        (f', []) unwatched
+    let f' =
+      Clause.Set.fold
+        (fun clause f' ->
+          add_clause clause f'
+          |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f))))
+        unwatched f'
     in
-    let f' = { f' with unwatched = unwatched' } in
     add_clause learned_clause f' |> Result.map (fun f'' -> (f'', d'))
   with Conflict (clause, f) -> Error (clause, f)
 
@@ -309,12 +296,12 @@ let of_list v _c list =
            trail = [];
            database = [];
            watchers = Clause.Watched.Map.make v;
-           unwatched = [];
+           unwatched = Clause.Set.empty;
          }
          list)
   with Conflict _ -> None
 
-let restart ({ trail = t; watchers; database = db; _ } as f) =
+let restart ({ trail = t; watchers; database = db; unwatched; _ } as f) =
   if List.is_empty t then f
   else
     let f' =
@@ -324,7 +311,14 @@ let restart ({ trail = t; watchers; database = db; _ } as f) =
              "Attempt to backtrack without previous assignments.")
     in
     let frequency'' = Frequency.Map.merge f.frequency f'.frequency in
-    { f' with watchers; database = db; frequency = frequency'' }
+    let f' = { f' with watchers; database = db; frequency = frequency'' } in
+    (* try *)
+    Clause.Set.fold
+      (fun clause f' -> add_clause clause f' |> Result.get_exn)
+        (* |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f)))) *)
+      unwatched f'
+(* f' *)
+(* with Conflict (clause, f) -> Error (clause, f) *)
 
 let eliminate_pure_literals ({ frequency; _ } as f) =
   let open Iter in
@@ -352,25 +346,33 @@ let make_decision ({ current_decision_level = d; _ } as f) =
 let check ({ database = db; _ } as f) =
   Logs.debug (fun m -> m "%s" (show f));
   assert (
-    List.for_all
-      (fun c1 ->
-        not
-          (List.exists
-             (fun c2 ->
-               let mtch =
-                 Array.equal Literal.equal
-                   (Array.sorted Literal.compare (Clause.to_array c1))
-                   (Array.sorted Literal.compare (Clause.to_array c2))
-               in
-               if mtch then (
-                 Logs.debug (fun m ->
-                     m "Found duplicate %s = %s" (Clause.show c1)
-                       (Clause.show c2));
-                 mtch)
-               else mtch)
-             (List.remove_one
-                ~eq:(fun c1 c2 ->
-                  Array.equal Literal.equal (Clause.to_array c1)
-                    (Clause.to_array c2))
-                c1 db)))
-      db)
+    List.sort_uniq
+      ~cmp:(fun c1 c2 ->
+        Array.compare Literal.compare
+          (Array.sorted Literal.compare (Clause.to_array c1))
+          (Array.sorted Literal.compare (Clause.to_array c2)))
+      db
+    |> List.length = List.length db)
+(* assert ( *)
+(*   List.for_all *)
+(*     (fun c1 -> *)
+(*       not *)
+(*         (List.exists *)
+(*            (fun c2 -> *)
+(*              let mtch = *)
+(*                Array.equal Literal.equal *)
+(*                  (Array.sorted Literal.compare (Clause.to_array c1)) *)
+(*                  (Array.sorted Literal.compare (Clause.to_array c2)) *)
+(*              in *)
+(*              if mtch then ( *)
+(*                Logs.debug (fun m -> *)
+(*                    m "Found duplicate %s = %s" (Clause.show c1) *)
+(*                      (Clause.show c2)); *)
+(*                mtch) *)
+(*              else mtch) *)
+(*            (List.remove_one *)
+(*               ~eq:(fun c1 c2 -> *)
+(*                 Array.equal Literal.equal (Clause.to_array c1) *)
+(*                   (Clause.to_array c2)) *)
+(*               c1 db))) *)
+(*     db) *)

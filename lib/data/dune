@@ -1,4 +1,5 @@
 (library
  (name data)
  (libraries containers containers-data iter psq logs logs.fmt batteries)
+ (preprocess (pps ppx_deriving.show))
  (flags :standard -open Containers))
