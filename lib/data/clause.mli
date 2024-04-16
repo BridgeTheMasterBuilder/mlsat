@@ -1,4 +1,4 @@
-type t [@@deriving show]
+type t
 type clause = t
 
 module Watched : sig
@@ -7,7 +7,7 @@ module Watched : sig
   (* module Clause : sig *)
   (*   type t *)
   type t = {
-    id : int;
+    id : CCHash.hash;
     clause : clause;
     size : int;
     mutable index : int;
@@ -47,7 +47,7 @@ module Watched : sig
   val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
 end
 
-val empty : t
+(* val empty : t *)
 val of_list : Literal.t list -> t
 val of_array : Literal.t array -> t
 val show : t -> string

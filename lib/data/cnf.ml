@@ -284,7 +284,6 @@ let of_list v _c list =
           in
           aux f' cs
   in
-
   try
     Some
       (aux

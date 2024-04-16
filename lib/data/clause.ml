@@ -1,17 +1,26 @@
 include CCArray
 
-type t = Literal.t array [@@deriving show]
+type t = CCHash.hash * Literal.t array
 type clause = t
 
 (* TODO lbd a c *)
-let of_array = Fun.id
-let size = length
-let show c = fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
-let to_array = Fun.id
+let of_array a = (CCHash.array Literal.hash a, a)
+
+let of_list l =
+  let a = of_list l in
+  (CCHash.array Literal.hash a, a)
+
+let size (_, c) = length c
+
+let show (_, c) =
+  fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
+
+let to_array (_, c) = c
+let to_iter (_, c) = to_iter c
 
 module Watched = struct
   type t = {
-    id : int;
+    id : CCHash.hash;
     clause : clause;
     size : int;
     mutable index : int;
@@ -23,10 +32,10 @@ module Watched = struct
   module Set = Set.Make (struct
     type t = watched_clause
 
-    (* TODO *)
-    (* let compare { id = id1; _ } { id = id2; _ } = Int.compare id1 id2 *)
-    let compare { clause = c1; _ } { clause = c2; _ } =
-      Array.compare Literal.compare c1 c2
+    (* let compare { clause = _, c1; _ } { clause = _, c2; _ } = *)
+    (*   Array.compare Literal.compare c1 c2 *)
+    let compare { clause = id1, _; _ } { clause = id2, _; _ } =
+      Int.compare id1 id2
   end)
 
   module Map = struct
@@ -58,7 +67,8 @@ module Watched = struct
         (fun l cs s ->
           Printf.sprintf "%s%s:%s\n" s (Literal.show l)
             (Set.fold
-               (fun { id; _ } acc -> Printf.sprintf "%s%d " acc id)
+               (fun { clause; _ } acc ->
+                 Printf.sprintf "%s( %s) " acc (show clause))
                cs ""))
         m ""
   end
@@ -69,9 +79,9 @@ module Watched = struct
     | Falsified of clause
     | NoChange
 
-  let fold f x { clause; _ } = clause |> Array.fold f x
+  let fold f x { clause = _, clause; _ } = clause |> Array.fold f x
 
-  let watch_clause a c watchers =
+  let watch_clause a ((_, c) as clause) watchers =
     Array.iter
       (fun l ->
         Logs.debug (fun m ->
@@ -80,36 +90,38 @@ module Watched = struct
               |> Option.map_or ~default:"_" (fun ass ->
                      Literal.show (Assignment.literal ass)))))
       c;
-    let size = size c in
-    to_iter c
+    let size = size clause in
+    to_iter clause
     |> Iter.filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a))
     |> Iter.take 2 |> Iter.to_list
     |> function
     | [ w1; w2 ] ->
-        let ((_, id) as watchers') = Map.new_id watchers in
+        (* let ((_, id) as watchers') = Map.new_id watchers in *)
+        let watchers' = watchers in
         let watched_clause =
           {
-            id;
-            clause = c;
+            id = fst clause;
+            clause;
             size;
             index = 2 mod size;
             watched_literals = (w1, w2);
           }
         in
         Logs.debug (fun m ->
-            m "Watching clause %s (%s and %s)" (show c) (Literal.show w1)
+            m "Watching clause %s (%s and %s)" (show clause) (Literal.show w1)
               (Literal.show w2));
         let watchers' =
           Map.add w1 watched_clause watchers' |> Map.add w2 watched_clause
         in
         WatchedLiteralChange watchers'
     | [ w ] ->
-        if Tribool.is_unknown (Assignment.Map.value w a) then Unit (w, c)
+        if Tribool.is_unknown (Assignment.Map.value w a) then Unit (w, clause)
         else (
-          Logs.debug (fun m -> m "Clause %s seems to be satisfied" (show c));
+          Logs.debug (fun m ->
+              m "Clause %s seems to be satisfied" (show clause));
 
           NoChange)
-    | _ -> Falsified c
+    | _ -> Falsified clause
 
   let unwatch_clause c watchers =
     (* Clause.to_iter clause *)
@@ -128,7 +140,7 @@ module Watched = struct
     else
       let result =
         let open Iter in
-        let data = clause in
+        let data = snd clause in
         0 -- (size - 1)
         |> find_map (fun i ->
                let index' = (index + i) mod size in
@@ -157,7 +169,8 @@ module Set = struct
   include Iter.Set.Make (struct
     type t = clause
 
-    let compare c1 c2 = Array.compare Literal.compare c1 c2
+    (* let compare (_, c1) (_, c2) = Array.compare Literal.compare c1 c2 *)
+    let compare (id1, _) (id2, _) = Int.compare id1 id2
   end)
 
   let show s = fold (fun c s -> Printf.sprintf "%s:%s\n" s (show c)) s ""
