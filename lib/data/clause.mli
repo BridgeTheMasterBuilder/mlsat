@@ -2,20 +2,7 @@ type t
 type clause = t
 
 module Watched : sig
-  (* type t *)
-
-  (* module Clause : sig *)
-  (*   type t *)
-  type t = {
-    id : CCHash.hash;
-    clause : clause;
-    size : int;
-    mutable index : int;
-    mutable watched_literals : Literal.t * Literal.t;
-  }
-  (* end *)
-
-  (* type t = Clause.t *)
+  type t
   type watched_clause = t
 
   module Set : sig
@@ -42,9 +29,10 @@ module Watched : sig
     | NoChange
 
   val fold : ('a -> Literal.t -> 'a) -> 'a -> t -> 'a
-  val watch_clause : Assignment.Map.t -> clause -> Map.t -> update_result
+  val to_clause : t -> clause
   val unwatch_clause : clause -> Map.t -> Map.t
   val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
+  val watch_clause : Assignment.Map.t -> clause -> Map.t -> update_result
 end
 
 (* val empty : t *)

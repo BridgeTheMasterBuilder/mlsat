@@ -67,20 +67,19 @@ let rec make_assignment l ass
             ( {
                 f' with
                 watchers = watchers';
-                unwatched = Clause.Set.remove c.clause unwatched;
+                unwatched =
+                  Clause.Set.remove (Clause.Watched.to_clause c) unwatched;
               },
               ucs' )
       | Unit (l, clause) ->
           Logs.debug (fun m ->
               m "Unit propagating %s because of %s" (Literal.show l)
                 (Clause.show clause));
-          (* let f' = { f' with unwatched = Clause.Set.add clause unwatched } in *)
           Ok (f', (l, clause) :: ucs')
       | Falsified clause ->
           Logs.debug (fun m ->
               m "(%d) Clause %s is falsified" f.current_decision_level
                 (Clause.show clause));
-          (* let f = { f with unwatched = clause :: unwatched } in *)
           Error (clause, f)
       | NoChange -> Ok (f', ucs')
     in
@@ -158,9 +157,7 @@ let add_clause clause
       unit_propagate (l, clause) f'
   | Falsified clause ->
       Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
-      (* let f' = { f with unwatched = clause :: unwatched } in *)
       Error (clause, f)
-  (* TODO necessary to add to unwatched? *)
   | NoChange -> Ok f'
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
@@ -213,7 +210,6 @@ let learned_clauses { database; _ } = database
 (*   let watchers' = Clause.Watched.unwatch_clause clause watchers in *)
 (*   { f with frequency = frequency'; watchers = watchers' } *)
 
-(* TODO need to handle unit clauses when backtracking, they either need to be propagated or watched (seeing as they aren't watched and so won't be automatically propagated) *)
 let backtrack
     {
       assignments = a;
@@ -246,16 +242,7 @@ let backtrack
       database = learned_clause :: db;
     }
   in
-  (* Logs.debug (fun m -> m "Backtracking"); *)
-  (* List.iter *)
-  (*   (fun c -> *)
-  (*     Logs.debug (fun m -> *)
-  (*         m "Is clause %s watched? %b" (Clause.show c) *)
-  (*           (Clause.to_iter c *)
-  (*           |> Iter.exists (fun l -> *)
-  (*                  Clause.Watched.Map.find_opt l f'.watchers |> Option.is_some) *)
-  (*           ))) *)
-  (*   f'.database; *)
+  Logs.debug (fun m -> m "Backtracking");
   try
     let f' =
       Clause.Set.fold
@@ -311,13 +298,10 @@ let restart ({ trail = t; watchers; database = db; unwatched; _ } as f) =
     in
     let frequency'' = Frequency.Map.merge f.frequency f'.frequency in
     let f' = { f' with watchers; database = db; frequency = frequency'' } in
-    (* try *)
     Clause.Set.fold
-      (fun clause f' -> add_clause clause f' |> Result.get_exn)
-        (* |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f)))) *)
+      (* TODO *)
+        (fun clause f' -> add_clause clause f' |> Result.get_exn)
       unwatched f'
-(* f' *)
-(* with Conflict (clause, f) -> Error (clause, f) *)
 
 let eliminate_pure_literals ({ frequency; _ } as f) =
   let open Iter in
@@ -352,26 +336,3 @@ let check ({ database = db; _ } as f) =
           (Array.sorted Literal.compare (Clause.to_array c2)))
       db
     |> List.length = List.length db)
-(* assert ( *)
-(*   List.for_all *)
-(*     (fun c1 -> *)
-(*       not *)
-(*         (List.exists *)
-(*            (fun c2 -> *)
-(*              let mtch = *)
-(*                Array.equal Literal.equal *)
-(*                  (Array.sorted Literal.compare (Clause.to_array c1)) *)
-(*                  (Array.sorted Literal.compare (Clause.to_array c2)) *)
-(*              in *)
-(*              if mtch then ( *)
-(*                Logs.debug (fun m -> *)
-(*                    m "Found duplicate %s = %s" (Clause.show c1) *)
-(*                      (Clause.show c2)); *)
-(*                mtch) *)
-(*              else mtch) *)
-(*            (List.remove_one *)
-(*               ~eq:(fun c1 c2 -> *)
-(*                 Array.equal Literal.equal (Clause.to_array c1) *)
-(*                   (Clause.to_array c2)) *)
-(*               c1 db))) *)
-(*     db) *)

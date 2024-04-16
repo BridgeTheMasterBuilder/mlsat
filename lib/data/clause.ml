@@ -20,7 +20,6 @@ let to_iter (_, c) = to_iter c
 
 module Watched = struct
   type t = {
-    id : CCHash.hash;
     clause : clause;
     size : int;
     mutable index : int;
@@ -52,7 +51,6 @@ module Watched = struct
           m)
 
     let make n = (create n, 0)
-    let new_id = Pair.map_snd (fun x -> x + 1)
     let find_opt l (m, _) = find_opt m l
     let is_empty (m, _) = length m = 0
 
@@ -80,48 +78,7 @@ module Watched = struct
     | NoChange
 
   let fold f x { clause = _, clause; _ } = clause |> Array.fold f x
-
-  let watch_clause a ((_, c) as clause) watchers =
-    Array.iter
-      (fun l ->
-        Logs.debug (fun m ->
-            m "%s(%s) " (Literal.show l)
-              (Assignment.Map.find_opt (Literal.var l) a
-              |> Option.map_or ~default:"_" (fun ass ->
-                     Literal.show (Assignment.literal ass)))))
-      c;
-    let size = size clause in
-    to_iter clause
-    |> Iter.filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a))
-    |> Iter.take 2 |> Iter.to_list
-    |> function
-    | [ w1; w2 ] ->
-        (* let ((_, id) as watchers') = Map.new_id watchers in *)
-        let watchers' = watchers in
-        let watched_clause =
-          {
-            id = fst clause;
-            clause;
-            size;
-            index = 2 mod size;
-            watched_literals = (w1, w2);
-          }
-        in
-        Logs.debug (fun m ->
-            m "Watching clause %s (%s and %s)" (show clause) (Literal.show w1)
-              (Literal.show w2));
-        let watchers' =
-          Map.add w1 watched_clause watchers' |> Map.add w2 watched_clause
-        in
-        WatchedLiteralChange watchers'
-    | [ w ] ->
-        if Tribool.is_unknown (Assignment.Map.value w a) then Unit (w, clause)
-        else (
-          Logs.debug (fun m ->
-              m "Clause %s seems to be satisfied" (show clause));
-
-          NoChange)
-    | _ -> Falsified clause
+  let to_clause { clause; _ } = clause
 
   let unwatch_clause c watchers =
     (* Clause.to_iter clause *)
@@ -163,6 +120,40 @@ module Watched = struct
             Map.remove l c watchers |> Map.add new_watched_literal c
           in
           WatchedLiteralChange watchers'
+
+  let watch_clause a ((_, c) as clause) watchers =
+    Array.iter
+      (fun l ->
+        Logs.debug (fun m ->
+            m "%s(%s) " (Literal.show l)
+              (Assignment.Map.find_opt (Literal.var l) a
+              |> Option.map_or ~default:"_" (fun ass ->
+                     Literal.show (Assignment.literal ass)))))
+      c;
+    let size = size clause in
+    to_iter clause
+    |> Iter.filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a))
+    |> Iter.take 2 |> Iter.to_list
+    |> function
+    | [ w1; w2 ] ->
+        let watched_clause =
+          { clause; size; index = 2 mod size; watched_literals = (w1, w2) }
+        in
+        Logs.debug (fun m ->
+            m "Watching clause %s (%s and %s)" (show clause) (Literal.show w1)
+              (Literal.show w2));
+        let watchers' =
+          Map.add w1 watched_clause watchers |> Map.add w2 watched_clause
+        in
+        WatchedLiteralChange watchers'
+    | [ w ] ->
+        if Tribool.is_unknown (Assignment.Map.value w a) then Unit (w, clause)
+        else (
+          Logs.debug (fun m ->
+              m "Clause %s seems to be satisfied" (show clause));
+
+          NoChange)
+    | _ -> Falsified clause
 end
 
 module Set = struct

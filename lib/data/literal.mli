@@ -1,4 +1,4 @@
-type t [@@deriving show]
+type t
 
 module Map : Map.S with type key = t
 module Set : Iter.Set.S with type elt = t
