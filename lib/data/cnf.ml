@@ -73,14 +73,14 @@ let rec make_assignment l ass
               },
               ucs' )
       | Unit (l, clause) ->
-          Logs.debug (fun m ->
-              m "Unit propagating %s because of %s" (Literal.show l)
-                (Clause.show clause));
+          (* Logs.debug (fun m -> *)
+          (*     m "Unit propagating %s because of %s" (Literal.show l) *)
+          (*       (Clause.show clause)); *)
           Ok (f', (l, clause) :: ucs')
       | Falsified clause ->
-          Logs.debug (fun m ->
-              m "(%d) Clause %s is falsified" f.current_decision_level
-                (Clause.show clause));
+          (* Logs.debug (fun m -> *)
+          (*     m "(%d) Clause %s is falsified" f.current_decision_level *)
+          (*       (Clause.show clause)); *)
           Error (clause, f)
       | NoChange -> Ok (f', ucs')
     in
@@ -108,7 +108,7 @@ let rec make_assignment l ass
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t'; current_decision_level = d } in
-  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
+  (* Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass)); *)
   let frequency' =
     Frequency.Map.remove_literal l frequency
     |> Frequency.Map.remove_literal (Literal.neg l)
@@ -142,21 +142,21 @@ let add_clause clause
           unwatched = Clause.Set.remove clause unwatched;
         }
   | Unit (l, clause) ->
-      Array.iter
-        (fun l ->
-          Logs.debug (fun m ->
-              m "%s(%s) " (Literal.show l)
-                (Assignment.Map.find_opt (Literal.var l) a
-                |> Option.map_or ~default:"_" (fun ass ->
-                       Literal.show (Assignment.literal ass)))))
-        (Clause.to_array clause);
-      Logs.debug (fun m ->
-          m "Unit propagating %s because of %s" (Literal.show l)
-            (Clause.show clause));
+      (* Array.iter *)
+      (*   (fun l -> *)
+      (*     Logs.debug (fun m -> *)
+      (*         m "%s(%s) " (Literal.show l) *)
+      (*           (Assignment.Map.find_opt (Literal.var l) a *)
+      (*           |> Option.map_or ~default:"_" (fun ass -> *)
+      (*                  Literal.show (Assignment.literal ass))))) *)
+      (*   (Clause.to_array clause); *)
+      (* Logs.debug (fun m -> *)
+      (*     m "Unit propagating %s because of %s" (Literal.show l) *)
+      (*       (Clause.show clause)); *)
       let f' = { f' with unwatched = Clause.Set.add clause unwatched } in
       unit_propagate (l, clause) f'
   | Falsified clause ->
-      Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
+      (* Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause)); *)
       Error (clause, f)
   | NoChange -> Ok f'
 
@@ -223,7 +223,7 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  Logs.debug (fun m -> m "Backtracking to level %d" d');
+  (* Logs.debug (fun m -> m "Backtracking to level %d" d'); *)
   let _, f =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
@@ -237,7 +237,6 @@ let backtrack
       database = learned_clause :: db;
     }
   in
-  Logs.debug (fun m -> m "Backtracking");
   let f' =
     Clause.Set.fold
       (fun clause f' -> add_clause clause f' |> Result.get_exn)
@@ -279,21 +278,21 @@ let of_list v _c list =
   with Conflict _ -> None
 
 let restart { trail = t; watchers; database; unwatched; frequency; _ } =
-  (* if List.is_empty t then f *)
-  (* else *)
-  let ({ frequency = frequency'; _ } as f) =
-    snd
-      (List.last_opt t
-      |> Option.get_exn_or
-           "Internal solver error: Attempt to backtrack without previous \
-            assignments.")
-  in
-  let frequency'' = Frequency.Map.merge frequency frequency' in
-  let f = { f with watchers; database; frequency = frequency'' } in
-  Clause.Set.fold
-    (* TODO *)
-      (fun clause f' -> add_clause clause f' |> Result.get_exn)
-    unwatched f
+  if List.is_empty t then f
+  else
+    let ({ frequency = frequency'; _ } as f) =
+      snd
+        (List.last_opt t
+        |> Option.get_exn_or
+             "Internal solver error: Attempt to backtrack without previous \
+              assignments.")
+    in
+    let frequency'' = Frequency.Map.merge frequency frequency' in
+    let f = { f with watchers; database; frequency = frequency'' } in
+    Clause.Set.fold
+      (* TODO *)
+        (fun clause f' -> add_clause clause f' |> Result.get_exn)
+      unwatched f
 
 (* TODO do you need to track changes to frequency? *)
 let eliminate_pure_literals ({ frequency; _ } as f) =

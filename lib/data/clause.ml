@@ -118,14 +118,14 @@ module Watched = struct
           WatchedLiteralChange watchers'
 
   let watch_clause a ((_, c) as clause) watchers =
-    Array.iter
-      (fun l ->
-        Logs.debug (fun m ->
-            m "%s(%s) " (Literal.show l)
-              (Assignment.Map.find_opt (Literal.var l) a
-              |> Option.map_or ~default:"_" (fun ass ->
-                     Literal.show (Assignment.literal ass)))))
-      c;
+    (* Array.iter *)
+    (*   (fun l -> *)
+    (*     Logs.debug (fun m -> *)
+    (*         m "%s(%s) " (Literal.show l) *)
+    (*           (Assignment.Map.find_opt (Literal.var l) a *)
+    (*           |> Option.map_or ~default:"_" (fun ass -> *)
+    (*                  Literal.show (Assignment.literal ass))))) *)
+    (*   c; *)
     let size = size clause in
     (* TODO is this better? *)
     to_iter clause
@@ -137,20 +137,19 @@ module Watched = struct
         let watched_clause =
           { clause; size; index = 2 mod size; watched_literals = (w1, w2) }
         in
-        Logs.debug (fun m ->
-            m "Watching clause %s (%s and %s)" (show clause) (Literal.show w1)
-              (Literal.show w2));
+        (* Logs.debug (fun m -> *)
+        (*     m "Watching clause %s (%s and %s)" (show clause) (Literal.show w1) *)
+        (*       (Literal.show w2)); *)
         let watchers' =
           Map.add w1 watched_clause watchers |> Map.add w2 watched_clause
         in
         WatchedLiteralChange watchers'
     | [ (w, v) ] ->
         if Tribool.is_unknown v then Unit (w, clause)
-        else (
-          Logs.debug (fun m ->
-              m "Clause %s seems to be satisfied" (show clause));
-
-          NoChange)
+        else
+          (* Logs.debug (fun m -> *)
+          (*     m "Clause %s seems to be satisfied" (show clause)); *)
+          NoChange
     | _ -> Falsified clause
 end
 
