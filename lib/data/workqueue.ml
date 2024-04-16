@@ -8,6 +8,7 @@ module type S = sig
   val is_empty : t -> bool
   val of_iter : elt Iter.iter -> t
   val pop : t -> (elt * t) option
+  val pop_exn : t -> elt * t
   val push : elt -> t -> t
   val push_iter : elt Iter.iter -> t -> t
 end
@@ -28,6 +29,8 @@ module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
 
   let pop ({ queue; _ } as w) =
     CCDeque.take_front_opt queue |> Option.map (fun x -> (x, w))
+
+  let pop_exn ({ queue; _ } as w) = (CCDeque.take_front queue, w)
 
   let push x { queue; seen } =
     {

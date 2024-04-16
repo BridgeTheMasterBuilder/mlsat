@@ -23,9 +23,9 @@ module Map = struct
     to_iter m |> Iter.map (fun (_, ass) -> literal ass) |> Iter.to_list
 
   let empty = empty ()
-  let find = Fun.flip find
+  let find l m = find m l
   let find_opt = get
-  let mem = Fun.flip mem
+  let mem l m = mem m l
 
   let value l a =
     get (Literal.var l) a
@@ -45,17 +45,19 @@ let compare ass1 ass2 =
 
 let level = function Decision { level; _ } | Implication { level; _ } -> level
 
-let show a =
-  let show_clause =
-    Array.fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) ""
-  in
-  match a with
+module Clause = struct
+  let show c =
+    Array.fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
+end
+
+let show = function
   | Decision { literal; level } ->
       Printf.sprintf "\t%s because of decision on level %d\n"
         (Literal.show literal) level
   | Implication { literal; level; implicant } ->
       Printf.sprintf "\t%s because of clause %s - implied at level %d\n"
-        (Literal.show literal) (show_clause implicant) level
+        (Literal.show literal) (Clause.show implicant) level
 
-let was_decided_on_level a d =
-  match a with Decision { level = d'; _ } -> d = d' | _ -> false
+let was_decided_on_level d = function
+  | Decision { level = d'; _ } -> d = d'
+  | _ -> false

@@ -67,6 +67,7 @@ let rec make_assignment l ass
             ( {
                 f' with
                 watchers = watchers';
+                (* TODO It might already not be watched, need a way to figure out when this is necessary, or maybe it doesn't matter? *)
                 unwatched =
                   Clause.Set.remove (Clause.Watched.to_clause c) unwatched;
               },
@@ -87,20 +88,20 @@ let rec make_assignment l ass
       Ok
         (match Clause.Watched.Map.find_opt l watchers with
         | Some cs ->
-            let f'', ucs =
+            let f', ucs =
               Clause.Watched.Set.fold
-                (fun c (f', ucs) ->
-                  update_watcher l c f' ucs
+                (fun c (f'', ucs) ->
+                  update_watcher l c f'' ucs
                   |> Result.get_lazy (fun (c, f) ->
                          raise_notrace (Conflict (c, f))))
                 cs (f, [])
             in
             List.fold_left
-              (fun f' (l, uc) ->
-                unit_propagate (l, uc) f'
+              (fun f'' (l, uc) ->
+                unit_propagate (l, uc) f''
                 |> Result.get_lazy (fun (c, f) ->
                        raise_notrace (Conflict (c, f))))
-              f'' ucs
+              f' ucs
         | None -> f)
     with Conflict (c, f) -> Error (c, f)
   in
@@ -112,16 +113,15 @@ let rec make_assignment l ass
     Frequency.Map.remove_literal l frequency
     |> Frequency.Map.remove_literal (Literal.neg l)
   in
-  let f' = { f with frequency = frequency' } in
-  update_watchers (Literal.neg l) f'
+  let f = { f with frequency = frequency' } in
+  update_watchers (Literal.neg l) f
 
 and unit_propagate (l, uc) ({ current_decision_level = d; _ } as f) =
-  let f' = f in
   let i =
     Assignment.Implication
       { literal = l; implicant = Clause.to_array uc; level = d }
   in
-  make_assignment l i f' d
+  make_assignment l i f d
 
 let add_clause clause
     ({ frequency; assignments = a; watchers; unwatched; _ } as f) =
@@ -163,18 +163,15 @@ let add_clause clause
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   let open Iter in
   let rec aux q c =
-    match VariableWorkqueue.pop q with
-    | None -> c
-    | Some (l, q') -> (
+    match VariableWorkqueue.pop_exn q with
+    | l, q' -> (
         if VariableWorkqueue.is_empty q' then
           let ass = Assignment.Map.find l a in
-
           Literal.neg (Assignment.literal ass) :: c
         else
-          match Assignment.(Map.find_opt l a) with
-          | Some (Decision { literal = l'; _ }) -> aux q' (Literal.neg l' :: c)
-          | Some (Implication { literal = l'; implicant = ls'; level = d'; _ })
-            ->
+          match Assignment.(Map.find l a) with
+          | Decision { literal = l'; _ } -> aux q' (Literal.neg l' :: c)
+          | Implication { literal = l'; implicant = ls'; level = d'; _ } ->
               if d' < d then aux q' (Literal.neg l' :: c)
               else
                 let q'' =
@@ -182,10 +179,8 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
                     (Array.to_iter ls' |> map Literal.var)
                     q'
                 in
-                aux q'' c
-          | None -> aux q' c)
+                aux q'' c)
   in
-  (* TODO *)
   let queue =
     let open Iter in
     Clause.to_iter clause
@@ -231,10 +226,10 @@ let backtrack
   Logs.debug (fun m -> m "Backtracking to level %d" d');
   let _, f =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
-    else List.find (fun (ass, _) -> Assignment.was_decided_on_level ass d') t
+    else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
   let frequency' = Frequency.Map.merge frequency f.frequency in
-  let f' =
+  let f =
     {
       f with
       frequency = Frequency.Map.decay frequency';
@@ -243,16 +238,12 @@ let backtrack
     }
   in
   Logs.debug (fun m -> m "Backtracking");
-  try
-    let f' =
-      Clause.Set.fold
-        (fun clause f' ->
-          add_clause clause f'
-          |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f))))
-        unwatched f'
-    in
-    add_clause learned_clause f' |> Result.map (fun f'' -> (f'', d'))
-  with Conflict (clause, f) -> Error (clause, f)
+  let f' =
+    Clause.Set.fold
+      (fun clause f' -> add_clause clause f' |> Result.get_exn)
+      unwatched f
+  in
+  add_clause learned_clause f' |> Result.map (fun f'' -> (f'', d'))
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
@@ -262,7 +253,7 @@ let of_list v _c list =
     | [] -> f
     | c :: cs ->
         assert (List.to_iter c |> Iter.for_all (fun l -> l <> 0));
-        let clause = Clause.of_list (Literal.List.of_int_list c) in
+        let clause = Literal.List.of_int_list c |> Clause.of_list in
         if Clause.size clause = 0 then raise_notrace (Conflict (clause, f))
         else
           let f' =
@@ -287,27 +278,29 @@ let of_list v _c list =
          list)
   with Conflict _ -> None
 
-let restart ({ trail = t; watchers; database = db; unwatched; _ } as f) =
-  if List.is_empty t then f
-  else
-    let f' =
-      snd
-        (List.last_opt t
-        |> Option.get_exn_or
-             "Attempt to backtrack without previous assignments.")
-    in
-    let frequency'' = Frequency.Map.merge f.frequency f'.frequency in
-    let f' = { f' with watchers; database = db; frequency = frequency'' } in
-    Clause.Set.fold
-      (* TODO *)
-        (fun clause f' -> add_clause clause f' |> Result.get_exn)
-      unwatched f'
+let restart { trail = t; watchers; database; unwatched; frequency; _ } =
+  (* if List.is_empty t then f *)
+  (* else *)
+  let ({ frequency = frequency'; _ } as f) =
+    snd
+      (List.last_opt t
+      |> Option.get_exn_or
+           "Internal solver error: Attempt to backtrack without previous \
+            assignments.")
+  in
+  let frequency'' = Frequency.Map.merge frequency frequency' in
+  let f = { f with watchers; database; frequency = frequency'' } in
+  Clause.Set.fold
+    (* TODO *)
+      (fun clause f' -> add_clause clause f' |> Result.get_exn)
+    unwatched f
 
+(* TODO do you need to track changes to frequency? *)
 let eliminate_pure_literals ({ frequency; _ } as f) =
   let open Iter in
   Frequency.Map.to_iter frequency
   |> fold
-       (fun ({ frequency; _ } as f') (l, _) ->
+       (fun f' (l, _) ->
          if Frequency.Map.mem (Literal.neg l) frequency then f'
          else
            let i =
@@ -318,8 +311,8 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
        f
 
 let preprocess f =
-  let f' = eliminate_pure_literals f in
-  { f' with trail = [] }
+  let f = eliminate_pure_literals f in
+  { f with trail = [] }
 
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in

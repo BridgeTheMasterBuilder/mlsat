@@ -8,6 +8,7 @@ module type S = sig
   val is_empty : t -> bool
   val of_iter : elt Iter.iter -> t
   val pop : t -> (elt * t) option
+  val pop_exn : t -> elt * t
   val push : elt -> t -> t
   val push_iter : elt Iter.iter -> t -> t
 end

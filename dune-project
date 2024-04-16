@@ -29,7 +29,8 @@
   (psq (>= 0.2.1))
   (logs (>= 0.7.0))
   (batteries (>= 3.8.0))
-  (ppx_deriving (>= 5.2.1)))
+  (ppx_deriving (>= 5.2.1))
+  (bisect_ppx (>= 2.8.3)))
  (tags
   (topics "to describe" your project)))
 

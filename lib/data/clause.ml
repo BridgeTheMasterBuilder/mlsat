@@ -3,9 +3,6 @@ include CCArray
 type t = CCHash.hash * Literal.t array
 type clause = t
 
-(* TODO lbd a c *)
-let of_array a = (CCHash.array Literal.hash a, a)
-
 let of_list l =
   let a = of_list l in
   (CCHash.array Literal.hash a, a)
@@ -31,8 +28,6 @@ module Watched = struct
   module Set = Set.Make (struct
     type t = watched_clause
 
-    (* let compare { clause = _, c1; _ } { clause = _, c2; _ } = *)
-    (*   Array.compare Literal.compare c1 c2 *)
     let compare { clause = id1, _; _ } { clause = id2, _; _ } =
       Int.compare id1 id2
   end)
@@ -77,7 +72,6 @@ module Watched = struct
     | Falsified of clause
     | NoChange
 
-  let fold f x { clause = _, clause; _ } = clause |> Array.fold f x
   let to_clause { clause; _ } = clause
 
   let unwatch_clause c watchers =
@@ -87,8 +81,9 @@ module Watched = struct
     (*      watchers *)
     watchers
 
-  let update l a ({ clause; size; index; watched_literals = w1, w2; _ } as c)
-      watchers =
+  let update l a
+      ({ clause = (_, c) as clause; size; index; watched_literals = w1, w2; _ }
+      as watched_clause) watchers =
     let other_watched_literal = if Literal.equal l w1 then w2 else w1 in
     let other_watched_literal_truth_value =
       Assignment.Map.value other_watched_literal a
@@ -97,11 +92,10 @@ module Watched = struct
     else
       let result =
         let open Iter in
-        let data = snd clause in
         0 -- (size - 1)
         |> find_map (fun i ->
                let index' = (index + i) mod size in
-               let l' = Array.unsafe_get data index' in
+               let l' = Array.unsafe_get c index' in
                if
                  Tribool.is_false (Assignment.Map.value l' a)
                  || Literal.equal l' other_watched_literal
@@ -114,10 +108,12 @@ module Watched = struct
             Falsified clause
           else Unit (other_watched_literal, clause)
       | Some (index', new_watched_literal) ->
-          c.index <- index';
-          c.watched_literals <- (other_watched_literal, new_watched_literal);
+          watched_clause.index <- index';
+          watched_clause.watched_literals <-
+            (other_watched_literal, new_watched_literal);
           let watchers' =
-            Map.remove l c watchers |> Map.add new_watched_literal c
+            Map.remove l watched_clause watchers
+            |> Map.add new_watched_literal watched_clause
           in
           WatchedLiteralChange watchers'
 
@@ -131,11 +127,13 @@ module Watched = struct
                      Literal.show (Assignment.literal ass)))))
       c;
     let size = size clause in
+    (* TODO is this better? *)
     to_iter clause
-    |> Iter.filter (fun l -> Tribool.is_nonfalse (Assignment.Map.value l a))
+    |> Iter.map (fun l -> (l, Assignment.Map.value l a))
+    |> Iter.filter (fun (_, v) -> Tribool.is_nonfalse v)
     |> Iter.take 2 |> Iter.to_list
     |> function
-    | [ w1; w2 ] ->
+    | [ (w1, _); (w2, _) ] ->
         let watched_clause =
           { clause; size; index = 2 mod size; watched_literals = (w1, w2) }
         in
@@ -146,8 +144,8 @@ module Watched = struct
           Map.add w1 watched_clause watchers |> Map.add w2 watched_clause
         in
         WatchedLiteralChange watchers'
-    | [ w ] ->
-        if Tribool.is_unknown (Assignment.Map.value w a) then Unit (w, clause)
+    | [ (w, v) ] ->
+        if Tribool.is_unknown v then Unit (w, clause)
         else (
           Logs.debug (fun m ->
               m "Clause %s seems to be satisfied" (show clause));
@@ -160,7 +158,6 @@ module Set = struct
   include Iter.Set.Make (struct
     type t = clause
 
-    (* let compare (_, c1) (_, c2) = Array.compare Literal.compare c1 c2 *)
     let compare (id1, _) (id2, _) = Int.compare id1 id2
   end)
 

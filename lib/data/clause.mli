@@ -28,16 +28,13 @@ module Watched : sig
     | Falsified of clause
     | NoChange
 
-  val fold : ('a -> Literal.t -> 'a) -> 'a -> t -> 'a
   val to_clause : t -> clause
   val unwatch_clause : clause -> Map.t -> Map.t
   val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
   val watch_clause : Assignment.Map.t -> clause -> Map.t -> update_result
 end
 
-(* val empty : t *)
 val of_list : Literal.t list -> t
-val of_array : Literal.t array -> t
 val show : t -> string
 val size : t -> int
 val to_array : t -> Literal.t array
