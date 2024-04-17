@@ -277,7 +277,7 @@ let of_list v _c list =
          list)
   with Conflict _ -> None
 
-let restart { trail = t; watchers; database; unwatched; frequency; _ } =
+let restart ({ trail = t; watchers; database; unwatched; frequency; _ } as f) =
   if List.is_empty t then f
   else
     let ({ frequency = frequency'; _ } as f) =
