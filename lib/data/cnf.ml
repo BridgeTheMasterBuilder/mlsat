@@ -63,6 +63,12 @@ let rec make_assignment l ass
   let update_watchers l ({ assignments = a; watchers; _ } as f) ucs' =
     let update_watcher l c ({ watchers = watchers'; unwatched; _ } as f') ucs''
         =
+      (* Logs.debug (fun m -> m "Unit clauses (update_watcher):"); *)
+      (* Logs.debug (fun m -> *)
+      (*     m "%s" *)
+      (*       (List.fold_left *)
+      (*          (fun s (_, c) -> Printf.sprintf "%s( %s) " s (Clause.show c)) *)
+      (*          "" ucs)); *)
       match Clause.Watched.update l a c watchers' with
       | WatchedLiteralChange watchers' ->
           Ok
@@ -86,14 +92,20 @@ let rec make_assignment l ass
           Error (clause, f)
       | NoChange -> Ok (f', ucs'')
     in
+    (* Logs.debug (fun m -> m "Unit clauses (update_watchers):"); *)
+    (* Logs.debug (fun m -> *)
+    (*     m "%s" *)
+    (*       (List.fold_left *)
+    (*          (fun s (_, c) -> Printf.sprintf "%s( %s) " s (Clause.show c)) *)
+    (*          "" ucs)); *)
     try
       Ok
         (match Clause.Watched.Map.find_opt l watchers with
         | Some cs ->
             let f', ucs'' =
               Clause.Watched.Set.fold
-                (fun c (f'', ucs) ->
-                  update_watcher l c f'' ucs
+                (fun c (f'', ucs'') ->
+                  update_watcher l c f'' ucs''
                   |> Result.get_lazy (fun (c, f) ->
                          raise_notrace (Conflict (c, f))))
                 cs (f, ucs')
@@ -103,6 +115,7 @@ let rec make_assignment l ass
             (* let f''' = *)
             unit_propagate f' ucs''
             |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f)))
+            (* in *)
             (* List.fold_left *)
             (*   (fun f'' (l, uc) -> *)
             (*     Logs.debug (fun m -> m "Round we go"); *)
@@ -114,7 +127,10 @@ let rec make_assignment l ass
             (* decr level_; *)
             (* Logs.debug (fun m -> m "Returning to level %d" !level_); *)
             (* f''' *)
-        | None -> f)
+        | None ->
+            (* Logs.debug (fun m -> m "Sucka!"); *)
+            unit_propagate f ucs'
+            |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f))))
     with Conflict (c, f) -> Error (c, f)
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
@@ -126,11 +142,18 @@ let rec make_assignment l ass
     |> Frequency.Map.remove_literal (Literal.neg l)
   in
   let f = { f with frequency = frequency' } in
+  (* Logs.debug (fun m -> m "Updating watchers"); *)
   update_watchers (Literal.neg l) f ucs
 
 (* TODO Instead of make_assignment recursively calling unit_propagate, maybe make_assignment should return a list/set *)
 (* of clauses that should be unit propagated  *)
 and unit_propagate ({ current_decision_level = d; _ } as f) ucs =
+  (* Logs.debug (fun m -> m "Unit clauses:"); *)
+  (* Logs.debug (fun m -> *)
+  (*     m "%s" *)
+  (*       (List.fold_left *)
+  (*          (fun s (_, c) -> Printf.sprintf "%s( %s) " s (Clause.show c)) *)
+  (*          "" ucs)); *)
   match ucs with
   | [] -> Ok f
   | (l, uc) :: ucs' ->
