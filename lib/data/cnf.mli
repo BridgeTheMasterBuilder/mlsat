@@ -17,7 +17,7 @@ val preprocess : formula -> formula
 val restart : formula -> formula
 val show : formula -> string
 
-val unit_propagate :
-  Literal.t * Clause.t -> formula -> (formula, Clause.t * formula) result
+(* val unit_propagate : *)
+(*   Literal.t * Clause.t -> formula -> (formula, Clause.t * formula) result *)
 
 val check : formula -> unit

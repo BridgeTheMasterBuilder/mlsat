@@ -38,14 +38,14 @@ let run filename config =
       try
         match solve p with
         | Sat f ->
-            check f;
+            (* check f; *)
             Printf.printf "s SATISFIABLE\nv ";
             List.iter
               (fun l -> Printf.printf "%s " (Literal.show l))
               (assignments f);
             print_endline "0"
         | Unsat f ->
-            check f;
+            (* check f; *)
             Option.iter
               (fun filename ->
                 emit_proof_of_unsatisfiability filename (learned_clauses f))

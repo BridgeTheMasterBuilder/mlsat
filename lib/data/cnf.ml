@@ -56,11 +56,13 @@ let show
      else Clause.Watched.Map.show watchers)
 
 let decision_level { current_decision_level = d; _ } = d
+let level_ = ref 0
 
 let rec make_assignment l ass
-    ({ frequency; assignments = a; trail = t; _ } as f) d =
-  let update_watchers l ({ assignments = a; watchers; _ } as f) =
-    let update_watcher l c ({ watchers = watchers'; unwatched; _ } as f') ucs' =
+    ({ frequency; assignments = a; trail = t; _ } as f) d ucs =
+  let update_watchers l ({ assignments = a; watchers; _ } as f) ucs' =
+    let update_watcher l c ({ watchers = watchers'; unwatched; _ } as f') ucs''
+        =
       match Clause.Watched.update l a c watchers' with
       | WatchedLiteralChange watchers' ->
           Ok
@@ -71,57 +73,72 @@ let rec make_assignment l ass
                 unwatched =
                   Clause.Set.remove (Clause.Watched.to_clause c) unwatched;
               },
-              ucs' )
+              ucs'' )
       | Unit (l, clause) ->
-          (* Logs.debug (fun m -> *)
-          (*     m "Unit propagating %s because of %s" (Literal.show l) *)
-          (*       (Clause.show clause)); *)
-          Ok (f', (l, clause) :: ucs')
+          Logs.debug (fun m ->
+              m "Unit propagating %s at level %d because of %s" (Literal.show l)
+                f'.current_decision_level (Clause.show clause));
+          Ok (f', (l, clause) :: ucs'')
       | Falsified clause ->
           (* Logs.debug (fun m -> *)
           (*     m "(%d) Clause %s is falsified" f.current_decision_level *)
           (*       (Clause.show clause)); *)
           Error (clause, f)
-      | NoChange -> Ok (f', ucs')
+      | NoChange -> Ok (f', ucs'')
     in
     try
       Ok
         (match Clause.Watched.Map.find_opt l watchers with
         | Some cs ->
-            let f', ucs =
+            let f', ucs'' =
               Clause.Watched.Set.fold
                 (fun c (f'', ucs) ->
                   update_watcher l c f'' ucs
                   |> Result.get_lazy (fun (c, f) ->
                          raise_notrace (Conflict (c, f))))
-                cs (f, [])
+                cs (f, ucs')
             in
-            List.fold_left
-              (fun f'' (l, uc) ->
-                unit_propagate (l, uc) f''
-                |> Result.get_lazy (fun (c, f) ->
-                       raise_notrace (Conflict (c, f))))
-              f' ucs
+            (* incr level_; *)
+            (* Logs.debug (fun m -> m "Let's go to level %d" !level_); *)
+            (* let f''' = *)
+            unit_propagate f' ucs''
+            |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f)))
+            (* List.fold_left *)
+            (*   (fun f'' (l, uc) -> *)
+            (*     Logs.debug (fun m -> m "Round we go"); *)
+            (*     unit_propagate (l, uc) f''  *)
+            (*     |> Result.get_lazy (fun (c, f) -> *)
+            (*            raise_notrace (Conflict (c, f)))) *)
+            (*   f' ucs'' *)
+            (* in *)
+            (* decr level_; *)
+            (* Logs.debug (fun m -> m "Returning to level %d" !level_); *)
+            (* f''' *)
         | None -> f)
     with Conflict (c, f) -> Error (c, f)
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
   let f = { f with assignments = a'; trail = t'; current_decision_level = d } in
-  (* Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass)); *)
+  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
   let frequency' =
     Frequency.Map.remove_literal l frequency
     |> Frequency.Map.remove_literal (Literal.neg l)
   in
   let f = { f with frequency = frequency' } in
-  update_watchers (Literal.neg l) f
+  update_watchers (Literal.neg l) f ucs
 
-and unit_propagate (l, uc) ({ current_decision_level = d; _ } as f) =
-  let i =
-    Assignment.Implication
-      { literal = l; implicant = Clause.to_array uc; level = d }
-  in
-  make_assignment l i f d
+(* TODO Instead of make_assignment recursively calling unit_propagate, maybe make_assignment should return a list/set *)
+(* of clauses that should be unit propagated  *)
+and unit_propagate ({ current_decision_level = d; _ } as f) ucs =
+  match ucs with
+  | [] -> Ok f
+  | (l, uc) :: ucs' ->
+      let i =
+        Assignment.Implication
+          { literal = l; implicant = Clause.to_array uc; level = d }
+      in
+      make_assignment l i f d ucs'
 
 let add_clause clause
     ({ frequency; assignments = a; watchers; unwatched; _ } as f) =
@@ -150,11 +167,11 @@ let add_clause clause
       (*           |> Option.map_or ~default:"_" (fun ass -> *)
       (*                  Literal.show (Assignment.literal ass))))) *)
       (*   (Clause.to_array clause); *)
-      (* Logs.debug (fun m -> *)
-      (*     m "Unit propagating %s because of %s" (Literal.show l) *)
-      (*       (Clause.show clause)); *)
+      Logs.debug (fun m ->
+          m "Unit propagating %s at level %d because of %s" (Literal.show l)
+            f'.current_decision_level (Clause.show clause));
       let f' = { f' with unwatched = Clause.Set.add clause unwatched } in
-      unit_propagate (l, clause) f'
+      unit_propagate f' [ (l, clause) ]
   | Falsified clause ->
       (* Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause)); *)
       Error (clause, f)
@@ -306,7 +323,7 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
              Assignment.Implication
                { literal = l; implicant = Array.empty; level = 0 }
            in
-           make_assignment l i f' 0 |> Result.get_exn)
+           make_assignment l i f' 0 [] |> Result.get_exn)
        f
 
 let preprocess f =
@@ -316,15 +333,46 @@ let preprocess f =
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  make_assignment l dec f (d + 1)
+  make_assignment l dec f (d + 1) []
 
-let check ({ database = db; _ } as f) =
+let check ({ database = db; trail; _ } as f) =
   Logs.debug (fun m -> m "%s" (show f));
-  assert (
+  let db_equal =
     List.sort_uniq
       ~cmp:(fun c1 c2 ->
         Array.compare Literal.compare
           (Array.sorted Literal.compare (Clause.to_array c1))
           (Array.sorted Literal.compare (Clause.to_array c2)))
       db
-    |> List.length = List.length db)
+    |> List.length = List.length db
+  in
+  if not db_equal then
+    List.iter
+      (fun (c1, c2) ->
+        Logs.debug (fun m -> m "%s = %s" (Clause.show c1) (Clause.show c2)))
+      (List.combine_shortest
+         (List.sort_uniq
+            ~cmp:(fun c1 c2 ->
+              Array.compare Literal.compare
+                (Array.sorted Literal.compare (Clause.to_array c1))
+                (Array.sorted Literal.compare (Clause.to_array c2)))
+            db)
+         db);
+  assert db_equal;
+  let trail_equal =
+    List.sort_uniq
+      ~cmp:(fun (ass1, _) (ass2, _) -> Assignment.compare ass1 ass2)
+      trail
+    |> List.length = List.length trail
+  in
+  if not trail_equal then
+    List.iter
+      (fun ((ass1, _), (ass2, _)) ->
+        Logs.debug (fun m ->
+            m "%s = %s" (Assignment.show ass1) (Assignment.show ass2)))
+      (List.combine_shortest
+         (List.sort_uniq
+            ~cmp:(fun (ass1, _) (ass2, _) -> Assignment.compare ass1 ass2)
+            trail)
+         trail);
+  assert trail_equal
