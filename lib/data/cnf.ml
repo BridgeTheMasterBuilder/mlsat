@@ -67,6 +67,7 @@ let decision_level { current_decision_level = d; _ } = d
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) d ucs =
   let update_watchers l ({ assignments = a; watchers; _ } as f) ucs' =
+    (* TODO Pass in watchers and unwatched set in as parameters, and only do the record update after the loop *)
     let update_watcher l c ({ watchers = watchers'; unwatched; _ } as f') ucs''
         =
       match Clause.Watched.update l a c watchers' with
@@ -80,16 +81,8 @@ let rec make_assignment l ass
                   Clause.Set.remove (Clause.Watched.to_clause c) unwatched;
               },
               ucs'' )
-      | Unit (l, clause) ->
-          Logs.debug (fun m ->
-              m "Unit propagating %s at level %d because of %s" (Literal.show l)
-                f'.current_decision_level (Clause.show clause));
-          Ok (f', UnitClauseWorkqueue.push (l, clause) ucs'')
-      | Falsified clause ->
-          Logs.debug (fun m ->
-              m "(%d) Clause %s is falsified" f.current_decision_level
-                (Clause.show clause));
-          Error (clause, f)
+      | Unit (l, clause) -> Ok (f', UnitClauseWorkqueue.push (l, clause) ucs'')
+      | Falsified clause -> Error (clause, f)
       | NoChange -> Ok (f', ucs'')
     in
     (* TODO Pretty gnarly code *)
@@ -107,9 +100,6 @@ let rec make_assignment l ass
           with Conflict (c, f) -> (Error (c, f), UnitClauseWorkqueue.create ())
         in
         Result.flat_map (fun f'' -> (unit_propagate [@tailcall]) f'' ucs'') f'
-        (* match f' with *)
-        (* | Ok f' -> (unit_propagate [@tailcall]) f' ucs'' *)
-        (* | error -> error) *)
     | None -> (unit_propagate [@tailcall]) f ucs'
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
@@ -127,13 +117,6 @@ let rec make_assignment l ass
       frequency = frequency';
     }
   in
-  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
-  Logs.debug (fun m -> m "Unit clauses:");
-  Logs.debug (fun m ->
-      m "%s"
-        (UnitClauseWorkqueue.fold
-           (fun s (_, c) -> Printf.sprintf "%s( %s) " s (Clause.show c))
-           "" ucs));
   update_watchers (Literal.neg l) f' ucs
 
 and unit_propagate ({ current_decision_level = d; _ } as f) ucs =
@@ -165,9 +148,6 @@ let add_clause clause
           frequency = frequency';
         }
   | Unit (l, clause) ->
-      Logs.debug (fun m ->
-          m "Unit propagating %s at level %d because of %s" (Literal.show l)
-            f.current_decision_level (Clause.show clause));
       let f' =
         {
           f with
@@ -176,33 +156,21 @@ let add_clause clause
         }
       in
       unit_propagate f' (UnitClauseWorkqueue.singleton (l, clause))
-      (* ) *)
-  | Falsified clause ->
-      Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause));
-      Error (clause, f)
+  | Falsified clause -> Error (clause, f)
   | NoChange -> Ok { f with frequency = frequency' }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
-  (* Logs.debug (fun m -> m "%s" (show f)); *)
   let open Iter in
   let rec aux q c =
     match VariableWorkqueue.pop_exn q with
     | l, q' -> (
-        if
-          (* Logs.debug (fun m -> m "Examining variable %s" (Variable.show l)); *)
-          VariableWorkqueue.is_empty q'
-        then
+        if VariableWorkqueue.is_empty q' then
           let ass = Assignment.Map.find l a in
-          (* Logs.debug (fun m -> m "%s" (Assignment.show ass)); *)
-          (* Logs.debug (fun m -> m "Found UIP"); *)
           Literal.neg (Assignment.literal ass) :: c
         else
           match Assignment.(Map.find l a) with
-          | Decision { literal = l'; _ } ->
-              (* Logs.debug (fun m -> m "%s" (Assignment.show ass)); *)
-              aux q' (Literal.neg l' :: c)
+          | Decision { literal = l'; _ } -> aux q' (Literal.neg l' :: c)
           | Implication { literal = l'; implicant = ls'; level = d'; _ } ->
-              (* Logs.debug (fun m -> m "%s" (Assignment.show ass)); *)
               if d' < d then aux q' (Literal.neg l' :: c)
               else
                 let q'' =
@@ -254,7 +222,6 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  Logs.debug (fun m -> m "Backtracking to level %d" d');
   let _, f =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
@@ -270,16 +237,11 @@ let backtrack
   in
   let f' =
     Clause.Set.fold
-      (fun clause f' ->
-        Logs.debug (fun m -> m "Adding unwatched clause");
-        add_clause clause f' |> Result.get_exn)
+      (fun clause f' -> add_clause clause f' |> Result.get_exn)
       unwatched f
   in
   (* TODO Result needed? *)
-  add_clause learned_clause f'
-  |> Result.map (fun f'' ->
-         Logs.debug (fun m -> m "%s" (show f''));
-         (f'', d'))
+  add_clause learned_clause f' |> Result.map (fun f'' -> (f'', d'))
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
@@ -333,7 +295,7 @@ let restart ({ trail = t; watchers; database; unwatched; frequency; _ } as f) =
     let frequency'' = Frequency.Map.merge frequency frequency' in
     let f = { f with watchers; database; frequency = frequency'' } in
     Clause.Set.fold
-      (* TODO *)
+      (* TODO Is it safe to unwrap the result? *)
         (fun clause f' -> add_clause clause f' |> Result.get_exn)
       unwatched f
 
