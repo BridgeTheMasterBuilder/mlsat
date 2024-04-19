@@ -81,17 +81,10 @@ let rec make_assignment l ass
               },
               ucs'' )
       | Unit (l, clause) ->
-          (* if List.mem ~eq:Literal.equal l (List.map fst ucs'') then *)
-          (*   Ok (f', ucs'') *)
-          (* else ( *)
-          (* if Assignment.Map.mem (Literal.var l) a' then Ok (f', ucs'') *)
-          (* else ( *)
           Logs.debug (fun m ->
               m "Unit propagating %s at level %d because of %s" (Literal.show l)
                 f'.current_decision_level (Clause.show clause));
           Ok (f', UnitClauseWorkqueue.push (l, clause) ucs'')
-      (* ) *)
-      (* ) *)
       | Falsified clause ->
           Logs.debug (fun m ->
               m "(%d) Clause %s is falsified" f.current_decision_level
@@ -112,7 +105,6 @@ let rec make_assignment l ass
                           raise_notrace (Conflict (c, f))))
                  cs (f, ucs'))
           with Conflict (c, f) -> (Error (c, f), UnitClauseWorkqueue.create ())
-          (* with Conflict (c, f) -> (Error (c, f), UnitClauseWorkqueue.empty) *)
         in
         Result.flat_map (fun f'' -> (unit_propagate [@tailcall]) f'' ucs'') f'
         (* match f' with *)
@@ -148,9 +140,6 @@ and unit_propagate ({ current_decision_level = d; _ } as f) ucs =
   match UnitClauseWorkqueue.pop ucs with
   | None -> Ok f
   | Some ((l, uc), ucs') ->
-      (* if Assignment.Map.mem (Literal.var l) f.assignments then *)
-      (*   unit_propagate f ucs' *)
-      (* else *)
       let i =
         Assignment.Implication
           { literal = l; implicant = Clause.to_array uc; level = d }
@@ -176,17 +165,6 @@ let add_clause clause
           frequency = frequency';
         }
   | Unit (l, clause) ->
-      (* Array.iter *)
-      (*   (fun l -> *)
-      (*     Logs.debug (fun m -> *)
-      (*         m "%s(%s) " (Literal.show l) *)
-      (*           (Assignment.Map.find_opt (Literal.var l) a *)
-      (*           |> Option.map_or ~default:"_" (fun ass -> *)
-      (*                  Literal.show (Assignment.literal ass))))) *)
-      (*   (Clause.to_array clause); *)
-      (* if Assignment.Map.mem (Literal.var l) a then *)
-      (*   Ok { f with frequency = frequency' } *)
-      (* else ( *)
       Logs.debug (fun m ->
           m "Unit propagating %s at level %d because of %s" (Literal.show l)
             f.current_decision_level (Clause.show clause));
@@ -310,18 +288,14 @@ let of_list v _c list =
   let rec aux f = function
     | [] -> f
     | c :: cs ->
+        (* TODO *)
         assert (List.to_iter c |> Iter.for_all (fun l -> l <> 0));
-        (* assert ( *)
-        (*   List.to_iter c *)
-        (*   |> Iter.sort_uniq ~cmp:Int.compare *)
-        (*   |> Iter.length = List.length c); *)
         let clause =
           let open Iter in
           List.to_iter c |> sort_uniq ~cmp:Int.compare
           |> map Literal.of_int_unchecked
           |> Clause.of_iter
         in
-        (* let clause = Literal.List.of_int_list c |> Clause.of_list in *)
         if Clause.size clause = 0 then raise_notrace (Conflict (clause, f))
         else
           let f' =

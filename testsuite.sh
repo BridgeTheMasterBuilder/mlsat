@@ -18,7 +18,7 @@ fish test/logistics.sh
 # fish test/lran.sh
 fish test/morphed.sh
 fish test/par.sh
-# fish test/pret.sh
+fish test/pret.sh
 fish test/qg.sh
 fish test/rti.sh
 fish test/ssa.sh
