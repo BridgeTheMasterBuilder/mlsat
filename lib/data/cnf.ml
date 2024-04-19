@@ -87,7 +87,7 @@ let rec make_assignment l ass
     in
     (* TODO Pretty gnarly code *)
     match Clause.Watched.Map.find_opt l watchers with
-    | Some cs -> (
+    | Some cs ->
         let f', ucs'' =
           try
             Pair.map_fst Result.return
@@ -99,21 +99,29 @@ let rec make_assignment l ass
                  cs (f, ucs'))
           with Conflict (c, f) -> (Error (c, f), [])
         in
-        match f' with
-        | Ok f' -> (unit_propagate [@tailcall]) f' ucs''
-        | error -> error)
+        Result.flat_map (fun f'' -> (unit_propagate [@tailcall]) f'' ucs'') f'
+        (* match f' with *)
+        (* | Ok f' -> (unit_propagate [@tailcall]) f' ucs'' *)
+        (* | error -> error) *)
     | None -> (unit_propagate [@tailcall]) f ucs'
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
-  let f = { f with assignments = a'; trail = t'; current_decision_level = d } in
-  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
   let frequency' =
     Frequency.Map.remove_literal l frequency
     |> Frequency.Map.remove_literal (Literal.neg l)
   in
-  let f = { f with frequency = frequency' } in
-  update_watchers (Literal.neg l) f ucs
+  let f' =
+    {
+      f with
+      assignments = a';
+      trail = t';
+      current_decision_level = d;
+      frequency = frequency';
+    }
+  in
+  Logs.debug (fun m -> m "Making assignment %s" (Assignment.show ass));
+  update_watchers (Literal.neg l) f' ucs
 
 and unit_propagate ({ current_decision_level = d; _ } as f) ucs =
   (* Logs.debug (fun m -> m "Unit clauses:"); *)
@@ -125,6 +133,9 @@ and unit_propagate ({ current_decision_level = d; _ } as f) ucs =
   match ucs with
   | [] -> Ok f
   | (l, uc) :: ucs' ->
+      (* if Assignment.Map.mem (Literal.var l) f.assignments then *)
+      (*   unit_propagate f ucs' *)
+      (* else *)
       let i =
         Assignment.Implication
           { literal = l; implicant = Clause.to_array uc; level = d }
@@ -140,14 +151,14 @@ let add_clause clause
       |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
       frequency
   in
-  let f' = { f with frequency = frequency' } in
   match Clause.Watched.watch_clause a clause watchers with
   | WatchedLiteralChange watchers' ->
       Ok
         {
-          f' with
+          f with
           watchers = watchers';
           unwatched = Clause.Set.remove clause unwatched;
+          frequency = frequency';
         }
   | Unit (l, clause) ->
       (* Array.iter *)
@@ -160,13 +171,19 @@ let add_clause clause
       (*   (Clause.to_array clause); *)
       Logs.debug (fun m ->
           m "Unit propagating %s at level %d because of %s" (Literal.show l)
-            f'.current_decision_level (Clause.show clause));
-      let f' = { f' with unwatched = Clause.Set.add clause unwatched } in
+            f.current_decision_level (Clause.show clause));
+      let f' =
+        {
+          f with
+          unwatched = Clause.Set.add clause unwatched;
+          frequency = frequency';
+        }
+      in
       unit_propagate f' [ (l, clause) ]
   | Falsified clause ->
       (* Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause)); *)
       Error (clause, f)
-  | NoChange -> Ok f'
+  | NoChange -> Ok { f with frequency = frequency' }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   let open Iter in
@@ -340,7 +357,10 @@ let check ({ database = db; trail; _ } as f) =
   if not db_equal then
     List.iter
       (fun (c1, c2) ->
-        Logs.debug (fun m -> m "%s = %s" (Clause.show c1) (Clause.show c2)))
+        Logs.debug (fun m ->
+            m "[%b ]%s = %s"
+              (String.equal (Clause.show c1) (Clause.show c2))
+              (Clause.show c1) (Clause.show c2)))
       (List.combine_shortest
          (List.sort_uniq
             ~cmp:(fun c1 c2 ->
@@ -348,11 +368,17 @@ let check ({ database = db; trail; _ } as f) =
                 (Array.sorted Literal.compare (Clause.to_array c1))
                 (Array.sorted Literal.compare (Clause.to_array c2)))
             db)
-         db);
+         (List.sort
+            (fun c1 c2 ->
+              Array.compare Literal.compare
+                (Array.sorted Literal.compare (Clause.to_array c1))
+                (Array.sorted Literal.compare (Clause.to_array c2)))
+            db));
   assert db_equal;
   let trail_equal =
     List.sort_uniq
-      ~cmp:(fun (ass1, _) (ass2, _) -> Assignment.compare ass1 ass2)
+      ~cmp:(fun (ass1, _) (ass2, _) ->
+        Literal.compare (Assignment.literal ass1) (Assignment.literal ass2))
       trail
     |> List.length = List.length trail
   in
@@ -360,10 +386,14 @@ let check ({ database = db; trail; _ } as f) =
     List.iter
       (fun ((ass1, _), (ass2, _)) ->
         Logs.debug (fun m ->
-            m "%s = %s" (Assignment.show ass1) (Assignment.show ass2)))
+            m "[%b] %s = %s"
+              (String.equal (Assignment.show ass1) (Assignment.show ass2))
+              (Assignment.show ass1) (Assignment.show ass2)))
       (List.combine_shortest
          (List.sort_uniq
             ~cmp:(fun (ass1, _) (ass2, _) -> Assignment.compare ass1 ass2)
             trail)
-         trail);
+         (List.sort
+            (fun (ass1, _) (ass2, _) -> Assignment.compare ass1 ass2)
+            trail));
   assert trail_equal
