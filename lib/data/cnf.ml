@@ -15,6 +15,13 @@ exception Conflict of Clause.t * formula
 module VariableWorkqueue : Workqueue.S with type elt = Variable.t =
   Workqueue.Make (Variable)
 
+module UnitClauseWorkqueue : Workqueue.S with type elt = Literal.t * Clause.t =
+Workqueue.Make (struct
+  type t = Literal.t * Clause.t
+
+  let compare (l1, _) (l2, _) = Literal.compare l1 l2
+end)
+
 let show
     ({
        _debug_clauses;
@@ -60,9 +67,9 @@ let decision_level { current_decision_level = d; _ } = d
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) d ucs =
   let update_watchers l ({ assignments = a; watchers; _ } as f) ucs' =
-    let update_watcher l c ({ watchers = watchers'; unwatched; _ } as f') ucs''
-        =
-      match Clause.Watched.update l a c watchers' with
+    let update_watcher l c
+        ({ watchers = watchers'; unwatched; assignments = a'; _ } as f') ucs'' =
+      match Clause.Watched.update l a' c watchers' with
       | WatchedLiteralChange watchers' ->
           Ok
             ( {
@@ -74,10 +81,17 @@ let rec make_assignment l ass
               },
               ucs'' )
       | Unit (l, clause) ->
+          (* if List.mem ~eq:Literal.equal l (List.map fst ucs'') then *)
+          (*   Ok (f', ucs'') *)
+          (* else ( *)
+          (* if Assignment.Map.mem (Literal.var l) a' then Ok (f', ucs'') *)
+          (* else ( *)
           Logs.debug (fun m ->
               m "Unit propagating %s at level %d because of %s" (Literal.show l)
                 f'.current_decision_level (Clause.show clause));
           Ok (f', (l, clause) :: ucs'')
+      (* ) *)
+      (* ) *)
       | Falsified clause ->
           (* Logs.debug (fun m -> *)
           (*     m "(%d) Clause %s is falsified" f.current_decision_level *)
@@ -169,6 +183,9 @@ let add_clause clause
       (*           |> Option.map_or ~default:"_" (fun ass -> *)
       (*                  Literal.show (Assignment.literal ass))))) *)
       (*   (Clause.to_array clause); *)
+      (* if Assignment.Map.mem (Literal.var l) a then *)
+      (*   Ok { f with frequency = frequency' } *)
+      (* else ( *)
       Logs.debug (fun m ->
           m "Unit propagating %s at level %d because of %s" (Literal.show l)
             f.current_decision_level (Clause.show clause));
@@ -180,6 +197,7 @@ let add_clause clause
         }
       in
       unit_propagate f' [ (l, clause) ]
+      (* ) *)
   | Falsified clause ->
       (* Logs.debug (fun m -> m "Clause %s is falsified" (Clause.show clause)); *)
       Error (clause, f)
