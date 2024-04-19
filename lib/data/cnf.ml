@@ -66,40 +66,45 @@ let decision_level { current_decision_level = d; _ } = d
 
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) d ucs =
-  let update_watchers l ({ assignments = a; watchers; _ } as f) ucs' =
+  let update_watchers l ({ assignments = a; watchers; unwatched; _ } as f) ucs'
+      =
     (* TODO Pass in watchers and unwatched set in as parameters, and only do the record update after the loop *)
-    let update_watcher l c ({ watchers = watchers'; unwatched; _ } as f') ucs''
-        =
+    let update_watcher l c watchers' unwatched ucs'' =
       match Clause.Watched.update l a c watchers' with
       | WatchedLiteralChange watchers' ->
           Ok
-            ( {
-                f' with
-                watchers = watchers';
-                (* TODO It might already not be watched, need a way to figure out when this is necessary, or maybe it doesn't matter? *)
-                unwatched =
-                  Clause.Set.remove (Clause.Watched.to_clause c) unwatched;
-              },
+            ( watchers',
+              (* TODO It might already not be watched, need a way to figure out when this is necessary, or maybe it doesn't matter? *)
+              Clause.Set.remove (Clause.Watched.to_clause c) unwatched,
               ucs'' )
-      | Unit (l, clause) -> Ok (f', UnitClauseWorkqueue.push (l, clause) ucs'')
+      | Unit (l, clause) ->
+          Ok (watchers', unwatched, UnitClauseWorkqueue.push (l, clause) ucs'')
       | Falsified clause -> Error (clause, f)
-      | NoChange -> Ok (f', ucs'')
+      | NoChange -> Ok (watchers', unwatched, ucs'')
     in
     (* TODO Pretty gnarly code *)
     match Clause.Watched.Map.find_opt l watchers with
     | Some cs ->
-        let f', ucs'' =
+        let f', (watchers', unwatched', ucs'') =
           try
-            Pair.map_fst Result.return
-              (Clause.Watched.Set.fold
-                 (fun c (f'', ucs'') ->
-                   update_watcher l c f'' ucs''
-                   |> Result.get_lazy (fun (c, f) ->
-                          raise_notrace (Conflict (c, f))))
-                 cs (f, ucs'))
-          with Conflict (c, f) -> (Error (c, f), UnitClauseWorkqueue.create ())
+            ( Ok f,
+              Clause.Watched.Set.fold
+                (fun c (watchers', unwatched', ucs'') ->
+                  update_watcher l c watchers' unwatched' ucs''
+                  |> Result.get_lazy (fun (c, f) ->
+                         raise_notrace (Conflict (c, f))))
+                cs
+                (watchers, unwatched, ucs') )
+          with Conflict (c, f) ->
+            (Error (c, f), (watchers, unwatched, UnitClauseWorkqueue.create ()))
         in
-        Result.flat_map (fun f'' -> (unit_propagate [@tailcall]) f'' ucs'') f'
+        Result.flat_map
+          (fun f'' ->
+            let f'' =
+              { f'' with watchers = watchers'; unwatched = unwatched' }
+            in
+            (unit_propagate [@tailcall]) f'' ucs'')
+          f'
     | None -> (unit_propagate [@tailcall]) f ucs'
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
