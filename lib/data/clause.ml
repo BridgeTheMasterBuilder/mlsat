@@ -88,9 +88,26 @@ module Watched = struct
     let other_watched_literal_truth_value =
       Assignment.Map.value other_watched_literal a
     in
-    if Tribool.is_true other_watched_literal_truth_value then NoChange
+    if Tribool.is_true other_watched_literal_truth_value then
+      (* Logs.debug (fun m -> *)
+      (*     m "Clause is satisfied by %s, doing nothing" *)
+      (*       (Literal.show other_watched_literal)); *)
+      NoChange
     else
+      (* Logs.debug (fun m -> *)
+      (*     m "(watching %s and %s - index %d): " (Literal.show l) *)
+      (*       (Literal.show other_watched_literal) *)
+      (*       index); *)
+      (* Array.iter *)
+      (*   (fun l -> *)
+      (*     Logs.debug (fun m -> *)
+      (*         m "%s(%s) " (Literal.show l) *)
+      (*           (Assignment.Map.find_opt (Literal.var l) a *)
+      (*           |> Option.map_or ~default:"_" (fun ass -> *)
+      (*                  Literal.show (Assignment.literal ass))))) *)
+      (*   c; *)
       let result =
+        (* Logs.debug (fun m -> m "Trying to find a new watcher"); *)
         let open Iter in
         0 -- (size - 1)
         |> find_map (fun i ->
@@ -99,8 +116,15 @@ module Watched = struct
                if
                  Tribool.is_false (Assignment.Map.value l' a)
                  || Literal.equal l' other_watched_literal
-               then None
-               else Some (index', l'))
+               then
+                 (* Logs.debug (fun m -> *)
+                 (*     m "No good, %s is either false or already watched" *)
+                 (*       (Literal.show l')); *)
+                 None
+               else
+                 (* Logs.debug (fun m -> *)
+                 (*     m "Found new watcher %s" (Literal.show l')); *)
+                 Some (index', l'))
       in
       match result with
       | None ->
@@ -111,6 +135,11 @@ module Watched = struct
           watched_clause.index <- index';
           watched_clause.watched_literals <-
             (other_watched_literal, new_watched_literal);
+          (* Logs.debug (fun m -> *)
+          (*     m "Moving watcher from %s to %s (other watcher is %s)" *)
+          (*       (Literal.show l) *)
+          (*       (Literal.show new_watched_literal) *)
+          (*       (Literal.show other_watched_literal)); *)
           let watchers' =
             Map.remove l watched_clause watchers
             |> Map.add new_watched_literal watched_clause

@@ -3,6 +3,7 @@ module type S = sig
   type t
   type elt_set
 
+  val create : unit -> t
   val empty : t
   val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
   val is_empty : t -> bool
@@ -11,6 +12,7 @@ module type S = sig
   val pop_exn : t -> elt * t
   val push : elt -> t -> t
   val push_iter : elt Iter.iter -> t -> t
+  val singleton : elt -> t
 end
 
 module Make (Ord : Set.OrderedType) : S with type elt = Ord.t

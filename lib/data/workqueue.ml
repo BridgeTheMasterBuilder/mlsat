@@ -3,6 +3,7 @@ module type S = sig
   type t
   type elt_set
 
+  val create : unit -> t
   val empty : t
   val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
   val is_empty : t -> bool
@@ -11,6 +12,7 @@ module type S = sig
   val pop_exn : t -> elt * t
   val push : elt -> t -> t
   val push_iter : elt Iter.iter -> t -> t
+  val singleton : elt -> t
 end
 
 module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
@@ -20,6 +22,7 @@ module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
   type elt_set = M.t
   type t = { queue : elt CCDeque.t; seen : elt_set }
 
+  let create () = { queue = CCDeque.create (); seen = M.empty }
   let empty = { queue = CCDeque.create (); seen = M.empty }
   let fold f init { queue; _ } = CCDeque.fold f init queue
   let is_empty { queue; _ } = CCDeque.is_empty queue
@@ -51,4 +54,9 @@ module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
          queue);
       seen = M.(union seen (of_iter unseen));
     }
+
+  let singleton x =
+    let queue = CCDeque.create () in
+    CCDeque.push_back queue x;
+    { queue; seen = M.singleton x }
 end
