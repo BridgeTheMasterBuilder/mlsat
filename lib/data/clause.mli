@@ -35,6 +35,7 @@ module Watched : sig
 end
 
 val of_list : Literal.t list -> t
+val of_iter : Literal.t Iter.iter -> t
 val show : t -> string
 val size : t -> int
 val to_array : t -> Literal.t array

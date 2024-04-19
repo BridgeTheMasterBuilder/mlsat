@@ -63,7 +63,6 @@ let show
      else Clause.Watched.Map.show watchers)
 
 let decision_level { current_decision_level = d; _ } = d
-let level_ = ref 0
 
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) d ucs =
@@ -112,8 +111,8 @@ let rec make_assignment l ass
                    |> Result.get_lazy (fun (c, f) ->
                           raise_notrace (Conflict (c, f))))
                  cs (f, ucs'))
-            (* with Conflict (c, f) -> (Error (c, f), UnitClauseWorkqueue.create ()) *)
-          with Conflict (c, f) -> (Error (c, f), UnitClauseWorkqueue.empty)
+          with Conflict (c, f) -> (Error (c, f), UnitClauseWorkqueue.create ())
+          (* with Conflict (c, f) -> (Error (c, f), UnitClauseWorkqueue.empty) *)
         in
         Result.flat_map (fun f'' -> (unit_propagate [@tailcall]) f'' ucs'') f'
         (* match f' with *)
@@ -143,11 +142,7 @@ let rec make_assignment l ass
         (UnitClauseWorkqueue.fold
            (fun s (_, c) -> Printf.sprintf "%s( %s) " s (Clause.show c))
            "" ucs));
-  if !level_ = 0 then assert (UnitClauseWorkqueue.is_empty ucs);
-  incr level_;
-  let r = update_watchers (Literal.neg l) f' ucs in
-  decr level_;
-  r
+  update_watchers (Literal.neg l) f' ucs
 
 and unit_propagate ({ current_decision_level = d; _ } as f) ucs =
   match UnitClauseWorkqueue.pop ucs with
@@ -209,8 +204,7 @@ let add_clause clause
       Error (clause, f)
   | NoChange -> Ok { f with frequency = frequency' }
 
-let analyze_conflict ({ current_decision_level = d; assignments = a; _ } as f)
-    clause =
+let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   (* Logs.debug (fun m -> m "%s" (show f)); *)
   let open Iter in
   let rec aux q c =
@@ -226,11 +220,10 @@ let analyze_conflict ({ current_decision_level = d; assignments = a; _ } as f)
           Literal.neg (Assignment.literal ass) :: c
         else
           match Assignment.(Map.find l a) with
-          | Decision { literal = l'; _ } as ass ->
+          | Decision { literal = l'; _ } ->
               (* Logs.debug (fun m -> m "%s" (Assignment.show ass)); *)
               aux q' (Literal.neg l' :: c)
-          | Implication { literal = l'; implicant = ls'; level = d'; _ } as ass
-            ->
+          | Implication { literal = l'; implicant = ls'; level = d'; _ } ->
               (* Logs.debug (fun m -> m "%s" (Assignment.show ass)); *)
               if d' < d then aux q' (Literal.neg l' :: c)
               else
@@ -318,7 +311,17 @@ let of_list v _c list =
     | [] -> f
     | c :: cs ->
         assert (List.to_iter c |> Iter.for_all (fun l -> l <> 0));
-        let clause = Literal.List.of_int_list c |> Clause.of_list in
+        (* assert ( *)
+        (*   List.to_iter c *)
+        (*   |> Iter.sort_uniq ~cmp:Int.compare *)
+        (*   |> Iter.length = List.length c); *)
+        let clause =
+          let open Iter in
+          List.to_iter c |> sort_uniq ~cmp:Int.compare
+          |> map Literal.of_int_unchecked
+          |> Clause.of_iter
+        in
+        (* let clause = Literal.List.of_int_list c |> Clause.of_list in *)
         if Clause.size clause = 0 then raise_notrace (Conflict (clause, f))
         else
           let f' =

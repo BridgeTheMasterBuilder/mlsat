@@ -7,6 +7,7 @@ let of_list l =
   let a = of_list l in
   (CCHash.array Literal.hash a, a)
 
+let of_iter iterator = Iter.to_list iterator |> of_list
 let size (_, c) = length c
 
 let show (_, c) =
@@ -146,7 +147,8 @@ module Watched = struct
           in
           WatchedLiteralChange watchers'
 
-  let watch_clause a ((_, c) as clause) watchers =
+  let watch_clause a clause watchers =
+    (* let watch_clause a ((_, c) as clause) watchers = *)
     (* Array.iter *)
     (*   (fun l -> *)
     (*     Logs.debug (fun m -> *)
