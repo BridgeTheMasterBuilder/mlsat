@@ -31,7 +31,9 @@ module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
     { queue = CCDeque.of_iter iterator; seen = M.of_iter iterator }
 
   let pop ({ queue; _ } as w) =
-    CCDeque.take_front_opt queue |> Option.map (fun x -> (x, w))
+    let open Option.Infix in
+    let+ queue' = CCDeque.take_front_opt queue in
+    (queue', w)
 
   let pop_exn ({ queue; _ } as w) = (CCDeque.take_front queue, w)
 
