@@ -1,11 +1,14 @@
 type trace = Addition of Clause.t | Deletion of Clause.t
 
 type t = {
+  (* TODO vector ? *)
   _debug_clauses : int list list;
   frequency : Frequency.Map.t;
   current_decision_level : int;
   assignments : Assignment.Map.t;
+  (* TODO vector *)
   trail : (Assignment.t * t) list;
+  (* TODO vector *)
   database : trace list;
   watchers : Clause.Watched.Map.t;
   unwatched : Clause.Set.t;
@@ -267,13 +270,13 @@ let of_list v _c list =
       (aux
          {
            _debug_clauses = list;
-           frequency = Frequency.Map.empty;
+           frequency = Frequency.Map.empty ();
            current_decision_level = 0;
-           assignments = Assignment.Map.empty;
+           assignments = Assignment.Map.empty ();
            trail = [];
            database = [];
            watchers = Clause.Watched.Map.make v;
-           unwatched = Clause.Set.empty;
+           unwatched = Clause.Set.empty ();
          }
          list)
   with Conflict _ -> None
@@ -307,7 +310,7 @@ let eliminate_pure_literals ({ frequency; _ } as f) =
              Assignment.Implication
                { literal = l; implicant = Array.empty; level = 0 }
            in
-           make_assignment l i f' 0 (UnitClauseWorkqueue.create ()))
+           make_assignment l i f' 0 (UnitClauseWorkqueue.empty ()))
        f
 
 let preprocess f =
@@ -317,7 +320,7 @@ let preprocess f =
 let make_decision ({ current_decision_level = d; _ } as f) =
   let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  try Ok (make_assignment l dec f (d + 1) (UnitClauseWorkqueue.create ()))
+  try Ok (make_assignment l dec f (d + 1) (UnitClauseWorkqueue.empty ()))
   with Conflict (c, f) -> Error (c, f)
 
 let check ({ database = db; trail; _ } as f) =

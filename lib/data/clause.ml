@@ -191,5 +191,6 @@ module Set = struct
     let compare (id1, _) (id2, _) = Int.compare id1 id2
   end)
 
+  let empty () = empty
   let show s = fold (fun c s -> Printf.sprintf "%s:%s\n" s (show c)) s ""
 end

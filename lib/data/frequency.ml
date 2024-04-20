@@ -18,6 +18,8 @@ module Map = struct
              (function Some count -> Some (count -. 1.0) | None -> None)
              m')
 
+  let empty () = empty
+
   let incr_iter =
     let open Iter in
     Fun.flip

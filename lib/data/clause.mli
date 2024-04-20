@@ -44,5 +44,6 @@ val to_iter : t -> Literal.t Iter.iter
 module Set : sig
   include Iter.Set.S with type elt = clause
 
+  val empty : unit -> t
   val show : t -> string
 end

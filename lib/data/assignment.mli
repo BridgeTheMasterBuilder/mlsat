@@ -14,7 +14,7 @@ module Map : sig
 
   val add : key -> assignment -> t -> t
   val assignments : t -> Literal.t list
-  val empty : t
+  val empty : unit -> t
   val find : key -> t -> assignment
   val find_opt : key -> t -> assignment option
   val mem : key -> t -> bool

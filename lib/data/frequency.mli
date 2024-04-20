@@ -4,7 +4,7 @@ module Map : sig
 
   val decay : t -> t
   val decr_iter : k Iter.iter -> t -> t
-  val empty : t
+  val empty : unit -> t
   val incr_iter : k Iter.iter -> t -> t
   val is_empty : t -> bool
   val mem : k -> t -> bool

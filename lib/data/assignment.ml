@@ -22,7 +22,6 @@ module Map = struct
   let assignments m =
     to_iter m |> Iter.map (fun (_, ass) -> literal ass) |> Iter.to_list
 
-  let empty = empty ()
   let find l m = find m l
   let find_opt = get
   let mem l m = mem m l

@@ -6,7 +6,7 @@ type t = {
   emit_proof : string option;
 }
 
-let empty =
+let empty () =
   {
     time_limit = 0.0;
     verbose = false;

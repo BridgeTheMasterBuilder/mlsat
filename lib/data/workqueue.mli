@@ -3,8 +3,7 @@ module type S = sig
   type t
   type elt_set
 
-  val create : unit -> t
-  val empty : t
+  val empty : unit -> t
   val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
   val is_empty : t -> bool
   val of_iter : elt Iter.iter -> t
