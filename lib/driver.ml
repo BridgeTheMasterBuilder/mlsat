@@ -12,7 +12,9 @@ let emit_proof_of_unsatisfiability filename clauses =
   let out_filename = Filename.remove_extension filename ^ ".out" in
   let oc = open_out out_filename in
   List.iter
-    (fun c -> Printf.fprintf oc "%s0\n" (Clause.show c))
+    (fun c ->
+      Printf.fprintf oc "%s0\n"
+        (match c with Addition c | Deletion c -> Clause.show c))
     (List.rev clauses);
   Printf.fprintf oc "0"
 

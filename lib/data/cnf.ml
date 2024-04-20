@@ -1,16 +1,17 @@
-type formula = {
+type trace = Addition of Clause.t | Deletion of Clause.t
+
+type t = {
   _debug_clauses : int list list;
   frequency : Frequency.Map.t;
   current_decision_level : int;
   assignments : Assignment.Map.t;
-  trail : (Assignment.t * formula) list;
-  (* TODO rename to trace and include clause deletion too *)
-  database : Clause.t list;
+  trail : (Assignment.t * t) list;
+  database : trace list;
   watchers : Clause.Watched.Map.t;
   unwatched : Clause.Set.t;
 }
 
-exception Conflict of Clause.t * formula
+exception Conflict of Clause.t * t
 
 module VariableWorkqueue : Workqueue.S with type elt = Variable.t =
   Workqueue.Make (Variable)
@@ -57,7 +58,9 @@ let show
        (fun acc (ass, _) -> Printf.sprintf "%s%s" acc (Assignment.show ass))
        "" f.trail)
     (List.fold_left
-       (fun acc c -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
+       (fun acc c ->
+         Printf.sprintf "%s( %s)\n" acc
+           (match c with Addition c | Deletion c -> Clause.show c))
        "" database)
     (if Clause.Watched.Map.is_empty watchers then "()"
      else Clause.Watched.Map.show watchers)
@@ -225,7 +228,7 @@ let backtrack
       f with
       frequency = Frequency.Map.decay frequency';
       watchers;
-      database = learned_clause :: db;
+      database = Addition learned_clause :: db;
     }
   in
   let f' =
@@ -322,6 +325,10 @@ let check ({ database = db; trail; _ } as f) =
   let db_equal =
     List.sort_uniq
       ~cmp:(fun c1 c2 ->
+        let c1, c2 =
+          match (c1, c2) with
+          | (Addition c1 | Deletion c1), (Addition c2 | Deletion c2) -> (c1, c2)
+        in
         Array.compare Literal.compare
           (Array.sorted Literal.compare (Clause.to_array c1))
           (Array.sorted Literal.compare (Clause.to_array c2)))
@@ -331,6 +338,10 @@ let check ({ database = db; trail; _ } as f) =
   if not db_equal then
     List.iter
       (fun (c1, c2) ->
+        let c1, c2 =
+          match (c1, c2) with
+          | (Addition c1 | Deletion c1), (Addition c2 | Deletion c2) -> (c1, c2)
+        in
         Logs.debug (fun m ->
             m "[%b ]%s = %s"
               (String.equal (Clause.show c1) (Clause.show c2))
@@ -338,12 +349,22 @@ let check ({ database = db; trail; _ } as f) =
       (List.combine_shortest
          (List.sort_uniq
             ~cmp:(fun c1 c2 ->
+              let c1, c2 =
+                match (c1, c2) with
+                | (Addition c1 | Deletion c1), (Addition c2 | Deletion c2) ->
+                    (c1, c2)
+              in
               Array.compare Literal.compare
                 (Array.sorted Literal.compare (Clause.to_array c1))
                 (Array.sorted Literal.compare (Clause.to_array c2)))
             db)
          (List.sort
             (fun c1 c2 ->
+              let c1, c2 =
+                match (c1, c2) with
+                | (Addition c1 | Deletion c1), (Addition c2 | Deletion c2) ->
+                    (c1, c2)
+              in
               Array.compare Literal.compare
                 (Array.sorted Literal.compare (Clause.to_array c1))
                 (Array.sorted Literal.compare (Clause.to_array c2)))

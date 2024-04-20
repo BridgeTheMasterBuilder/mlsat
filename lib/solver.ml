@@ -2,7 +2,7 @@ open Data
 open Cnf
 open Problem
 
-type result = Sat of formula | Unsat of formula
+type result = Sat of Cnf.t | Unsat of Cnf.t
 
 (* TODO
    when first constructing the formula, immediately unit propagate everything possible

@@ -1,1 +1,1 @@
-type t = { formula : Cnf.formula; config : Config.t }
+type t = { formula : Cnf.t; config : Config.t }
