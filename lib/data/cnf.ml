@@ -225,11 +225,12 @@ let backtrack
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
-  let frequency' = Frequency.Map.merge frequency f.frequency in
+  (* let frequency' = Frequency.Map.merge frequency f.frequency in *)
   let f =
     {
       f with
-      frequency = Frequency.Map.decay frequency';
+      (* frequency = Frequency.Map.decay frequency'; *)
+      frequency = Frequency.Map.decay f.frequency;
       watchers;
       database = Addition learned_clause :: db;
     }
