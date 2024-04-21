@@ -42,4 +42,4 @@ let solve
     } =
   let luby = Luby.create base_num_conflicts grow_factor in
   let f = preprocess f in
-  cdcl ((num_clauses / 2) + 1) base_num_conflicts luby f
+  cdcl ((num_clauses / 16) + 1) base_num_conflicts luby f
