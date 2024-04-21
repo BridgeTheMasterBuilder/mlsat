@@ -7,26 +7,30 @@ end
 module Map = struct
   include Psq.Make (Literal) (Frequency)
 
-  let decay_factor = 0.99
+  type v = float
+
+  let decay_factor = 0.99 (* TODO *)
   let decay = map (fun _ f -> f *. decay_factor)
 
-  let decr_iter =
+  let decr_iter iterator m =
     let open Iter in
-    Fun.flip
-    @@ fold (fun m' l ->
-           update l
-             (function Some count -> Some (count -. 1.0) | None -> None)
-             m')
+    fold
+      (fun m' l ->
+        update l
+          (function Some count -> Some (count -. 1.0) | None -> None)
+          m')
+      m iterator
 
   let empty () = empty
 
-  let incr_iter =
+  let incr_iter iterator m =
     let open Iter in
-    Fun.flip
-    @@ fold (fun m' l ->
-           update l
-             (function Some count -> Some (count +. 1.0) | None -> Some 1.0)
-             m')
+    fold
+      (fun m' l ->
+        update l
+          (function Some count -> Some (count +. 1.0) | None -> Some 1.0)
+          m')
+      m iterator
 
   let merge = ( ++ )
   let pop m = pop_exn m |> fst |> fst

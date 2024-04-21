@@ -1,6 +1,7 @@
 module Map : sig
   type t
   type k = Literal.t
+  type v = float
 
   val decay : t -> t
   val decr_iter : k Iter.iter -> t -> t
@@ -12,5 +13,5 @@ module Map : sig
   val pop : t -> k
   val remove_literal : k -> t -> t
   val show : t -> string
-  val to_iter : t -> (Literal.t * float) Iter.iter
+  val to_iter : t -> (Literal.t * v) Iter.iter
 end
