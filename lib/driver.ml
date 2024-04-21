@@ -11,11 +11,13 @@ exception Timeout
 let emit_proof_of_unsatisfiability filename clauses =
   let out_filename = Filename.remove_extension filename ^ ".out" in
   let oc = open_out out_filename in
-  List.iter
+  Vector.iter
     (fun c ->
-      Printf.fprintf oc "%s0\n"
-        (match c with Addition c | Deletion c -> Clause.show c))
-    (List.rev clauses);
+      let open Database in
+      match c with
+      | Addition c -> Printf.fprintf oc "%s0\n" (Clause.show c)
+      | Deletion _c -> ())
+    clauses;
   Printf.fprintf oc "0"
 
 let run filename config =
@@ -23,7 +25,8 @@ let run filename config =
   match Parser.problem Lexer.initial lexbuf with
   | None ->
       Option.iter
-        (fun filename -> emit_proof_of_unsatisfiability filename [])
+        (fun filename ->
+          emit_proof_of_unsatisfiability filename (Vector.create ()))
         config.emit_proof;
       Printf.printf "s UNSATISFIABLE\nc Learned 0 clauses\n"
   | Some p -> (
@@ -47,11 +50,11 @@ let run filename config =
               (assignments f);
             print_endline "0"
         | Unsat f ->
+            let trace = trace f in
             (* check f; *)
             Option.iter
-              (fun filename ->
-                emit_proof_of_unsatisfiability filename (learned_clauses f))
+              (fun filename -> emit_proof_of_unsatisfiability filename trace)
               config.emit_proof;
             Printf.printf "s UNSATISFIABLE\nc Learned %d clauses\n"
-              (List.length (learned_clauses f))
+              (Vector.length trace)
       with Timeout -> print_endline "s UNKNOWN")

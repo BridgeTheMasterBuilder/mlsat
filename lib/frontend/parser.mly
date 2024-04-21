@@ -25,6 +25,7 @@ problem: problem_line clauses EOF {
                         Option.map (fun formula ->
                         {
                             formula;
+                            num_clauses=c;
                             config=Config.empty ()
                         })
                       }
@@ -35,6 +36,7 @@ problem: problem_line clauses EOF {
                         Option.map (fun formula ->
                         {
                             formula;
+                            num_clauses=c;
                             config=Config.empty ()
                         })
                       }

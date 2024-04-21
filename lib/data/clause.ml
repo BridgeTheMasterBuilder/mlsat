@@ -3,6 +3,8 @@ include CCArray
 type t = CCHash.hash * Literal.t array
 type clause = t
 
+let lbd (_, c) a = 0
+
 let of_list l =
   let a = of_list l in
   (CCHash.array Literal.hash a, a)

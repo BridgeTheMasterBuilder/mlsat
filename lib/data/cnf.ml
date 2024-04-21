@@ -1,15 +1,11 @@
-type trace = Addition of Clause.t | Deletion of Clause.t
-
 type t = {
   (* TODO vector ? *)
   _debug_clauses : int list list;
   frequency : Frequency.Map.t;
   current_decision_level : int;
   assignments : Assignment.Map.t;
-  (* TODO vector *)
   trail : (Assignment.t * t) list;
-  (* TODO vector *)
-  database : trace list;
+  database : Database.t;
   watchers : Clause.Watched.Map.t;
   unwatched : Clause.Set.t;
 }
@@ -60,10 +56,8 @@ let show
     (List.fold_left
        (fun acc (ass, _) -> Printf.sprintf "%s%s" acc (Assignment.show ass))
        "" f.trail)
-    (List.fold_left
-       (fun acc c ->
-         Printf.sprintf "%s( %s)\n" acc
-           (match c with Addition c | Deletion c -> Clause.show c))
+    (Database.fold
+       (fun acc c -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" database)
     (if Clause.Watched.Map.is_empty watchers then "()"
      else Clause.Watched.Map.show watchers)
@@ -189,7 +183,7 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   aux queue [] |> Clause.of_list
 
 let assignments { assignments = a; _ } = Assignment.Map.assignments a
-let learned_clauses { database; _ } = database
+let trace { database; _ } = Database.get_trace database
 
 (* let remove_clause clause ({ frequency; assignments = a; watchers; _ } as f) = *)
 (*   let open Iter in *)
@@ -226,13 +220,12 @@ let backtrack
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
   let frequency'' = Frequency.Map.merge frequency frequency' in
-  (* let frequency'' = frequency' in *)
   let f =
     {
       f with
       frequency = Frequency.Map.decay frequency'';
       watchers;
-      database = Addition learned_clause :: db;
+      database = Database.add_clause learned_clause db;
     }
   in
   let f' =
@@ -275,7 +268,7 @@ let of_list v _c list =
            current_decision_level = 0;
            assignments = Assignment.Map.empty ();
            trail = [];
-           database = [];
+           database = Database.create ();
            watchers = Clause.Watched.Map.make v;
            unwatched = Clause.Set.empty ();
          }
@@ -293,12 +286,13 @@ let restart ({ trail = t; watchers; database; unwatched; frequency; _ } as f) =
               assignments.")
     in
     let frequency'' = Frequency.Map.merge frequency frequency' in
-    (* let frequency'' = frequency' in *)
     let f = { f with watchers; database; frequency = frequency'' } in
     Clause.Set.fold
       (* TODO Is it safe to unwrap the result? *)
         (fun clause f' -> add_clause clause f' |> Result.get_exn)
       unwatched f
+
+let simplify ({ database; _ } as f) = f
 
 (* TODO do you need to track changes to frequency? *)
 let eliminate_pure_literals ({ frequency; _ } as f) =
@@ -327,54 +321,7 @@ let make_decision ({ current_decision_level = d; _ } as f) =
 
 let check ({ database = db; trail; _ } as f) =
   Logs.debug (fun m -> m "%s" (show f));
-  let db_equal =
-    List.sort_uniq
-      ~cmp:(fun c1 c2 ->
-        let c1, c2 =
-          match (c1, c2) with
-          | (Addition c1 | Deletion c1), (Addition c2 | Deletion c2) -> (c1, c2)
-        in
-        Array.compare Literal.compare
-          (Array.sorted Literal.compare (Clause.to_array c1))
-          (Array.sorted Literal.compare (Clause.to_array c2)))
-      db
-    |> List.length = List.length db
-  in
-  if not db_equal then
-    List.iter
-      (fun (c1, c2) ->
-        let c1, c2 =
-          match (c1, c2) with
-          | (Addition c1 | Deletion c1), (Addition c2 | Deletion c2) -> (c1, c2)
-        in
-        Logs.debug (fun m ->
-            m "[%b ]%s = %s"
-              (String.equal (Clause.show c1) (Clause.show c2))
-              (Clause.show c1) (Clause.show c2)))
-      (List.combine_shortest
-         (List.sort_uniq
-            ~cmp:(fun c1 c2 ->
-              let c1, c2 =
-                match (c1, c2) with
-                | (Addition c1 | Deletion c1), (Addition c2 | Deletion c2) ->
-                    (c1, c2)
-              in
-              Array.compare Literal.compare
-                (Array.sorted Literal.compare (Clause.to_array c1))
-                (Array.sorted Literal.compare (Clause.to_array c2)))
-            db)
-         (List.sort
-            (fun c1 c2 ->
-              let c1, c2 =
-                match (c1, c2) with
-                | (Addition c1 | Deletion c1), (Addition c2 | Deletion c2) ->
-                    (c1, c2)
-              in
-              Array.compare Literal.compare
-                (Array.sorted Literal.compare (Clause.to_array c1))
-                (Array.sorted Literal.compare (Clause.to_array c2)))
-            db));
-  assert db_equal;
+  Database.check db;
   let trail_equal =
     List.sort_uniq
       ~cmp:(fun (ass1, _) (ass2, _) ->
