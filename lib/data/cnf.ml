@@ -203,15 +203,8 @@ let learned_clauses { database; _ } = database
 (*   { f with frequency = frequency'; watchers = watchers' } *)
 
 let backtrack
-    {
-      assignments = a;
-      trail = t;
-      database = db;
-      watchers;
-      frequency;
-      unwatched;
-      _;
-    } learned_clause =
+    { assignments = a; trail = t; database = db; watchers; unwatched; _ }
+    learned_clause =
   let open Result.Infix in
   let d' =
     let open Iter in
@@ -221,16 +214,15 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  let _, f =
+  let _, ({ frequency; _ } as f) =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
-  (* let frequency' = Frequency.Map.merge frequency f.frequency in *)
+  let frequency' = Frequency.Map.merge frequency f.frequency in
   let f =
     {
       f with
-      (* frequency = Frequency.Map.decay frequency'; *)
-      frequency = Frequency.Map.decay f.frequency;
+      frequency = Frequency.Map.decay frequency';
       watchers;
       database = Addition learned_clause :: db;
     }
