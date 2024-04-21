@@ -70,7 +70,7 @@ module Watched = struct
   end
 
   type update_result =
-    | WatchedLiteralChange of watched_clause * Map.t
+    | WatchedLiteralChange of Map.t
     | Unit of (Literal.t * clause)
     | Falsified of clause
     | NoChange
@@ -147,7 +147,7 @@ module Watched = struct
             Map.remove l watched_clause watchers
             |> Map.add new_watched_literal watched_clause
           in
-          WatchedLiteralChange (watched_clause, watchers')
+          WatchedLiteralChange watchers'
 
   let watch_clause a clause watchers =
     (* let watch_clause a ((_, c) as clause) watchers = *)
@@ -176,7 +176,7 @@ module Watched = struct
         let watchers' =
           Map.add w1 watched_clause watchers |> Map.add w2 watched_clause
         in
-        WatchedLiteralChange (watched_clause, watchers')
+        WatchedLiteralChange watchers'
     | [ (w, v) ] ->
         if Tribool.is_unknown v then Unit (w, clause)
         else

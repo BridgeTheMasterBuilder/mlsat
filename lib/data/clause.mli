@@ -23,7 +23,7 @@ module Watched : sig
   end
 
   type update_result =
-    | WatchedLiteralChange of watched_clause * Map.t
+    | WatchedLiteralChange of Map.t
     | Unit of (Literal.t * clause)
     | Falsified of clause
     | NoChange

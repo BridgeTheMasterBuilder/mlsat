@@ -57,9 +57,7 @@ let show
        (fun acc (ass, _) -> Printf.sprintf "%s%s" acc (Assignment.show ass))
        "" f.trail)
     (Database.fold
-       (fun acc clause ->
-         let c = Clause.Watched.to_clause clause in
-         Printf.sprintf "%s( %s)\n" acc (Clause.show c))
+       (fun acc c -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" database)
     (if Clause.Watched.Map.is_empty watchers then "()"
      else Clause.Watched.Map.show watchers)
@@ -68,38 +66,30 @@ let decision_level { current_decision_level = d; _ } = d
 
 let rec make_assignment l ass
     ({ frequency; assignments = a; trail = t; _ } as f) d ucs =
-  let update_watchers l
-      ({ assignments = a; watchers; unwatched; database = db; _ } as f) ucs' =
-    let update_watcher l c watchers' unwatched ucs'' db' =
+  let update_watchers l ({ assignments = a; watchers; unwatched; _ } as f) ucs'
+      =
+    let update_watcher l c watchers' unwatched ucs'' =
       match Clause.Watched.update l a c watchers' with
-      | WatchedLiteralChange (watched_clause, watchers') ->
+      | WatchedLiteralChange watchers' ->
           ( watchers',
             (* TODO It might already not be watched, need a way to figure out when this is necessary, or maybe it doesn't matter? *)
             Clause.Set.remove (Clause.Watched.to_clause c) unwatched,
-            ucs'',
-            db' )
+            ucs'' )
       | Unit (l, clause) ->
-          (watchers', unwatched, UnitClauseWorkqueue.push (l, clause) ucs'', db')
+          (watchers', unwatched, UnitClauseWorkqueue.push (l, clause) ucs'')
       | Falsified clause -> raise_notrace (Conflict (clause, f))
-      | NoChange -> (watchers', unwatched, ucs'', db')
+      | NoChange -> (watchers', unwatched, ucs'')
     in
     match Clause.Watched.Map.find_opt l watchers with
     | Some cs ->
-        let watchers', unwatched', ucs'', db' =
+        let watchers', unwatched', ucs'' =
           Clause.Watched.Set.fold
-            (fun c (watchers', unwatched', ucs'', db') ->
-              update_watcher l c watchers' unwatched' ucs'' db')
+            (fun c (watchers', unwatched', ucs'') ->
+              update_watcher l c watchers' unwatched' ucs'')
             cs
-            (watchers, unwatched, ucs', db)
+            (watchers, unwatched, ucs')
         in
-        let f' =
-          {
-            f with
-            watchers = watchers';
-            unwatched = unwatched';
-            database = db';
-          }
-        in
+        let f' = { f with watchers = watchers'; unwatched = unwatched' } in
         (unit_propagate [@tailcall]) f' ucs''
     | None -> (unit_propagate [@tailcall]) f ucs'
   in
@@ -131,8 +121,7 @@ and unit_propagate ({ current_decision_level = d; _ } as f) ucs =
       make_assignment l i f d ucs'
 
 let add_clause clause
-    ({ frequency; assignments = a; watchers; unwatched; database = db; _ } as f)
-    learned =
+    ({ frequency; assignments = a; watchers; unwatched; _ } as f) =
   let frequency' =
     let open Iter in
     Frequency.Map.incr_iter
@@ -141,17 +130,14 @@ let add_clause clause
       frequency
   in
   match Clause.Watched.watch_clause a clause watchers with
-  | WatchedLiteralChange (watched_clause, watchers') ->
+  | WatchedLiteralChange watchers' ->
       Ok
-        ( {
-            f with
-            watchers = watchers';
-            unwatched = Clause.Set.remove clause unwatched;
-            frequency = frequency';
-            database =
-              (if learned then Database.add_clause watched_clause db else db);
-          },
-          Some watched_clause )
+        {
+          f with
+          watchers = watchers';
+          unwatched = Clause.Set.remove clause unwatched;
+          frequency = frequency';
+        }
   | Unit (l, clause) -> (
       let f' =
         {
@@ -160,11 +146,10 @@ let add_clause clause
           frequency = frequency';
         }
       in
-      try
-        Ok (unit_propagate f' (UnitClauseWorkqueue.singleton (l, clause)), None)
+      try Ok (unit_propagate f' (UnitClauseWorkqueue.singleton (l, clause)))
       with Conflict (c, f) -> Error (c, f))
   | Falsified clause -> Error (clause, f)
-  | NoChange -> Ok ({ f with frequency = frequency' }, None)
+  | NoChange -> Ok { f with frequency = frequency' }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   let open Iter in
@@ -240,13 +225,20 @@ let backtrack
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
   let frequency'' = Frequency.Map.merge frequency frequency' in
-  let f = { f with frequency = Frequency.Map.decay frequency''; watchers } in
+  let f =
+    {
+      f with
+      frequency = Frequency.Map.decay frequency'';
+      watchers;
+      database = Database.add_clause learned_clause db;
+    }
+  in
   let f' =
     Clause.Set.fold
       (fun clause f' -> add_clause clause f' |> Result.get_exn)
       unwatched f
   in
-  let+ f'', watched_clause = add_clause learned_clause f' in
+  let+ f'' = add_clause learned_clause f' in
   (f'', d')
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency

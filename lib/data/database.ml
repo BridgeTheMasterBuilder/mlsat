@@ -1,10 +1,9 @@
 type modification = Addition of Clause.t | Deletion of Clause.t
 type trace = modification Vector.vector
-type t = { trace : trace; database : Clause.Watched.t Vector.vector }
+type t = { trace : trace; database : Clause.t Vector.vector }
 
 let add_clause clause ({ trace; database } as db) =
-  let c = Clause.Watched.to_clause clause in
-  Vector.push trace (Addition c);
+  Vector.push trace (Addition clause);
   Vector.push database clause;
   db
 
@@ -12,8 +11,6 @@ let check { database = db; _ } =
   let copy = Vector.copy db in
   Vector.uniq_sort
     (fun c1 c2 ->
-      let c1 = Clause.Watched.to_clause c1 in
-      let c2 = Clause.Watched.to_clause c2 in
       Array.compare Literal.compare
         (Array.sorted Literal.compare (Clause.to_array c1))
         (Array.sorted Literal.compare (Clause.to_array c2)))
@@ -22,8 +19,6 @@ let check { database = db; _ } =
   if not db_equal then
     List.iter
       (fun (c1, c2) ->
-        let c1 = Clause.Watched.to_clause c1 in
-        let c2 = Clause.Watched.to_clause c2 in
         Logs.debug (fun m ->
             m "[%b ]%s = %s"
               (String.equal (Clause.show c1) (Clause.show c2))
@@ -31,16 +26,12 @@ let check { database = db; _ } =
       (List.combine_shortest
          (List.sort_uniq
             ~cmp:(fun c1 c2 ->
-              let c1 = Clause.Watched.to_clause c1 in
-              let c2 = Clause.Watched.to_clause c2 in
               Array.compare Literal.compare
                 (Array.sorted Literal.compare (Clause.to_array c1))
                 (Array.sorted Literal.compare (Clause.to_array c2)))
             (Vector.to_list db))
          (List.sort
             (fun c1 c2 ->
-              let c1 = Clause.Watched.to_clause c1 in
-              let c2 = Clause.Watched.to_clause c2 in
               Array.compare Literal.compare
                 (Array.sorted Literal.compare (Clause.to_array c1))
                 (Array.sorted Literal.compare (Clause.to_array c2)))
@@ -57,9 +48,7 @@ let simplify ({ database; trace } as db) =
   let open Iter in
   Vector.rev_in_place database;
   Vector.to_iter database |> take half_length
-  |> iter (fun clause ->
-         let c = Clause.Watched.to_clause clause in
-         Vector.push trace (Deletion c));
+  |> iter (fun c -> Vector.push trace (Deletion c));
   Vector.truncate database half_length;
   Vector.rev_in_place database;
   db
