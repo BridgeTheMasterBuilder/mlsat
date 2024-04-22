@@ -131,14 +131,13 @@ let add_clause clause
   in
   match Clause.Watched.watch_clause a clause watchers with
   | WatchedLiteralChange watchers' ->
-      Ok
-        {
-          f with
-          watchers = watchers';
-          unwatched = Clause.Set.remove clause unwatched;
-          frequency = frequency';
-        }
-  | Unit (l, clause) -> (
+      {
+        f with
+        watchers = watchers';
+        unwatched = Clause.Set.remove clause unwatched;
+        frequency = frequency';
+      }
+  | Unit (l, clause) ->
       let f' =
         {
           f with
@@ -146,10 +145,9 @@ let add_clause clause
           frequency = frequency';
         }
       in
-      try Ok (unit_propagate f' (UnitClauseWorkqueue.singleton (l, clause)))
-      with Conflict (c, f) -> Error (c, f))
-  | Falsified clause -> Error (clause, f)
-  | NoChange -> Ok { f with frequency = frequency' }
+      unit_propagate f' (UnitClauseWorkqueue.singleton (l, clause))
+  | Falsified clause -> raise_notrace (Conflict (clause, f))
+  | NoChange -> { f with frequency = frequency' }
 
 let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
   let open Iter in
@@ -211,7 +209,6 @@ let backtrack
       frequency;
       _;
     } learned_clause =
-  let open Result.Infix in
   let d' =
     let open Iter in
     Clause.to_iter learned_clause
@@ -234,12 +231,12 @@ let backtrack
     }
   in
   let f' =
-    Clause.Set.fold
-      (fun clause f' -> add_clause clause f' |> Result.get_exn)
-      unwatched f
+    Clause.Set.fold (fun clause f' -> add_clause clause f') unwatched f
   in
-  let+ f'' = add_clause learned_clause f' in
-  (f'', d')
+  try
+    let f'' = add_clause learned_clause f' in
+    Ok (f'', d')
+  with Conflict (c, f) -> Error (c, f)
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
 let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
@@ -258,10 +255,7 @@ let of_list v _c list =
         in
         if Clause.size clause = 0 then raise_notrace (Conflict (clause, f))
         else
-          let f' =
-            add_clause clause f
-            |> Result.get_lazy (fun (c, f) -> raise_notrace (Conflict (c, f)))
-          in
+          let f' = add_clause clause f in
           aux f' cs
   in
   try
@@ -292,10 +286,7 @@ let restart ({ trail = t; watchers; database; unwatched; frequency; _ } as f) =
     in
     let frequency'' = Frequency.Map.merge frequency frequency' in
     let f = { f with watchers; database; frequency = frequency'' } in
-    Clause.Set.fold
-      (* TODO Is it safe to unwrap the result? *)
-        (fun clause f' -> add_clause clause f' |> Result.get_exn)
-      unwatched f
+    Clause.Set.fold (fun clause f' -> add_clause clause f') unwatched f
 
 (* TODO do you need to track changes to frequency? *)
 let eliminate_pure_literals ({ frequency; _ } as f) =
