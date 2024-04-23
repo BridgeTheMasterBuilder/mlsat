@@ -14,14 +14,19 @@ module type S = sig
   val singleton : elt -> t
 end
 
-module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
-  module M = Set.Make (Ord)
+module Make (E : CCHashSet.ELEMENT) : S with type elt = E.t = struct
+  (* module M = Set.Make (Ord) *)
+  module M = CCHashSet.Make (E)
 
   type elt = M.elt
   type elt_set = M.t
   type t = { queue : elt CCDeque.t; seen : elt_set }
 
-  let empty () = { queue = CCDeque.create (); seen = M.empty }
+  let empty () =
+    (* TODO *)
+    let seen = M.create 100 in
+    { queue = CCDeque.create (); seen }
+
   let fold f init { queue; _ } = CCDeque.fold f init queue
   let is_empty { queue; _ } = CCDeque.is_empty queue
 
@@ -38,16 +43,18 @@ module Make (Ord : Set.OrderedType) : S with type elt = Ord.t = struct
   let push x { queue; seen } =
     {
       queue =
-        (if M.mem x seen then queue
+        (if M.mem seen x then queue
          else (
            CCDeque.push_back queue x;
            queue));
-      seen = M.add x seen;
+      seen =
+        (M.insert seen x;
+         seen);
     }
 
   let push_iter iterator { queue; seen } =
     let open Iter in
-    let unseen = filter (fun x -> not M.(mem x seen)) iterator in
+    let unseen = filter (fun x -> not M.(mem seen x)) iterator in
     {
       queue =
         (CCDeque.add_iter_back queue unseen;

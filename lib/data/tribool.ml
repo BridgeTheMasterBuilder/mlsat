@@ -25,6 +25,7 @@ let is_nonfalse x = x >= 0
 let is_nontrue x = x < 1
 let is_true x = x > 0
 let is_unknown x = x = 0
+let of_bool = function true -> 1 | false -> -1
 let of_bool_opt = function Some true -> 1 | Some false -> -1 | None -> 0
 
 let to_bool_opt = function
@@ -32,3 +33,5 @@ let to_bool_opt = function
   | -1 -> Some false
   | 0 -> None
   | _ -> failwith "Impossible"
+
+let unknown = 0

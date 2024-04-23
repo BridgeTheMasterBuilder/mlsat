@@ -28,44 +28,53 @@ module Watched = struct
 
   type watched_clause = t
 
-  module Set = Set.Make (struct
-    type t = watched_clause
+  module Set = struct
+    include CCHashSet.Make (struct
+      type t = watched_clause
 
-    let compare { clause = id1, _; _ } { clause = id2, _; _ } =
-      Int.compare id1 id2
-  end)
+      let equal { clause = id1, _; _ } { clause = id2, _; _ } = id1 = id2
+      let hash { clause = id, _; _ } = id
+    end)
+
+    let add c s =
+      insert s c;
+      s
+
+    let remove c s =
+      remove s c;
+      s
+  end
 
   module Map = struct
     module M = CCHashtbl.Make (Literal)
     include M
 
-    type t = Set.t M.t * int
+    (* type t = Set.t M.t *)
+    type t = Set.t M.t
     type key = Literal.t
 
-    let add l n =
-      Pair.map_fst (fun m ->
-          update m ~k:l ~f:(fun _ -> function
-            | Some s -> Some (Set.add n s) | None -> Some (Set.singleton n));
-          m)
+    let add l n m =
+      update m ~k:l ~f:(fun _ -> function
+        | Some s -> Some (Set.add n s) | None -> Some (Set.singleton n));
+      m
 
-    let make n = (create n, 0)
-    let find_opt l (m, _) = find_opt m l
-    let is_empty (m, _) = length m = 0
+    let make n = create n
+    let find_opt l m = find_opt m l
+    let is_empty m = length m = 0
 
-    let remove l c =
-      Pair.map_fst (fun m ->
-          update m ~k:l ~f:(fun _ -> function
-            | Some s -> Some (Set.remove c s) (* TODO *) | None -> None);
-          m)
+    let remove l c m =
+      update m ~k:l ~f:(fun _ -> function
+        | Some s -> Some (Set.remove c s) (* TODO *) | None -> None);
+      m
 
-    let show (m, _) =
+    let show m =
       fold
         (fun l cs s ->
           Printf.sprintf "%s%s:%s\n" s (Literal.show l)
             (Set.fold
-               (fun { clause; _ } acc ->
+               (fun acc { clause; _ } ->
                  Printf.sprintf "%s( %s) " acc (show clause))
-               cs ""))
+               "" cs))
         m ""
   end
 
@@ -187,12 +196,23 @@ module Watched = struct
 end
 
 module Set = struct
-  include Iter.Set.Make (struct
+  include CCHashSet.Make (struct
     type t = clause
 
-    let compare (id1, _) (id2, _) = Int.compare id1 id2
+    let equal (id1, _) (id2, _) = id1 = id2
+    let hash (id, _) = id
   end)
 
-  let empty () = empty
-  let show s = fold (fun c s -> Printf.sprintf "%s:%s\n" s (show c)) s ""
+  let add c s =
+    insert s c;
+    s
+
+  (* TODO *)
+  let empty () = create 100
+
+  let remove c s =
+    remove s c;
+    s
+
+  let show s = fold (fun s c -> Printf.sprintf "%s:%s\n" s (show c)) "" s
 end

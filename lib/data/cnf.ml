@@ -18,7 +18,9 @@ module UnitClauseWorkqueue : Workqueue.S with type elt = Literal.t * Clause.t =
 Workqueue.Make (struct
   type t = Literal.t * Clause.t
 
-  let compare (l1, _) (l2, _) = Literal.compare l1 l2
+  (* let compare (l1, _) (l2, _) = Literal.compare l1 l2 *)
+  let equal (l1, _) (l2, _) = Literal.equal l1 l2
+  let hash (l, _) = Literal.hash l
 end)
 
 let show
@@ -82,10 +84,10 @@ let rec make_assignment l ass ({ assignments = a; trail = t; _ } as f) d ucs =
     | Some cs ->
         let watchers', unwatched', ucs'' =
           Clause.Watched.Set.fold
-            (fun c (watchers', unwatched', ucs'') ->
+            (fun (watchers', unwatched', ucs'') c ->
               update_watcher l c watchers' unwatched' ucs'')
-            cs
             (watchers, unwatched, ucs')
+            cs
         in
         let f' = { f with watchers = watchers'; unwatched = unwatched' } in
         (unit_propagate [@tailcall]) f' ucs''
@@ -211,7 +213,7 @@ let backtrack
     }
   in
   let f' =
-    Clause.Set.fold (fun clause f' -> add_clause clause f') unwatched f
+    Clause.Set.fold (fun f' clause -> add_clause clause f') f unwatched
   in
   try
     let f'' = add_clause learned_clause f' in
@@ -270,7 +272,7 @@ let restart ({ trail = t; watchers; database; unwatched; _ } as f) =
               assignments.")
     in
     let f = { f with watchers; database; frequency } in
-    Clause.Set.fold (fun clause f' -> add_clause clause f') unwatched f
+    Clause.Set.fold (fun f' clause -> add_clause clause f') f unwatched
 
 let eliminate_pure_literals ({ frequency; _ } as f) =
   let open Iter in

@@ -9,7 +9,7 @@ module Watched : sig
     type elt = watched_clause
     type t
 
-    val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
   end
 
   module Map : sig
@@ -42,8 +42,12 @@ val to_array : t -> Literal.t array
 val to_iter : t -> Literal.t Iter.iter
 
 module Set : sig
-  include Iter.Set.S with type elt = clause
+  type elt = clause
+  type t
 
+  val add : elt -> t -> t
   val empty : unit -> t
+  val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
+  val remove : elt -> t -> t
   val show : t -> string
 end

@@ -28,9 +28,10 @@ module Map = struct
   let size = length
 
   let value l a =
-    get (Literal.var l) a
-    |> Option.map (fun ass -> Literal.signum (literal ass) = Literal.signum l)
-    |> Tribool.of_bool_opt
+    try
+      let l' = find (Literal.var l) a |> literal in
+      Tribool.of_bool (Literal.same_polarity l l')
+    with Not_found -> Tribool.unknown
 end
 
 let compare ass1 ass2 =

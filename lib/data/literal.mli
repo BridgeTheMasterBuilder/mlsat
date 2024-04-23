@@ -13,6 +13,7 @@ val hash : t -> int
 val neg : t -> t
 val of_int_unchecked : int -> t
 val of_var : Variable.t -> t
+val same_polarity : t -> t -> bool
 val show : t -> string
 val signum : t -> int
 val var : t -> Variable.t
