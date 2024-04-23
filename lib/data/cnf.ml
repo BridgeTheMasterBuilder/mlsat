@@ -240,10 +240,11 @@ let backtrack
     Ok (f'', d')
   with Conflict (c, f) -> Error (c, f)
 
-let choose_literal ({ frequency; _ } as f) =
+let choose_literal ({ frequency; assignments = a; _ } as f) =
   Logs.debug (fun m -> m "Frequency map:\n%s" (Frequency.Map.show frequency));
   Frequency.Map.pop frequency
-  |> Pair.map_snd (fun frequency' -> { f with frequency = frequency' })
+  (* |> Pair.map_snd (fun frequency' -> { f with frequency = frequency' }) *)
+  |> Pair.map_snd (fun frequency' -> f)
 
 let is_empty ({ frequency; assignments = a; _ } as f) =
   let frequency' = Frequency.Map.flush_assigned a frequency in

@@ -13,8 +13,7 @@ module Map : sig
 
   (* val merge : t -> t -> t *)
   val pop : t -> k * t
-
-  (* val remove_literal : k -> t -> t *)
+  val remove_literal : k -> t -> t
   val show : t -> string
   val to_iter : t -> (Literal.t * v) Iter.iter
 end

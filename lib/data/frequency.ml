@@ -62,7 +62,8 @@ module Map = struct
   let pop ({ m; _ } as t) =
     let (l, _), m' = pop_exn m in
     (l, { t with m = m' })
-  (* let remove_literal l ({ m; _ } as t) = { t with m = remove l m } *)
+
+  let remove_literal l ({ m; _ } as t) = { t with m = remove l m }
 
   let show { m; _ } =
     to_priority_list m
