@@ -188,7 +188,7 @@ let simplify ({ database = db; _ } as f) =
   let f' = f in
   { f' with database = db' }
 
-let remove_clause clause ({ frequency; assignments = a; watchers; _ } as f) =
+let _remove_clause clause ({ frequency; assignments = a; watchers; _ } as f) =
   let open Iter in
   let frequency' =
     Frequency.Map.decr_iter
@@ -206,8 +206,9 @@ let backtrack
       database = db;
       watchers;
       unwatched;
-      frequency;
-      _;
+
+      (* frequency; *)
+    _;
     } learned_clause =
   let d' =
     let open Iter in
@@ -217,15 +218,17 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  let _, ({ frequency = frequency'; _ } as f) =
+  (* let _, ({ frequency = frequency'; _ } as f) = *)
+  let _, ({ frequency; _ } as f) =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
-  let frequency'' = Frequency.Map.merge frequency frequency' in
+  (* let frequency'' = Frequency.Map.merge frequency frequency' in *)
   let f =
     {
       f with
-      frequency = Frequency.Map.decay frequency'';
+      (* frequency = Frequency.Map.decay frequency''; *)
+      frequency = Frequency.Map.decay frequency;
       watchers;
       database = Database.add_clause learned_clause db;
     }
@@ -274,18 +277,21 @@ let of_list v _c list =
          list)
   with Conflict _ -> None
 
-let restart ({ trail = t; watchers; database; unwatched; frequency; _ } as f) =
+(* let restart ({ trail = t; watchers; database; unwatched; frequency; _ } as f) = *)
+let restart ({ trail = t; watchers; database; unwatched; _ } as f) =
   if List.is_empty t then f
   else
-    let ({ frequency = frequency'; _ } as f) =
+    (* let ({ frequency = frequency'; _ } as f) = *)
+    let ({ frequency; _ } as f) =
       snd
         (List.last_opt t
         |> Option.get_exn_or
              "Internal solver error: Attempt to backtrack without previous \
               assignments.")
     in
-    let frequency'' = Frequency.Map.merge frequency frequency' in
-    let f = { f with watchers; database; frequency = frequency'' } in
+    (* let frequency'' = Frequency.Map.merge frequency frequency' in *)
+    (* let f = { f with watchers; database; frequency = frequency'' } in *)
+    let f = { f with watchers; database; frequency } in
     Clause.Set.fold (fun clause f' -> add_clause clause f') unwatched f
 
 (* TODO do you need to track changes to frequency? *)

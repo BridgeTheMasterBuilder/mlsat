@@ -3,7 +3,7 @@ include CCArray
 type t = CCHash.hash * Literal.t array
 type clause = t
 
-let lbd (_, c) a = 0
+let _lbd (_, _c) _a = 0
 
 let of_list l =
   let a = of_list l in
@@ -77,7 +77,7 @@ module Watched = struct
 
   let to_clause { clause; _ } = clause
 
-  let unwatch_clause c watchers =
+  let unwatch_clause _c watchers =
     (* Clause.to_iter clause *)
     (* |> fold *)
     (*      (fun watchers' l -> Clause.Watched.Map.remove l n watchers') *)
