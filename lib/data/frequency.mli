@@ -12,7 +12,7 @@ module Map : sig
   val mem : k -> t -> bool
 
   (* val merge : t -> t -> t *)
-  val pop : t -> k
+  val pop : t -> k * t
 
   (* val remove_literal : k -> t -> t *)
   val show : t -> string

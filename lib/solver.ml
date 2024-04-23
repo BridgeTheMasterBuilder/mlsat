@@ -26,11 +26,14 @@ let rec cdcl max_learned_clauses max_conflicts luby f =
     else if num_learned_clauses >= max_learned_clauses then
       let f' = simplify f in
       cdcl (max_learned_clauses * 2) max_conflicts luby f'
-    else if is_empty f then Sat f
     else
-      match make_decision f with
-      | Error conflict -> handle conflict num_learned_clauses
-      | Ok f' -> aux (d + 1) num_learned_clauses num_conflicts f'
+      let open Either in
+      match is_empty f with
+      | Right f' -> Sat f'
+      | Left f' -> (
+          match make_decision f' with
+          | Error conflict -> handle conflict num_learned_clauses
+          | Ok f' -> aux (d + 1) num_learned_clauses num_conflicts f')
   in
   aux 0 0 0 f
 

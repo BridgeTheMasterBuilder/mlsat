@@ -37,8 +37,8 @@ module Map = struct
       match min m' with
       | Some (l, _) ->
           if Assignment.Map.mem (Literal.var l) a then aux (pop_exn m' |> snd)
-          else t
-      | None -> t
+          else { t with m = m' }
+      | None -> { t with m = m' }
     in
     aux m
 
@@ -59,7 +59,9 @@ module Map = struct
   let mem l { m; _ } = mem l m
 
   (* let merge = ( ++ ) *)
-  let pop { m; _ } = pop_exn m |> fst |> fst
+  let pop ({ m; _ } as t) =
+    let (l, _), m' = pop_exn m in
+    (l, { t with m = m' })
   (* let remove_literal l ({ m; _ } as t) = { t with m = remove l m } *)
 
   let show { m; _ } =

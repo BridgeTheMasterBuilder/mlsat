@@ -240,10 +240,16 @@ let backtrack
     Ok (f'', d')
   with Conflict (c, f) -> Error (c, f)
 
-let choose_literal { frequency; _ } = Frequency.Map.pop frequency
+let choose_literal ({ frequency; _ } as f) =
+  Logs.debug (fun m -> m "Frequency map:\n%s" (Frequency.Map.show frequency));
+  Frequency.Map.pop frequency
+  |> Pair.map_snd (fun frequency' -> { f with frequency = frequency' })
 
-let is_empty { frequency; assignments = a; _ } =
-  Frequency.Map.flush_assigned a frequency |> Frequency.Map.is_empty
+let is_empty ({ frequency; assignments = a; _ } as f) =
+  let frequency' = Frequency.Map.flush_assigned a frequency in
+  let f' = { f with frequency = frequency' } in
+  let open Either in
+  if Frequency.Map.is_empty frequency' then Right f' else Left f'
 
 let of_list v _c list =
   let rec aux f = function
@@ -315,9 +321,10 @@ let preprocess f =
   { f with trail = [] }
 
 let make_decision ({ current_decision_level = d; _ } as f) =
-  let l = choose_literal f in
+  let l, f' = choose_literal f in
+  (* Logs.debug (fun m -> m "Choosing literal %s" (Literal.show l)); *)
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  try Ok (make_assignment l dec f (d + 1) (UnitClauseWorkqueue.empty ()))
+  try Ok (make_assignment l dec f' (d + 1) (UnitClauseWorkqueue.empty ()))
   with Conflict (c, f) -> Error (c, f)
 
 let check ({ database = db; trail; _ } as f) =
