@@ -25,6 +25,7 @@ module Map = struct
   let find l m = find m l
   let find_opt = get
   let mem l m = mem m l
+  let size = length
 
   let value l a =
     get (Literal.var l) a

@@ -18,6 +18,7 @@ module Map : sig
   val find : key -> t -> assignment
   val find_opt : key -> t -> assignment option
   val mem : key -> t -> bool
+  val size : t -> int
   val value : Literal.t -> t -> Tribool.t
 end
 

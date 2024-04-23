@@ -64,8 +64,7 @@ let show
 
 let decision_level { current_decision_level = d; _ } = d
 
-let rec make_assignment l ass
-    ({ frequency; assignments = a; trail = t; _ } as f) d ucs =
+let rec make_assignment l ass ({ assignments = a; trail = t; _ } as f) d ucs =
   let update_watchers l ({ assignments = a; watchers; unwatched; _ } as f) ucs'
       =
     let update_watcher l c watchers' unwatched ucs'' =
@@ -95,17 +94,17 @@ let rec make_assignment l ass
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
-  let frequency' =
-    Frequency.Map.remove_literal l frequency
-    |> Frequency.Map.remove_literal (Literal.neg l)
-  in
+  (* let frequency' = *)
+  (*   Frequency.Map.remove_literal l frequency *)
+  (*   |> Frequency.Map.remove_literal (Literal.neg l) *)
+  (* in *)
   let f' =
     {
       f with
       assignments = a';
       trail = t';
       current_decision_level = d;
-      frequency = frequency';
+      (* frequency = frequency'; *)
     }
   in
   update_watchers (Literal.neg l) f' ucs
@@ -242,7 +241,9 @@ let backtrack
   with Conflict (c, f) -> Error (c, f)
 
 let choose_literal { frequency; _ } = Frequency.Map.pop frequency
-let is_empty { frequency; _ } = Frequency.Map.is_empty frequency
+
+let is_empty { frequency; assignments = a; _ } =
+  Frequency.Map.flush_assigned a frequency |> Frequency.Map.is_empty
 
 let of_list v _c list =
   let rec aux f = function

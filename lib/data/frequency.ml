@@ -13,6 +13,7 @@ module Map = struct
   let decay_factor = 0.99 (* TODO *)
 
   (* let decay = map (fun _ f -> f *. decay_factor) *)
+  (* TODO Is this really equivalent though? Need to investigate *)
   let decay { m; increase } =
     let increase' = increase *. (1.0 /. decay_factor) in
     { m; increase = increase' }
@@ -30,6 +31,16 @@ module Map = struct
     { t with m = m' }
 
   let empty () = { m = empty; increase = 1.0 }
+
+  let flush_assigned a ({ m; _ } as t) =
+    let rec aux m' =
+      match min m' with
+      | Some (l, _) ->
+          if Assignment.Map.mem (Literal.var l) a then aux (pop_exn m' |> snd)
+          else t
+      | None -> t
+    in
+    aux m
 
   let incr_iter iterator ({ m; increase } as t) =
     let open Iter in
@@ -49,7 +60,7 @@ module Map = struct
 
   (* let merge = ( ++ ) *)
   let pop { m; _ } = pop_exn m |> fst |> fst
-  let remove_literal l ({ m; _ } as t) = { t with m = remove l m }
+  (* let remove_literal l ({ m; _ } as t) = { t with m = remove l m } *)
 
   let show { m; _ } =
     to_priority_list m
