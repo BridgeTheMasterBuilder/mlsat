@@ -10,10 +10,11 @@ module Map : sig
   val incr_iter : k Iter.iter -> t -> t
   val is_empty : t -> bool
   val mem : k -> t -> bool
-
-  (* val merge : t -> t -> t *)
+  val min : t -> k
+  val min_exn : t -> k
   val pop : t -> k * t
-  val remove_literal : k -> t -> t
+
+  (* val remove_literal : k -> t -> t *)
   val show : t -> string
   val to_iter : t -> (Literal.t * v) Iter.iter
 end

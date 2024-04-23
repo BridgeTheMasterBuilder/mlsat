@@ -57,8 +57,8 @@ module Map = struct
 
   let is_empty { m; _ } = is_empty m
   let mem l { m; _ } = mem l m
+  let min_exn { m; _ } = min m |> Option.get_exn_or "MIN" |> fst
 
-  (* let merge = ( ++ ) *)
   let pop ({ m; _ } as t) =
     let (l, _), m' = pop_exn m in
     (l, { t with m = m' })

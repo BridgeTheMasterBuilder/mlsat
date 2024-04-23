@@ -1,5 +1,4 @@
 type t = {
-  (* TODO vector ? *)
   _debug_clauses : int list list;
   frequency : Frequency.Map.t;
   current_decision_level : int;
@@ -94,18 +93,8 @@ let rec make_assignment l ass ({ assignments = a; trail = t; _ } as f) d ucs =
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let t' = (ass, f) :: t in
-  (* let frequency' = *)
-  (*   Frequency.Map.remove_literal l frequency *)
-  (*   |> Frequency.Map.remove_literal (Literal.neg l) *)
-  (* in *)
   let f' =
-    {
-      f with
-      assignments = a';
-      trail = t';
-      current_decision_level = d;
-      (* frequency = frequency'; *)
-    }
+    { f with assignments = a'; trail = t'; current_decision_level = d }
   in
   update_watchers (Literal.neg l) f' ucs
 
@@ -199,16 +188,8 @@ let _remove_clause clause ({ frequency; assignments = a; watchers; _ } as f) =
   { f with frequency = frequency'; watchers = watchers' }
 
 let backtrack
-    {
-      assignments = a;
-      trail = t;
-      database = db;
-      watchers;
-      unwatched;
-
-      (* frequency; *)
-    _;
-    } learned_clause =
+    { assignments = a; trail = t; database = db; watchers; unwatched; _ }
+    learned_clause =
   let d' =
     let open Iter in
     Clause.to_iter learned_clause
@@ -217,16 +198,13 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  (* let _, ({ frequency = frequency'; _ } as f) = *)
   let _, ({ frequency; _ } as f) =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
-  (* let frequency'' = Frequency.Map.merge frequency frequency' in *)
   let f =
     {
       f with
-      (* frequency = Frequency.Map.decay frequency''; *)
       frequency = Frequency.Map.decay frequency;
       watchers;
       database = Database.add_clause learned_clause db;
@@ -240,11 +218,7 @@ let backtrack
     Ok (f'', d')
   with Conflict (c, f) -> Error (c, f)
 
-let choose_literal ({ frequency; assignments = a; _ } as f) =
-  Logs.debug (fun m -> m "Frequency map:\n%s" (Frequency.Map.show frequency));
-  Frequency.Map.pop frequency
-  (* |> Pair.map_snd (fun frequency' -> { f with frequency = frequency' }) *)
-  |> Pair.map_snd (fun frequency' -> f)
+let choose_literal { frequency; _ } = Frequency.Map.min_exn frequency
 
 let is_empty ({ frequency; assignments = a; _ } as f) =
   let frequency' = Frequency.Map.flush_assigned a frequency in
@@ -285,11 +259,9 @@ let of_list v _c list =
          list)
   with Conflict _ -> None
 
-(* let restart ({ trail = t; watchers; database; unwatched; frequency; _ } as f) = *)
 let restart ({ trail = t; watchers; database; unwatched; _ } as f) =
   if List.is_empty t then f
   else
-    (* let ({ frequency = frequency'; _ } as f) = *)
     let ({ frequency; _ } as f) =
       snd
         (List.last_opt t
@@ -297,23 +269,22 @@ let restart ({ trail = t; watchers; database; unwatched; _ } as f) =
              "Internal solver error: Attempt to backtrack without previous \
               assignments.")
     in
-    (* let frequency'' = Frequency.Map.merge frequency frequency' in *)
-    (* let f = { f with watchers; database; frequency = frequency'' } in *)
     let f = { f with watchers; database; frequency } in
     Clause.Set.fold (fun clause f' -> add_clause clause f') unwatched f
 
-(* TODO do you need to track changes to frequency? *)
 let eliminate_pure_literals ({ frequency; _ } as f) =
   let open Iter in
   Frequency.Map.to_iter frequency
   |> fold
-       (fun f' (l, _) ->
-         if Frequency.Map.mem (Literal.neg l) frequency then f'
+       (fun ({ frequency = frequency'; _ } as f') (l, _) ->
+         if Frequency.Map.mem (Literal.neg l) frequency' then f'
          else
            let i =
              Assignment.Implication
                { literal = l; implicant = Array.empty; level = 0 }
            in
+           let frequency'' = Frequency.Map.remove_literal l frequency in
+           let f' = { f' with frequency = frequency'' } in
            make_assignment l i f' 0 (UnitClauseWorkqueue.empty ()))
        f
 
@@ -322,10 +293,9 @@ let preprocess f =
   { f with trail = [] }
 
 let make_decision ({ current_decision_level = d; _ } as f) =
-  let l, f' = choose_literal f in
-  (* Logs.debug (fun m -> m "Choosing literal %s" (Literal.show l)); *)
+  let l = choose_literal f in
   let dec = Assignment.Decision { literal = l; level = d + 1 } in
-  try Ok (make_assignment l dec f' (d + 1) (UnitClauseWorkqueue.empty ()))
+  try Ok (make_assignment l dec f (d + 1) (UnitClauseWorkqueue.empty ()))
   with Conflict (c, f) -> Error (c, f)
 
 let check ({ database = db; trail; _ } as f) =
