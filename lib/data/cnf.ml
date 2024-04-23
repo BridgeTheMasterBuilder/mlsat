@@ -18,9 +18,7 @@ module UnitClauseWorkqueue : Workqueue.S with type elt = Literal.t * Clause.t =
 Workqueue.Make (struct
   type t = Literal.t * Clause.t
 
-  (* let compare (l1, _) (l2, _) = Literal.compare l1 l2 *)
-  let equal (l1, _) (l2, _) = Literal.equal l1 l2
-  let hash (l, _) = Literal.hash l
+  let compare (l1, _) (l2, _) = Literal.compare l1 l2
 end)
 
 let show
