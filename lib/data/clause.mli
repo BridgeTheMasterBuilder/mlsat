@@ -34,8 +34,8 @@ module Watched : sig
   val watch_clause : Assignment.Map.t -> clause -> Map.t -> update_result
 end
 
-val of_list : Literal.t list -> t
-val of_iter : Literal.t Iter.iter -> t
+val of_list : int -> Literal.t list -> t
+val of_iter : int -> Literal.t Iter.iter -> t
 val show : t -> string
 val size : t -> int
 val to_array : t -> Literal.t array

@@ -1,15 +1,15 @@
 include CCArray
 
-type t = CCHash.hash * Literal.t array
+type t = int * Literal.t array
 type clause = t
 
 let _lbd (_, _c) _a = 0
 
-let of_list l =
+let of_list id l =
   let a = of_list l in
-  (CCHash.array Literal.hash a, a)
+  (id, a)
 
-let of_iter iterator = Iter.to_list iterator |> of_list
+let of_iter id iterator = Iter.to_list iterator |> of_list id
 let size (_, c) = length c
 
 let show (_, c) =
@@ -95,7 +95,7 @@ module Watched = struct
 
   let update l a
       ({ clause = (_, c) as clause; size; index; watched_literals = w1, w2; _ }
-      as watched_clause) watchers =
+       as watched_clause) watchers =
     let other_watched_literal = if Literal.equal l w1 then w2 else w1 in
     let other_watched_literal_truth_value =
       Assignment.Map.value other_watched_literal a

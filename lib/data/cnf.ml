@@ -139,7 +139,9 @@ let add_clause clause
   | Falsified clause -> raise_notrace (Conflict (clause, f))
   | NoChange -> { f with frequency = frequency' }
 
-let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
+let analyze_conflict
+    ({ current_decision_level = d; assignments = a; database = db; _ } as f)
+    clause =
   let open Iter in
   let rec aux q c =
     match VariableWorkqueue.pop_exn q with
@@ -168,13 +170,15 @@ let analyze_conflict { current_decision_level = d; assignments = a; _ } clause =
     |> map (fun ass -> Literal.var (Assignment.literal ass))
     |> VariableWorkqueue.of_iter
   in
-  aux queue [] |> Clause.of_list
+  let id, db' = Database.new_id db in
+  let learned_clause = aux queue [] |> Clause.of_list id in
+  (learned_clause, { f with database = db' })
 
 let assignments { assignments = a; _ } = Assignment.Map.assignments a
 let trace { database; _ } = Database.get_trace database
 
-let simplify ({ database = db; _ } as f) =
-  let db' = Database.simplify db in
+let forget_clauses ({ database = db; _ } as f) =
+  let db' = Database.delete_half db in
   let f' = f in
   { f' with database = db' }
 
@@ -228,8 +232,8 @@ let is_empty ({ frequency; assignments = a; _ } as f) =
   let open Either in
   if Frequency.Map.is_empty frequency' then Right f' else Left f'
 
-let of_list v _c list =
-  let rec aux f = function
+let of_list v c list =
+  let rec aux n f = function
     | [] -> f
     | c :: cs ->
         (* TODO *)
@@ -238,23 +242,23 @@ let of_list v _c list =
           let open Iter in
           List.to_iter c |> sort_uniq ~cmp:Int.compare
           |> map Literal.of_int_unchecked
-          |> Clause.of_iter
+          |> Clause.of_iter n
         in
         if Clause.size clause = 0 then raise_notrace (Conflict (clause, f))
         else
           let f' = add_clause clause f in
-          aux f' cs
+          aux (n + 1) f' cs
   in
   try
     Some
-      (aux
+      (aux 0
          {
            _debug_clauses = list;
            frequency = Frequency.Map.empty ();
            current_decision_level = 0;
            assignments = Assignment.Map.empty ();
            trail = [];
-           database = Database.create ();
+           database = Database.create c;
            watchers = Clause.Watched.Map.make v;
            unwatched = Clause.Set.empty ();
          }

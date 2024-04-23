@@ -10,12 +10,12 @@ let rec cdcl max_learned_clauses max_conflicts luby f =
       (* Logs.debug (fun m -> m "%s" (show f)); *)
       if decision_level f = 0 then Unsat f
       else
-        let learned_clause = analyze_conflict f clause in
+        let learned_clause, f' = analyze_conflict f clause in
         (* Logs.debug (fun m -> *)
         (*     m "Learning clause %s" (Clause.show learned_clause)); *)
-        match backtrack f learned_clause with
-        | Ok (f', d') ->
-            aux d' (num_learned_clauses' + 1) (num_conflicts + 1) f'
+        match backtrack f' learned_clause with
+        | Ok (f'', d') ->
+            aux d' (num_learned_clauses' + 1) (num_conflicts + 1) f''
         | Error conflict -> handle conflict (num_learned_clauses' + 1)
     in
     (* Logs.debug (fun m -> m "%s" (show f)); *)
@@ -24,7 +24,7 @@ let rec cdcl max_learned_clauses max_conflicts luby f =
       let max_conflicts', luby' = Luby.next luby in
       cdcl max_learned_clauses max_conflicts' luby' f
     else if num_learned_clauses >= max_learned_clauses then
-      let f' = simplify f in
+      let f' = forget_clauses f in
       cdcl (max_learned_clauses * 2) max_conflicts luby f'
     else
       let open Either in

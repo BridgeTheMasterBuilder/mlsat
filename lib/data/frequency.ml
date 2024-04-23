@@ -12,7 +12,6 @@ module Map = struct
 
   let decay_factor = 0.99 (* TODO *)
 
-  (* let decay = map (fun _ f -> f *. decay_factor) *)
   (* TODO Is this really equivalent though? Need to investigate *)
   let decay { m; increase } =
     let increase' = increase *. (1.0 /. decay_factor) in

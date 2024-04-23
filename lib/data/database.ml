@@ -1,8 +1,8 @@
 type modification = Addition of Clause.t | Deletion of Clause.t
 type trace = modification Vector.vector
-type t = { trace : trace; database : Clause.t Vector.vector }
+type t = { trace : trace; database : Clause.t Vector.vector; id : int }
 
-let add_clause clause ({ trace; database } as db) =
+let add_clause clause ({ trace; database; _ } as db) =
   Vector.push trace (Addition clause);
   Vector.push database clause;
   db
@@ -38,11 +38,15 @@ let check { database = db; _ } =
             (Vector.to_list db)));
   assert db_equal
 
-let create () = { trace = Vector.create (); database = Vector.create () }
+let create c = { trace = Vector.create (); database = Vector.create (); id = c }
 let fold f init { database; _ } = Vector.fold f init database
 let get_trace { trace; _ } = trace
 
-let simplify ({ database; trace } as db) =
+let new_id ({ id; _ } as db) =
+  let id' = id + 1 in
+  (id, { db with id = id' })
+
+let delete_half ({ database; trace; _ } as db) =
   Logs.debug (fun m -> m "Simplifying formula");
   let half_length = Vector.length database / 2 in
   let open Iter in
