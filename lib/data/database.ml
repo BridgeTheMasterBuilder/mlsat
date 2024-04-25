@@ -1,20 +1,22 @@
 type modification = Addition of Clause.t | Deletion of Clause.t
-type trace = modification Vector.vector
-type t = { trace : trace; database : Clause.t Vector.vector; id : int }
 
-let add_clause clause ({ trace; database; _ } as db) =
-  Vector.push trace (Addition clause);
-  Vector.push database clause;
+type trace = modification Vector.vector
+
+type t = {trace: trace; database: Clause.t Vector.vector; id: int}
+
+let add_clause clause ({trace; database; _} as db) =
+  Vector.push trace (Addition clause) ;
+  Vector.push database clause ;
   db
 
-let check { database = db; _ } =
+let check {database= db; _} =
   let copy = Vector.copy db in
   Vector.uniq_sort
     (fun c1 c2 ->
       Array.compare Literal.compare
         (Array.sorted Literal.compare (Clause.to_array c1))
-        (Array.sorted Literal.compare (Clause.to_array c2)))
-    copy;
+        (Array.sorted Literal.compare (Clause.to_array c2)) )
+    copy ;
   let db_equal = Vector.length copy = Vector.length db in
   if not db_equal then
     List.iter
@@ -22,37 +24,39 @@ let check { database = db; _ } =
         Logs.debug (fun m ->
             m "[%b ]%s = %s"
               (String.equal (Clause.show c1) (Clause.show c2))
-              (Clause.show c1) (Clause.show c2)))
+              (Clause.show c1) (Clause.show c2) ) )
       (List.combine_shortest
          (List.sort_uniq
             ~cmp:(fun c1 c2 ->
               Array.compare Literal.compare
                 (Array.sorted Literal.compare (Clause.to_array c1))
-                (Array.sorted Literal.compare (Clause.to_array c2)))
-            (Vector.to_list db))
+                (Array.sorted Literal.compare (Clause.to_array c2)) )
+            (Vector.to_list db) )
          (List.sort
             (fun c1 c2 ->
               Array.compare Literal.compare
                 (Array.sorted Literal.compare (Clause.to_array c1))
-                (Array.sorted Literal.compare (Clause.to_array c2)))
-            (Vector.to_list db)));
+                (Array.sorted Literal.compare (Clause.to_array c2)) )
+            (Vector.to_list db) ) ) ;
   assert db_equal
 
-let create c = { trace = Vector.create (); database = Vector.create (); id = c }
-let fold f init { database; _ } = Vector.fold f init database
-let get_trace { trace; _ } = trace
+let create c = {trace= Vector.create (); database= Vector.create (); id= c}
 
-let new_id ({ id; _ } as db) =
+let fold f init {database; _} = Vector.fold f init database
+
+let get_trace {trace; _} = trace
+
+let new_id ({id; _} as db) =
   let id' = id + 1 in
-  (id, { db with id = id' })
+  (id, {db with id= id'})
 
-let delete_half ({ database; trace; _ } as db) =
-  Logs.debug (fun m -> m "Simplifying formula");
+let delete_half ({database; trace; _} as db) =
+  Logs.debug (fun m -> m "Simplifying formula") ;
   let half_length = Vector.length database / 2 in
   let open Iter in
-  Vector.rev_in_place database;
+  Vector.rev_in_place database ;
   Vector.to_iter database |> take half_length
-  |> iter (fun c -> Vector.push trace (Deletion c));
-  Vector.truncate database half_length;
-  Vector.rev_in_place database;
+  |> iter (fun c -> Vector.push trace (Deletion c)) ;
+  Vector.truncate database half_length ;
+  Vector.rev_in_place database ;
   db

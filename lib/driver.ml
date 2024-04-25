@@ -15,9 +15,11 @@ let emit_proof_of_unsatisfiability filename clauses =
     (fun c ->
       let open Database in
       match c with
-      | Addition c -> Printf.fprintf oc "%s0\n" (Clause.show c)
-      | Deletion _c -> ())
-    clauses;
+      | Addition c ->
+          Printf.fprintf oc "%s0\n" (Clause.show c)
+      | Deletion _c ->
+          () )
+    clauses ;
   Printf.fprintf oc "0"
 
 let run filename config =
@@ -26,35 +28,35 @@ let run filename config =
   | None ->
       Option.iter
         (fun filename ->
-          emit_proof_of_unsatisfiability filename (Vector.create ()))
-        config.emit_proof;
+          emit_proof_of_unsatisfiability filename (Vector.create ()) )
+        config.emit_proof ;
       Printf.printf "s UNSATISFIABLE\nc Learned 0 clauses\n"
   | Some p -> (
-      let p = { p with config } in
-      set_signal sigalrm (Signal_handle (fun _ -> raise_notrace Timeout));
-      setitimer ITIMER_REAL { it_value = config.time_limit; it_interval = 0.0 }
-      |> ignore;
+      let p = {p with config} in
+      set_signal sigalrm (Signal_handle (fun _ -> raise_notrace Timeout)) ;
+      setitimer ITIMER_REAL {it_value= config.time_limit; it_interval= 0.0}
+      |> ignore ;
       if config.verbose then (
-        Logs.set_reporter (Logs_fmt.reporter ());
-        Logs.set_level (Some Debug))
+        Logs.set_reporter (Logs_fmt.reporter ()) ;
+        Logs.set_level (Some Debug) )
       else (
-        Logs.set_reporter (Logs_fmt.reporter ());
-        Logs.set_level (Some Error));
+        Logs.set_reporter (Logs_fmt.reporter ()) ;
+        Logs.set_level (Some Error) ) ;
       try
         match solve p with
         | Sat f ->
             (* check f; *)
-            Printf.printf "s SATISFIABLE\nv ";
+            Printf.printf "s SATISFIABLE\nv " ;
             List.iter
               (fun l -> Printf.printf "%s " (Literal.show l))
-              (assignments f);
+              (assignments f) ;
             print_endline "0"
         | Unsat f ->
             let trace = trace f in
             (* check f; *)
             Option.iter
               (fun filename -> emit_proof_of_unsatisfiability filename trace)
-              config.emit_proof;
+              config.emit_proof ;
             Printf.printf "s UNSATISFIABLE\nc Learned %d clauses\n"
               (Vector.length trace)
-      with Timeout -> print_endline "s UNKNOWN")
+      with Timeout -> print_endline "s UNKNOWN" )

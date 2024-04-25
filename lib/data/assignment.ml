@@ -1,15 +1,12 @@
 type t =
-  | Decision of { literal : Literal.t; level : int }
-  | Implication of {
-      literal : Literal.t;
-      level : int;
-      implicant : Literal.t array;
-    }
+  | Decision of {literal: Literal.t; level: int}
+  | Implication of {literal: Literal.t; level: int; implicant: Literal.t array}
 
 type assignment = t
 
 let literal = function
-  | Decision { literal; _ } | Implication { literal; _ } -> literal
+  | Decision {literal; _} | Implication {literal; _} ->
+      literal
 
 module Map = struct
   module M = CCPersistentHashtbl.Make (Variable)
@@ -23,8 +20,11 @@ module Map = struct
     to_iter m |> Iter.map (fun (_, ass) -> literal ass) |> Iter.to_list
 
   let find l m = find m l
+
   let find_opt = get
+
   let mem l m = mem m l
+
   let size = length
 
   let value l a =
@@ -36,15 +36,17 @@ end
 
 let compare ass1 ass2 =
   match (ass1, ass2) with
-  | Decision { level = d1; _ }, Implication { level = d2; _ } when d1 = d2 -> 1
-  | Implication { level = d1; _ }, Decision { level = d2; _ } when d1 = d2 -> -1
-  | Decision { level = d1; _ }, Decision { level = d2; _ }
-  | Decision { level = d1; _ }, Implication { level = d2; _ }
-  | Implication { level = d1; _ }, Decision { level = d2; _ }
-  | Implication { level = d1; _ }, Implication { level = d2; _ } ->
+  | Decision {level= d1; _}, Implication {level= d2; _} when d1 = d2 ->
+      1
+  | Implication {level= d1; _}, Decision {level= d2; _} when d1 = d2 ->
+      -1
+  | Decision {level= d1; _}, Decision {level= d2; _}
+  | Decision {level= d1; _}, Implication {level= d2; _}
+  | Implication {level= d1; _}, Decision {level= d2; _}
+  | Implication {level= d1; _}, Implication {level= d2; _} ->
       -Int.compare d1 d2
 
-let level = function Decision { level; _ } | Implication { level; _ } -> level
+let level = function Decision {level; _} | Implication {level; _} -> level
 
 module Clause = struct
   let show c =
@@ -52,13 +54,15 @@ module Clause = struct
 end
 
 let show = function
-  | Decision { literal; level } ->
+  | Decision {literal; level} ->
       Printf.sprintf "\t%s because of decision on level %d\n"
         (Literal.show literal) level
-  | Implication { literal; level; implicant } ->
+  | Implication {literal; level; implicant} ->
       Printf.sprintf "\t%s because of clause %s - implied at level %d\n"
         (Literal.show literal) (Clause.show implicant) level
 
 let was_decided_on_level d = function
-  | Decision { level = d'; _ } -> d = d'
-  | _ -> false
+  | Decision {level= d'; _} ->
+      d = d'
+  | _ ->
+      false

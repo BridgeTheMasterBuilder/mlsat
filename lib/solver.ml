@@ -16,7 +16,8 @@ let rec cdcl max_learned_clauses max_conflicts luby f =
         match backtrack f' learned_clause with
         | Ok (f'', d') ->
             aux d' (num_learned_clauses' + 1) (num_conflicts + 1) f''
-        | Error conflict -> handle conflict (num_learned_clauses' + 1)
+        | Error conflict ->
+            handle conflict (num_learned_clauses' + 1)
     in
     (* Logs.debug (fun m -> m "%s" (show f)); *)
     if num_conflicts >= max_conflicts then
@@ -29,20 +30,19 @@ let rec cdcl max_learned_clauses max_conflicts luby f =
     else
       let open Either in
       match is_empty f with
-      | Right f' -> Sat f'
+      | Right f' ->
+          Sat f'
       | Left f' -> (
-          match make_decision f' with
-          | Error conflict -> handle conflict num_learned_clauses
-          | Ok f' -> aux (d + 1) num_learned_clauses num_conflicts f')
+        match make_decision f' with
+        | Error conflict ->
+            handle conflict num_learned_clauses
+        | Ok f' ->
+            aux (d + 1) num_learned_clauses num_conflicts f' )
   in
   aux 0 0 0 f
 
-let solve
-    {
-      formula = f;
-      num_clauses;
-      config = { base_num_conflicts; grow_factor; _ };
-    } =
+let solve {formula= f; num_clauses; config= {base_num_conflicts; grow_factor; _}}
+    =
   let luby = Luby.create base_num_conflicts grow_factor in
   let f = preprocess f in
   cdcl ((num_clauses / 16) + 1) base_num_conflicts luby f
