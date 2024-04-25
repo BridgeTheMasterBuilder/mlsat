@@ -1,39 +1,8 @@
 type t
 type clause = t
 
-module Watched : sig
-  type t
-  type watched_clause = t
-
-  module Set : sig
-    type elt = watched_clause
-    type t
-
-    val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
-  end
-
-  module Map : sig
-    type t
-    type key = Literal.t
-
-    val find_opt : key -> t -> Set.t option
-    val is_empty : t -> bool
-    val make : int -> t
-    val show : t -> string
-  end
-
-  type update_result =
-    | WatchedLiteralChange of Map.t
-    | Unit of (Literal.t * clause)
-    | Falsified of clause
-    | NoChange
-
-  val to_clause : t -> clause
-  val unwatch_clause : clause -> Map.t -> Map.t
-  val update : Literal.t -> Assignment.Map.t -> t -> Map.t -> update_result
-  val watch_clause : Assignment.Map.t -> clause -> Map.t -> update_result
-end
-
+val equal : t -> t -> bool
+val hash : t -> int
 val of_list : int -> Literal.t list -> t
 val of_iter : int -> Literal.t Iter.iter -> t
 val show : t -> string

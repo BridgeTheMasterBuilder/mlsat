@@ -5,7 +5,7 @@ type t = {
   assignments : Assignment.Map.t;
   trail : (Assignment.t * t) list;
   database : Database.t;
-  watchers : Clause.Watched.Map.t;
+  watchers : Watched.Literal.Map.t;
   unwatched : Clause.Set.t;
 }
 
@@ -18,7 +18,6 @@ module UnitClauseWorkqueue : Workqueue.S with type elt = Literal.t * Clause.t =
 Workqueue.Make (struct
   type t = Literal.t * Clause.t
 
-  (* let compare (l1, _) (l2, _) = Literal.compare l1 l2 *)
   let equal (l1, _) (l2, _) = Literal.equal l1 l2
   let hash (l, _) = Literal.hash l
 end)
@@ -60,8 +59,8 @@ let show
     (Database.fold
        (fun acc c -> Printf.sprintf "%s( %s)\n" acc (Clause.show c))
        "" database)
-    (if Clause.Watched.Map.is_empty watchers then "()"
-     else Clause.Watched.Map.show watchers)
+    (if Watched.Literal.Map.is_empty watchers then "()"
+     else Watched.Literal.Map.show watchers)
 
 let decision_level { current_decision_level = d; _ } = d
 
@@ -69,21 +68,21 @@ let rec make_assignment l ass ({ assignments = a; trail = t; _ } as f) d ucs =
   let update_watchers l ({ assignments = a; watchers; unwatched; _ } as f) ucs'
       =
     let update_watcher l c watchers' unwatched ucs'' =
-      match Clause.Watched.update l a c watchers' with
+      match Watched.Clause.update l a c watchers' with
       | WatchedLiteralChange watchers' ->
           ( watchers',
             (* TODO It might already not be watched, need a way to figure out when this is necessary, or maybe it doesn't matter? *)
-            Clause.Set.remove (Clause.Watched.to_clause c) unwatched,
+            Clause.Set.remove (Watched.Clause.to_clause c) unwatched,
             ucs'' )
       | Unit (l, clause) ->
           (watchers', unwatched, UnitClauseWorkqueue.push (l, clause) ucs'')
       | Falsified clause -> raise_notrace (Conflict (clause, f))
       | NoChange -> (watchers', unwatched, ucs'')
     in
-    match Clause.Watched.Map.find_opt l watchers with
+    match Watched.Literal.Map.find_opt l watchers with
     | Some cs ->
         let watchers', unwatched', ucs'' =
-          Clause.Watched.Set.fold
+          Watched.Clause.Set.fold
             (fun (watchers', unwatched', ucs'') c ->
               update_watcher l c watchers' unwatched' ucs'')
             (watchers, unwatched, ucs')
@@ -119,7 +118,7 @@ let add_clause clause
       |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
       frequency
   in
-  match Clause.Watched.watch_clause a clause watchers with
+  match Watched.Clause.watch a clause watchers with
   | WatchedLiteralChange watchers' ->
       {
         f with
@@ -190,7 +189,7 @@ let _remove_clause clause ({ frequency; assignments = a; watchers; _ } as f) =
       |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)))
       frequency
   in
-  let watchers' = Clause.Watched.unwatch_clause clause watchers in
+  let watchers' = Watched.Clause.unwatch clause watchers in
   { f with frequency = frequency'; watchers = watchers' }
 
 let backtrack
@@ -259,7 +258,7 @@ let of_list v c list =
            assignments = Assignment.Map.empty ();
            trail = [];
            database = Database.create c;
-           watchers = Clause.Watched.Map.make v;
+           watchers = Watched.Literal.Map.make v;
            unwatched = Clause.Set.empty ();
          }
          list)

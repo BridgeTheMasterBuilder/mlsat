@@ -14,5 +14,4 @@ module type S = sig
   val singleton : elt -> t
 end
 
-(* module Make (Ord : Set.OrderedType) : S with type elt = Ord.t *)
 module Make (E : CCHashSet.ELEMENT) : S with type elt = E.t

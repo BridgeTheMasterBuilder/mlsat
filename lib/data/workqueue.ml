@@ -15,7 +15,6 @@ module type S = sig
 end
 
 module Make (E : CCHashSet.ELEMENT) : S with type elt = E.t = struct
-  (* module M = Set.Make (Ord) *)
   module M = CCHashSet.Make (E)
 
   type elt = M.elt

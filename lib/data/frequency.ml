@@ -10,7 +10,7 @@ module Map = struct
   type nonrec t = { m : t; increase : float }
   type v = float
 
-  let decay_factor = 0.99 (* TODO *)
+  let decay_factor = 0.99 (* TODO option *)
 
   (* TODO Is this really equivalent though? Need to investigate *)
   let decay { m; increase } =
