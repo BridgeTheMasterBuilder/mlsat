@@ -5,13 +5,5 @@ type t =
   ; grow_factor: int
   ; emit_proof: string option
   ; max_learned: int
-  ; decay_interval: int }
-
-let empty () =
-  { time_limit= 0.0
-  ; verbose= false
-  ; base_num_conflicts= 0
-  ; grow_factor= 0
-  ; emit_proof= None
-  ; max_learned= 0
-  ; decay_interval= 0 }
+  ; decay_interval: int
+  ; decay_factor: float }

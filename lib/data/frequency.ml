@@ -7,16 +7,12 @@ end
 module Map = struct
   include Psq.Make (Literal) (Frequency)
 
-  type nonrec t = {m: t; increase: float}
+  type nonrec t = {m: t; increase: float; decay_factor: float}
 
   type v = float
 
-  let decay_factor = 0.99 (* TODO option *)
-
-  let decay {m; increase} =
+  let decay {m; increase; decay_factor} =
     let increase' = increase *. (1.0 /. decay_factor) in
-    (* Printf.printf "%f\n" increase' ; *)
-    (* flush stdout ; *)
     match Float.classify increase' with
     | FP_infinite ->
         let m' =
@@ -28,23 +24,9 @@ module Map = struct
                 m' )
             m m
         in
-        {m= m'; increase= 1.0}
+        {m= m'; increase= 1.0; decay_factor}
     | _ ->
-        {m; increase= increase'}
-
-  (* let decr_iter iterator ({m; _} as t) = *)
-  (*   let open Iter in *)
-  (*   let m' = *)
-  (*     fold *)
-  (*       (fun m' l -> *)
-  (*         update l *)
-  (*           (function Some count -> Some (count -. 1.0) | None -> None) *)
-  (*           m' ) *)
-  (*       m iterator *)
-  (*   in *)
-  (*   {t with m= m'} *)
-
-  let empty () = {m= empty; increase= 1.0}
+        {m; increase= increase'; decay_factor}
 
   let pop_exn m = pop m |> Option.get_exn_or "POP"
 
@@ -75,9 +57,11 @@ module Map = struct
 
   let is_empty {m; _} = is_empty m
 
+  let make decay_factor = {m= empty; increase= 1.0; decay_factor}
+
   let mem l {m; _} = mem l m
 
-  let merge {m; _} {m= m'; increase} = {m= m ++ m'; increase}
+  let merge {m; _} ({m= m'; _} as t) = {t with m= m ++ m'}
 
   let min_exn {m; _} = min m |> Option.get_exn_or "MIN" |> fst
 

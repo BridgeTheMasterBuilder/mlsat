@@ -1,3 +1,5 @@
+open Config
+
 type t =
   { _debug_clauses: int list list
   ; clauses: Watched.Clause.Map.t
@@ -238,7 +240,7 @@ let is_empty ({frequency; assignments= a; _} as f) =
   let open Either in
   if Frequency.Map.is_empty frequency' then Right f' else Left f'
 
-let of_list v c list =
+let of_list v c {decay_factor; _} list =
   let rec aux n f = function
     | [] ->
         f
@@ -261,7 +263,7 @@ let of_list v c list =
       (aux 0
          { _debug_clauses= list
          ; clauses= Watched.Clause.Map.make (c * 2) (* TODO *)
-         ; frequency= Frequency.Map.empty ()
+         ; frequency= Frequency.Map.make decay_factor
          ; current_decision_level= 0
          ; assignments= Assignment.Map.empty ()
          ; trail= []

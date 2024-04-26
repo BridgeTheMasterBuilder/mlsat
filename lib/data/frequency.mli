@@ -9,13 +9,13 @@ module Map : sig
 
   (* val decr_iter : k Iter.iter -> t -> t *)
 
-  val empty : unit -> t
-
   val flush_assigned : Assignment.Map.t -> t -> t
 
   val incr_iter : k Iter.iter -> t -> t
 
   val is_empty : t -> bool
+
+  val make : v -> t
 
   val mem : k -> t -> bool
 
