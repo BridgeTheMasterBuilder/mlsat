@@ -46,6 +46,14 @@ let parse_args () =
       & info ["p"; "emit-proof"] ~docv:"FILENAME"
           ~doc:"Produce a proof of unsatisfiability" )
   in
+  let max_learned =
+    Arg.(
+      value & opt int 512
+      & info ["l"; "max-learned"] ~docv:"NUM"
+          ~doc:
+            "Maximum number of clause that can be learned before triggering \
+             deletion" )
+  in
   let config =
     Term.(
       const
@@ -55,17 +63,19 @@ let parse_args () =
           (* no_validate *) base_num_conflicts
           grow_factor
           emit_proof
+          max_learned
         ->
           { time_limit
           ; verbose
           ; (* no_validate; *)
             base_num_conflicts
           ; grow_factor
-          ; emit_proof } )
+          ; emit_proof
+          ; max_learned } )
       $ time_limit $ verbose
       (* $ no_validate *)
       $ base_num_conflicts
-      $ grow_factor $ emit_proof )
+      $ grow_factor $ emit_proof $ max_learned )
   in
   let info = Cmd.info "mlsat" in
   let cmd = Cmd.v info Term.(const Driver.run $ dimacs_file $ config) in

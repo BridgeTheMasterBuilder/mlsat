@@ -47,14 +47,14 @@ module Clause : sig
   module Set = ClauseSet
 
   type update_result =
-    | WatchedLiteralChange of Literal.Map.t
+    | WatchedLiteralChange of watched_clause * Literal.Map.t
     | Unit of (L.t * Clause.t)
     | Falsified of Clause.t
     | NoChange
 
   val to_clause : t -> Clause.t
 
-  val unwatch : Clause.t -> Literal.Map.t -> Literal.Map.t
+  val unwatch : watched_clause -> Literal.Map.t -> Literal.Map.t
 
   val update : L.t -> Assignment.Map.t -> t -> Literal.Map.t -> update_result
 

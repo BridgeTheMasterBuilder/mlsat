@@ -24,9 +24,9 @@ let rec cdcl max_learned_clauses max_conflicts luby f =
       let f = restart f in
       let max_conflicts', luby' = Luby.next luby in
       cdcl max_learned_clauses max_conflicts' luby' f
-    else if num_learned_clauses >= max_learned_clauses then
-      let f' = forget_clauses f in
-      cdcl (max_learned_clauses * 2) max_conflicts luby f'
+      (* else if num_learned_clauses >= max_learned_clauses then *)
+      (*   let f' = forget_clauses f |> restart in *)
+      (*   cdcl (max_learned_clauses * 2) max_conflicts luby f' *)
     else
       let open Either in
       match is_empty f with
@@ -41,8 +41,8 @@ let rec cdcl max_learned_clauses max_conflicts luby f =
   in
   aux 0 0 0 f
 
-let solve {formula= f; num_clauses; config= {base_num_conflicts; grow_factor; _}}
+let solve {formula= f; config= {base_num_conflicts; grow_factor; max_learned; _}}
     =
   let luby = Luby.create base_num_conflicts grow_factor in
   let f = preprocess f in
-  cdcl ((num_clauses / 16) + 1) base_num_conflicts luby f
+  cdcl max_learned base_num_conflicts luby f

@@ -43,9 +43,9 @@ module Literal = struct
 
     let is_empty m = length m = 0
 
-    let remove l c m =
+    let remove l n m =
       update m ~k:l ~f:(fun _ -> function
-        | Some s -> Some (ClauseSet.remove c s) (* TODO *) | None -> None ) ;
+        | Some s -> Some (ClauseSet.remove n s) (* TODO *) | None -> None ) ;
       m
 
     let show m =
@@ -83,23 +83,21 @@ module Clause = struct
   module Set = ClauseSet
 
   type update_result =
-    | WatchedLiteralChange of Literal.Map.t
+    | WatchedLiteralChange of watched_clause * Literal.Map.t
     | Unit of (L.t * Clause.t)
     | Falsified of Clause.t
     | NoChange
 
   let to_clause {clause; _} = clause
 
-  let unwatch _c watchers =
-    (* Clause.to_iter clause *)
-    (* |> fold *)
-    (*      (fun watchers' l -> Clause.Watched.Map.remove l n watchers') *)
-    (*      watchers *)
-    watchers
+  let unwatch ({watched_literals= w1, w2; _} as watched_clause) watched_literals
+      =
+    Literal.Map.remove w1 watched_clause watched_literals
+    |> Literal.Map.remove w2 watched_clause
 
   let update l a
       ({clause; size; index; watched_literals= w1, w2; _} as watched_clause)
-      watchers =
+      watched_literals =
     let other_watched_literal = if L.equal l w1 then w2 else w1 in
     let other_watched_literal_truth_value =
       Assignment.Map.value other_watched_literal a
@@ -128,13 +126,13 @@ module Clause = struct
           watched_clause.index <- index' ;
           watched_clause.watched_literals <-
             (other_watched_literal, new_watched_literal) ;
-          let watchers' =
-            Literal.Map.remove l watched_clause watchers
+          let watched_literals' =
+            Literal.Map.remove l watched_clause watched_literals
             |> Literal.Map.add new_watched_literal watched_clause
           in
-          WatchedLiteralChange watchers'
+          WatchedLiteralChange (watched_clause, watched_literals')
 
-  let watch a clause watchers =
+  let watch a clause watched_literals =
     let size = Clause.size clause in
     (* TODO is this better? *)
     Clause.to_iter clause
@@ -146,11 +144,11 @@ module Clause = struct
         let watched_clause =
           {clause; size; index= 2 mod size; watched_literals= (w1, w2)}
         in
-        let watchers' =
-          Literal.Map.add w1 watched_clause watchers
+        let watched_literals' =
+          Literal.Map.add w1 watched_clause watched_literals
           |> Literal.Map.add w2 watched_clause
         in
-        WatchedLiteralChange watchers'
+        WatchedLiteralChange (watched_clause, watched_literals')
     | [(w, v)] ->
         if Tribool.is_unknown v then Unit (w, clause) else NoChange
     | _ ->

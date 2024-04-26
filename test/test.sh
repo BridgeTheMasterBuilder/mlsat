@@ -28,6 +28,9 @@ else
 
 	set_color normal
 	/usr/bin/time -f"Took %e seconds (user:%U system:%S) %P CPU usage" parallel --halt-on-error now,fail=1 'fish test/test1.sh {} {}' ::: $type ::: $files
+	# for file in $files
+	# 			fish test/test1.sh $type $file
+	# end
 
 	if test $failed -gt 0
 	   	set_color -o white

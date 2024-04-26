@@ -19,9 +19,11 @@ module Map : sig
 
   val mem : k -> t -> bool
 
+  val merge : t -> t -> t
+
   val min_exn : t -> k
 
-  val pop : t -> k * t
+  val pop : t -> k
 
   val remove_literal : k -> t -> t
 

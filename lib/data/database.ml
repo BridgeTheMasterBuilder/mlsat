@@ -50,13 +50,29 @@ let new_id ({id; _} as db) =
   let id' = id + 1 in
   (id, {db with id= id'})
 
-let delete_half ({database; trace; _} as db) =
+(* TODO Need to check if these clauses are the reason for unit propagation *)
+let delete_half ({database; trace; _} as db) watched_literals clauses =
   Logs.debug (fun m -> m "Simplifying formula") ;
   let half_length = Vector.length database / 2 in
   let open Iter in
   Vector.rev_in_place database ;
-  Vector.to_iter database |> take half_length
-  |> iter (fun c -> Vector.push trace (Deletion c)) ;
+  let watched_literals', clauses' =
+    Vector.to_iter database |> take half_length
+    |> fold
+         (fun (watched_literals', clauses') c ->
+           match Watched.Clause.Map.find_opt c clauses' with
+           | Some watched_clause ->
+               Vector.push trace (Deletion c) ;
+               let watched_literals'' =
+                 Watched.Clause.unwatch watched_clause watched_literals'
+               in
+               let clause = Watched.Clause.to_clause watched_clause in
+               let clauses'' = Watched.Clause.Map.remove clause clauses' in
+               (watched_literals'', clauses'')
+           | None ->
+               (watched_literals', clauses') )
+         (watched_literals, clauses)
+  in
   Vector.truncate database half_length ;
   Vector.rev_in_place database ;
-  db
+  (db, watched_literals', clauses')
