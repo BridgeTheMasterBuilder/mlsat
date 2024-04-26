@@ -1,35 +1,31 @@
 module Frequency = struct
-  type t = float
+  type t = int
 
-  let compare x y = -Float.(compare x y)
+  let compare x y = -Int.(compare x y)
 end
 
 module Map = struct
   include Psq.Make (Literal) (Frequency)
 
-  type nonrec t = {m: t; increase: float}
+  type v = int
 
-  type v = float
-
-  let decay_factor = 0.5 (* TODO option *)
+  type nonrec t = {m: t; increase: v}
 
   let decay {m; increase} =
-    let increase' = increase *. (1.0 /. decay_factor) in
-    {m; increase= increase'}
+    let increase' = increase * 2 in
+    if increase' < increase then
+      let m' =
+        fold
+          (fun l _ m' ->
+            update l
+              (function Some count -> Some (count / increase) | None -> None)
+              m' )
+          m m
+      in
+      {m= m'; increase= 1}
+    else {m; increase= increase'}
 
-  (* let decr_iter iterator ({m; _} as t) = *)
-  (*   let open Iter in *)
-  (*   let m' = *)
-  (*     fold *)
-  (*       (fun m' l -> *)
-  (*         update l *)
-  (*           (function Some count -> Some (count -. 1.0) | None -> None) *)
-  (*           m' ) *)
-  (*       m iterator *)
-  (*   in *)
-  (*   {t with m= m'} *)
-
-  let empty () = {m= empty; increase= 1.0}
+  let empty () = {m= empty; increase= 1}
 
   let pop_exn m = pop m |> Option.get_exn_or "POP"
 
@@ -51,8 +47,7 @@ module Map = struct
         (fun m' l ->
           update l
             (function
-              | Some count -> Some (count +. increase) | None -> Some increase
-              )
+              | Some count -> Some (count + increase) | None -> Some increase )
             m' )
         m iterator
     in
@@ -73,7 +68,7 @@ module Map = struct
   let show {m; _} =
     to_priority_list m
     |> List.fold_left
-         (fun s (l, c) -> Printf.sprintf "%s%s:%f\n" s (Literal.show l) c)
+         (fun s (l, c) -> Printf.sprintf "%s%s:%d\n" s (Literal.show l) c)
          ""
 
   let to_iter {m; _} = to_seq m |> Iter.of_seq
