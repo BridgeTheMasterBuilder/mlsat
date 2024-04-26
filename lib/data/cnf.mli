@@ -6,6 +6,8 @@ val assignments : t -> Literal.t list
 
 val backtrack : t -> Clause.t -> (t * int, Clause.t * t) result
 
+val decay_literal_activity : t -> t
+
 val decision_level : t -> int
 
 val is_empty : t -> (t, t) Either.t

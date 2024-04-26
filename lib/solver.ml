@@ -20,6 +20,9 @@ let rec cdcl max_learned_clauses max_conflicts luby f =
             handle conflict (num_learned_clauses' + 1)
     in
     (* Logs.debug (fun m -> m "%s" (show f)); *)
+    let f =
+      if num_conflicts mod 1000 = 0 then decay_literal_activity f else f
+    in
     if num_conflicts >= max_conflicts then
       let f = restart f in
       let max_conflicts', luby' = Luby.next luby in

@@ -215,16 +215,12 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  let _, ({frequency; _} as f) =
+  let _, f =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
-  let frequency' = Frequency.Map.decay frequency in
   let f =
-    { f with
-      watched_literals
-    ; database= Database.add_clause learned_clause db
-    ; frequency= frequency' }
+    {f with watched_literals; database= Database.add_clause learned_clause db}
   in
   let f' =
     Clause.Set.fold (fun f' clause -> add_clause clause f') f unwatched
@@ -341,3 +337,6 @@ let check ({database= db; trail; _} as f) =
             (fun (ass1, _) (ass2, _) -> Assignment.compare ass1 ass2)
             trail ) ) ;
   assert trail_equal
+
+let decay_literal_activity ({frequency; _} as f) =
+  {f with frequency= Frequency.Map.decay frequency}
