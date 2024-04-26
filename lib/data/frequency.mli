@@ -7,7 +7,7 @@ module Map : sig
 
   val decay : t -> t
 
-  val decr_iter : k Iter.iter -> t -> t
+  (* val decr_iter : k Iter.iter -> t -> t *)
 
   val empty : unit -> t
 
