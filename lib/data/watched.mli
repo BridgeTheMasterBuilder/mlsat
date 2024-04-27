@@ -56,7 +56,9 @@ module Clause : sig
 
   val unwatch : watched_clause -> Literal.Map.t -> Literal.Map.t
 
-  val update : L.t -> Assignment.Map.t -> t -> Literal.Map.t -> update_result
+  val update :
+    L.t -> Assignment.Map.Cached.t -> t -> Literal.Map.t -> update_result
 
-  val watch : Assignment.Map.t -> Clause.t -> Literal.Map.t -> update_result
+  val watch :
+    Assignment.Map.Cached.t -> Clause.t -> Literal.Map.t -> update_result
 end

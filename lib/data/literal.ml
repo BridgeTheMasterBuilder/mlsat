@@ -7,6 +7,8 @@ end
 
 include Int
 
+let invalid = 0
+
 let compare = ( - )
 
 let hash = Fun.id
@@ -20,5 +22,7 @@ let show = string_of_int
 let signum = sign
 
 let same_polarity l1 l2 = signum l1 = signum l2
+
+let to_int = Fun.id
 
 let var = Variable.of_int_unchecked

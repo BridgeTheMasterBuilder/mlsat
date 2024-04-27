@@ -8,6 +8,8 @@ module List : sig
   val of_int_list : int list -> t list
 end
 
+val invalid : t
+
 val compare : t -> t -> int
 
 val equal : t -> t -> bool
@@ -25,5 +27,7 @@ val same_polarity : t -> t -> bool
 val show : t -> string
 
 val signum : t -> int
+
+val to_int : t -> int
 
 val var : t -> Variable.t

@@ -95,12 +95,12 @@ module Clause = struct
     Literal.Map.remove w1 watched_clause watched_literals
     |> Literal.Map.remove w2 watched_clause
 
-  let update l a
+  let update l c
       ({clause; size; index; watched_literals= w1, w2; _} as watched_clause)
       watched_literals =
     let other_watched_literal = if L.equal l w1 then w2 else w1 in
     let other_watched_literal_truth_value =
-      Assignment.Map.value other_watched_literal a
+      Assignment.Map.Cached.value other_watched_literal c
     in
     if Tribool.is_true other_watched_literal_truth_value then NoChange
     else
@@ -109,10 +109,10 @@ module Clause = struct
         0 -- (size - 1)
         |> find_map (fun i ->
                let index' = (index + i) mod size in
-               let c = Clause.to_array clause in
-               let l' = Array.unsafe_get c index' in
+               let clause = Clause.to_array clause in
+               let l' = Array.unsafe_get clause index' in
                if
-                 Tribool.is_false (Assignment.Map.value l' a)
+                 Tribool.is_false (Assignment.Map.Cached.value l' c)
                  || L.equal l' other_watched_literal
                then None
                else Some (index', l') )
@@ -132,11 +132,11 @@ module Clause = struct
           in
           WatchedLiteralChange (watched_clause, watched_literals')
 
-  let watch a clause watched_literals =
+  let watch c clause watched_literals =
     let size = Clause.size clause in
     (* TODO is this better? *)
     Clause.to_iter clause
-    |> Iter.map (fun l -> (l, Assignment.Map.value l a))
+    |> Iter.map (fun l -> (l, Assignment.Map.Cached.value l c))
     |> Iter.filter (fun (_, v) -> Tribool.is_nonfalse v)
     |> Iter.take 2 |> Iter.to_list
     |> function

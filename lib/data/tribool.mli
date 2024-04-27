@@ -1,5 +1,7 @@
 type t
 
+val unknown : t
+
 val is_false : t -> bool
 
 val is_known : t -> bool
@@ -16,6 +18,6 @@ val of_bool : bool -> t
 
 val of_bool_opt : bool option -> t
 
-val to_bool_opt : t -> bool option
+val of_int : int -> t
 
-val unknown : t
+val to_bool_opt : t -> bool option

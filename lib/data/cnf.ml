@@ -6,6 +6,7 @@ type t =
   ; frequency: Frequency.Map.t
   ; current_decision_level: int
   ; assignments: Assignment.Map.t
+  ; cached_assignments: Assignment.Map.Cached.t
   ; trail: (Assignment.t * t) list
   ; database: Database.t
   ; watched_literals: Watched.Literal.Map.t
@@ -65,15 +66,17 @@ let show
 
 let decision_level {current_decision_level= d; _} = d
 
-let rec make_assignment l ass ({assignments= a; trail= t; _} as f) d ucs =
+let rec make_assignment l ass
+    ({assignments= a; trail= t; cached_assignments= c; _} as f) d ucs =
   let update_watched_literals l
-      ({assignments= a; watched_literals; unwatched; _} as f) ucs' =
-    let update_watcher l c watched_literals' unwatched ucs'' =
-      match Watched.Clause.update l a c watched_literals' with
+      ( {assignments= a; watched_literals; unwatched; cached_assignments= c; _}
+        as f ) ucs' =
+    let update_watcher l wc watched_literals' unwatched ucs'' =
+      match Watched.Clause.update l c wc watched_literals' with
       | WatchedLiteralChange (_, watched_literals') ->
           ( watched_literals'
           , (* TODO It might already not be watched, need a way to figure out when this is necessary, or maybe it doesn't matter? *)
-            Clause.Set.remove (Watched.Clause.to_clause c) unwatched
+            Clause.Set.remove (Watched.Clause.to_clause wc) unwatched
           , ucs'' )
       | Unit (l, clause) ->
           ( watched_literals'
@@ -101,8 +104,15 @@ let rec make_assignment l ass ({assignments= a; trail= t; _} as f) d ucs =
         (unit_propagate [@tailcall]) f ucs'
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
+  let c' = Assignment.Map.Cached.add (Literal.var l) ass c in
   let t' = (ass, f) :: t in
-  let f' = {f with assignments= a'; trail= t'; current_decision_level= d} in
+  let f' =
+    { f with
+      assignments= a'
+    ; trail= t'
+    ; current_decision_level= d
+    ; cached_assignments= c' }
+  in
   update_watched_literals (Literal.neg l) f' ucs
 
 and unit_propagate ({current_decision_level= d; _} as f) ucs =
@@ -117,16 +127,21 @@ and unit_propagate ({current_decision_level= d; _} as f) ucs =
       make_assignment l i f d ucs'
 
 let add_clause clause
-    ({frequency; assignments= a; watched_literals; unwatched; clauses; _} as f)
-    =
+    ( { frequency (* ; assignments= a *)
+      ; watched_literals
+      ; unwatched
+      ; clauses
+      ; cached_assignments= c
+      ; _ } as f ) =
   let frequency' =
     let open Iter in
     Frequency.Map.incr_iter
       ( Clause.to_iter clause
-      |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)) )
+      (* |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)) ) *)
+      |> filter (fun l -> not (Assignment.Map.Cached.mem (Literal.var l) c)) )
       frequency
   in
-  match Watched.Clause.watch a clause watched_literals with
+  match Watched.Clause.watch c clause watched_literals with
   | WatchedLiteralChange (watched_clause, watched_literals') ->
       { f with
         watched_literals= watched_literals'
@@ -181,6 +196,7 @@ let analyze_conflict
   (learned_clause, {f with database= db'})
 
 let assignments {assignments= a; _} = Assignment.Map.assignments a
+(* let assignments {cached_assignments= c; _} = Assignment.Map.Cached.assignments c *)
 
 let trace {database; _} = Database.get_trace database
 
@@ -207,8 +223,13 @@ let forget_clauses ({database= db; watched_literals; clauses; _} as f) =
 (*   {f with watched_literals= watched_literals'; clauses= clauses'} *)
 
 let backtrack
-    {assignments= a; trail= t; database= db; watched_literals; unwatched; _}
-    learned_clause =
+    { assignments= a
+    ; trail= t
+    ; database= db
+    ; watched_literals
+    ; unwatched
+    ; cached_assignments= c
+    ; _ } learned_clause =
   let d' =
     let open Iter in
     Clause.to_iter learned_clause
@@ -217,12 +238,15 @@ let backtrack
     |> sort ~cmp:(fun d1 d2 -> -compare d1 d2)
     |> drop 1 |> max |> Option.value ~default:0
   in
-  let _, f =
+  let _, ({assignments= a'; _} as f) =
     if d' = 0 then List.last_opt t |> Option.get_exn_or "TRAIL"
     else List.find (fun (ass, _) -> Assignment.was_decided_on_level d' ass) t
   in
   let f =
-    {f with watched_literals; database= Database.add_clause learned_clause db}
+    { f with
+      watched_literals
+    ; database= Database.add_clause learned_clause db
+    ; cached_assignments= Assignment.Map.Cached.refresh c a' }
   in
   let f' =
     Clause.Set.fold (fun f' clause -> add_clause clause f') f unwatched
@@ -234,8 +258,8 @@ let backtrack
 
 let choose_literal {frequency; _} = Frequency.Map.min_exn frequency
 
-let is_empty ({frequency; assignments= a; _} as f) =
-  let frequency' = Frequency.Map.flush_assigned a frequency in
+let is_empty ({frequency; assignments= a; cached_assignments= c; _} as f) =
+  let frequency' = Frequency.Map.flush_assigned c frequency in
   let f' = {f with frequency= frequency'} in
   let open Either in
   if Frequency.Map.is_empty frequency' then Right f' else Left f'
@@ -266,15 +290,22 @@ let of_list v c {decay_factor; _} list =
          ; frequency= Frequency.Map.make decay_factor
          ; current_decision_level= 0
          ; assignments= Assignment.Map.empty ()
+         ; cached_assignments= Assignment.Map.Cached.make v
          ; trail= []
          ; database= Database.create c
-         ; watched_literals= Watched.Literal.Map.make v
+         ; watched_literals= Watched.Literal.Map.make (v * 2)
          ; unwatched= Clause.Set.empty () }
          list )
   with Conflict _ -> None
 
 let restart
-    ({trail= t; watched_literals; database; unwatched; frequency; _} as f) =
+    ( { trail= t
+      ; watched_literals
+      ; database
+      ; unwatched
+      ; frequency
+      ; cached_assignments= c
+      ; _ } as f ) =
   if List.is_empty t then f
   else
     let ({frequency= frequency'; _} as f) =
@@ -285,7 +316,13 @@ let restart
               assignments." )
     in
     let frequency'' = Frequency.Map.merge frequency' frequency in
-    let f = {f with watched_literals; database; frequency= frequency''} in
+    let f =
+      { f with
+        watched_literals
+      ; database
+      ; frequency= frequency''
+      ; cached_assignments= Assignment.Map.Cached.clear c }
+    in
     Clause.Set.fold (fun f' clause -> add_clause clause f') f unwatched
 
 let eliminate_pure_literals ({frequency; _} as f) =
