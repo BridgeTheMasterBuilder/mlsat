@@ -16,13 +16,14 @@ module Map = struct
     match Float.classify increase' with
     | FP_infinite ->
         let m' =
-          fold
-            (fun l _ m' ->
-              update l
-                (function
-                  | Some count -> Some (count /. increase) | None -> None )
-                m' )
-            m m
+          (* fold *)
+          (*   (fun l _ m' -> *)
+          (*     update l *)
+          (*       (function *)
+          (*         | Some count -> Some (count /. increase) | None -> None ) *)
+          (*       m' ) *)
+          (*   m m *)
+          m
         in
         {m= m'; increase= 1.0; decay_factor}
     | _ ->
@@ -41,7 +42,7 @@ module Map = struct
     in
     aux m
 
-  let incr_iter iterator ({m; increase} as t) =
+  let incr_iter iterator ({m; increase; _} as t) =
     let open Iter in
     let m' =
       fold

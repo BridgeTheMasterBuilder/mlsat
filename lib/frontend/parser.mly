@@ -1,7 +1,3 @@
-%{
-    open Data
-%}
-
 %token CNF "cnf"
 %token END "0"
 %token EOF

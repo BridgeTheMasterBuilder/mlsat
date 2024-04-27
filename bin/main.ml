@@ -48,11 +48,23 @@ let parse_args () =
   in
   let max_learned =
     Arg.(
-      value & opt int 512
+      value & opt int 8192
       & info ["l"; "max-learned"] ~docv:"NUM"
           ~doc:
             "Maximum number of clause that can be learned before triggering \
              deletion" )
+  in
+  let decay_interval =
+    Arg.(
+      value & opt int 1000
+      & info ["i"; "decay-interval"] ~docv:"NUM"
+          ~doc:"Number of conflicts between decaying literal activity" )
+  in
+  let decay_factor =
+    Arg.(
+      value & opt float 0.99
+      & info ["f"; "decay-factor"] ~docv:"NUM"
+          ~doc:"Multiplication factor to use when decaying literal activity" )
   in
   let config =
     Term.(
@@ -64,6 +76,8 @@ let parse_args () =
           grow_factor
           emit_proof
           max_learned
+          decay_interval
+          decay_factor
         ->
           { time_limit
           ; verbose
@@ -71,11 +85,13 @@ let parse_args () =
             base_num_conflicts
           ; grow_factor
           ; emit_proof
-          ; max_learned } )
+          ; max_learned
+          ; decay_interval
+          ; decay_factor } )
       $ time_limit $ verbose
       (* $ no_validate *)
       $ base_num_conflicts
-      $ grow_factor $ emit_proof $ max_learned )
+      $ grow_factor $ emit_proof $ max_learned $ decay_interval $ decay_factor )
   in
   let info = Cmd.info "mlsat" in
   let cmd = Cmd.v info Term.(const Driver.run $ dimacs_file $ config) in
