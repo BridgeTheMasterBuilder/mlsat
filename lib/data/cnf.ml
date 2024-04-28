@@ -196,7 +196,6 @@ let analyze_conflict
   (learned_clause, {f with database= db'})
 
 let assignments {assignments= a; _} = Assignment.Map.assignments a
-(* let assignments {cached_assignments= c; _} = Assignment.Map.Cached.assignments c *)
 
 let trace {database; _} = Database.get_trace database
 

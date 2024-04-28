@@ -41,30 +41,65 @@ module Map = struct
 
     type key = Variable.t
 
-    type t = Literal.t array
+    type t = int array
 
     let add l ass m =
-      m.(Variable.to_int l) <- literal ass ;
+      let idx = Variable.to_int l lsl 2 in
+      let l' = literal ass in
+      m.(idx) <- Literal.to_int l' ;
+      m.(idx + 1) <- -Literal.signum l' ;
+      m.(idx + 2) <- 0 ;
+      m.(idx + 3) <- Literal.signum l' ;
+      (* Printf.printf "Inserting literal: %d -sgn: %d dummy: %d sgn: %d\n" m.(idx) *)
+      (*   m.(idx + 1) *)
+      (*   m.(idx + 2) *)
+      (*   m.(idx + 3) ; *)
       m
 
     let clear m =
-      Array.fill m 0 (length m) Literal.invalid ;
+      Array.fill m 0 (length m) 0 ;
       m
     (*TODO unsafe*)
 
-    let make n = make (n + 1) Literal.invalid
+    let make n = make (4 * (n + 1)) 0
 
-    let mem l m = not (Literal.equal m.(Variable.to_int l) Literal.invalid)
+    let mem l m =
+      let idx = Variable.to_int l lsl 2 in
+      m.(idx) <> 0
 
     let refresh m a =
       clear m |> ignore ;
-      M.iter a (fun l ass -> m.(Variable.to_int l) <- literal ass) ;
+      M.iter a (fun l ass ->
+          let idx = Variable.to_int l lsl 2 in
+          let l' = literal ass in
+          m.(idx) <- Literal.to_int l' ;
+          m.(idx + 1) <- -Literal.signum l' ;
+          m.(idx + 2) <- 0 ;
+          m.(idx + 3) <- Literal.signum l'
+          (* Printf.printf *)
+          (*   "Inserting literal upon refresh: %d -sgn: %d dummy: %d sgn: %d\n" *)
+          (*   m.(idx) *)
+          (*   m.(idx + 1) *)
+          (*   m.(idx + 2) *)
+          (*   m.(idx + 3) *) ) ;
       m
 
     let value l m =
-      let l' = m.(Literal.var l |> Variable.to_int) |> Literal.to_int in
-      let l = Literal.to_int l in
-      Tribool.of_int (l * l')
+      (* let l' = m.(Literal.var l |> Variable.to_int) |> Literal.signum in *)
+      (* let l = Literal.signum l in *)
+      (* let l' = m.(Literal.var l |> Variable.to_int) |> Literal.to_int in *)
+      (* let l = Literal.to_int l in *)
+      let idx = (Literal.var l |> Variable.to_int) lsl 2 in
+      let l' = m.(idx + Literal.signum l + 2) in
+      (* Printf.printf "Literal: %d -sgn: %d dummy: %d sgn: %d\n" m.(idx) *)
+      (*   m.(idx + 1) *)
+      (*   m.(idx + 2) *)
+      (*   m.(idx + 3) ; *)
+      (* let l = Literal.signum l in *)
+      (* Tribool.of_int (l * l') *)
+      (* Tribool.of_int (if l = 1 then l' else -l') *)
+      (* let table = [|-l'; 0; l'|] in *)
+      Tribool.of_int l'
   end
 end
 

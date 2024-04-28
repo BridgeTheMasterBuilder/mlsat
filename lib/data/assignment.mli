@@ -11,6 +11,8 @@ module Map : sig
 
   val add : key -> assignment -> t -> t
 
+  val assignments : t -> Literal.t list
+
   val empty : unit -> t
 
   val find : key -> t -> assignment
@@ -31,8 +33,6 @@ module Map : sig
     type t
 
     val add : key -> assignment -> t -> t
-
-    val assignments : t -> Literal.t list
 
     val clear : t -> t
 
