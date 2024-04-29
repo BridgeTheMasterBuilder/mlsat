@@ -84,7 +84,7 @@ module Clause = struct
 
   type update_result =
     | WatchedLiteralChange of watched_clause * Literal.Map.t
-    | Unit of (L.t * Clause.t)
+    | Unit of L.t * Clause.t
     | Falsified of Clause.t
     | NoChange
 
@@ -106,9 +106,23 @@ module Clause = struct
     else
       let result =
         let open Iter in
+        (*   Clause.to_iter clause |> cycle *)
+        (*   (\* |> drop (index - 1) *\) *)
+        (*   |> take size *)
+        (*   |> find_mapi (fun i l' -> *)
+        (*          if *)
+        (*            Tribool.is_false (Assignment.Map.Cached.value l' c) *)
+        (*            || L.equal l' other_watched_literal *)
+        (*          then None *)
+        (*          else Some (index + i, l') ) *)
+        (* in *)
         0 -- (size - 1)
         |> find_map (fun i ->
-               let index' = (index + i) mod size in
+               (* let index' = (index + i) mod size in *)
+               let index' =
+                 let index' = index + i in
+                 if index' >= size then index' - size else index'
+               in
                let clause = Clause.to_array clause in
                let l' = Array.unsafe_get clause index' in
                if

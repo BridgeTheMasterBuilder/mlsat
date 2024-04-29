@@ -48,7 +48,7 @@ module Clause : sig
 
   type update_result =
     | WatchedLiteralChange of watched_clause * Literal.Map.t
-    | Unit of (L.t * Clause.t)
+    | Unit of L.t * Clause.t
     | Falsified of Clause.t
     | NoChange
 

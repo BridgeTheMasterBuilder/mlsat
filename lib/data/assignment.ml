@@ -44,27 +44,46 @@ module Map = struct
     type t = Literal.t array
 
     let add l ass m =
-      m.(Variable.to_int l) <- literal ass ;
+      unsafe_set m (Variable.to_int l) (literal ass) ;
       m
 
     let clear m =
-      Array.fill m 0 (length m) Literal.invalid ;
+      fill m 0 (length m) Literal.invalid ;
       m
     (*TODO unsafe*)
 
     let make n = make (n + 1) Literal.invalid
 
-    let mem l m = not (Literal.equal m.(Variable.to_int l) Literal.invalid)
+    let mem l m =
+      not (Literal.equal (unsafe_get m (Variable.to_int l)) Literal.invalid)
 
     let refresh m a =
       clear m |> ignore ;
-      M.iter a (fun l ass -> m.(Variable.to_int l) <- literal ass) ;
+      M.iter a (fun l ass -> unsafe_set m (Variable.to_int l) (literal ass)) ;
       m
 
     let value l m =
-      let l' = m.(Literal.var l |> Variable.to_int) |> Literal.to_int in
+      let l' =
+        unsafe_get m (Literal.var l |> Variable.to_int) |> Literal.to_int
+      in
       let l = Literal.to_int l in
-      Tribool.of_int (l * l')
+      (Asm.Assignment.value [@inlined]) l l' |> ignore ;
+      (* Tribool.of_int (l * l') *)
+      let v = if l < 0 then -l' else l' in
+      (* let lsign = l lsr 62 in *)
+      (* (\* let l'zero = Bool.to_int (l' = 0) in *\) *)
+      (* (\* let l'zero = Bool.to_int (l' = 0) in *\) *)
+      (* let l'zero = Bool.to_int (l' = 0) in *)
+      (* let mask = 1 lsl (61 + l'zero + (l'zero lor lsign)) in *)
+      (* let v = l' lxor mask in *)
+      (*   (\* if l <> 0 && l' = 0 then 0 (\\* l' *\\) *\) *)
+      (*   (\* else if l <= 0 && l' < 0 then 1 (\\* -l' *\\) *\) *)
+      (*   (\* else if (l <= 0 && l' > 0) (\\* -l' *\\) || (l > 0 && l' < 0) (\\* l' *\\) then -1 *\) *)
+      (*   (\* else if l > 0 && l' > 0 then 1 (\\* l' *\\) *\) *)
+      (*   (\* else 2 (\\* l' *\\) *\) *)
+      (* in *)
+      (* let v = l * l' in *)
+      Tribool.of_int v
   end
 end
 
