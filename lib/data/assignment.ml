@@ -67,8 +67,9 @@ module Map = struct
         unsafe_get m (Literal.var l |> Variable.to_int) |> Literal.to_int
       in
       let l = Literal.to_int l in
-      (Asm.Assignment.value [@inlined]) l l' |> ignore ;
+      (* (Asm.Assignment.value [@inlined]) l l' |> ignore ; *)
       (* Tribool.of_int (l * l') *)
+      (* let v = if l < 0 then -l' else l' in *)
       let v = if l < 0 then -l' else l' in
       (* let lsign = l lsr 62 in *)
       (* (\* let l'zero = Bool.to_int (l' = 0) in *\) *)

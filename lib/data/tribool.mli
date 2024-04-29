@@ -20,4 +20,4 @@ val of_bool_opt : bool option -> t
 
 val of_int : int -> t
 
-val to_bool_opt : t -> bool option
+(* val to_bool_opt : t -> bool option *)

@@ -39,12 +39,12 @@ let of_bool_opt = function Some true -> 1 | Some false -> -1 | None -> 0
 
 let of_int = Fun.id
 
-let to_bool_opt = function
-  | 1 ->
-      Some true
-  | -1 ->
-      Some false
-  | 0 ->
-      None
-  | _ ->
-      failwith "Impossible"
+(* let to_bool_opt = function *)
+(*   | 1 -> *)
+(*       Some true *)
+(*   | -1 -> *)
+(*       Some false *)
+(*   | 0 -> *)
+(*       None *)
+(*   | _ -> *)
+(*       failwith "Impossible" *)
