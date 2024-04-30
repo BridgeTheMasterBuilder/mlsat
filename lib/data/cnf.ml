@@ -127,17 +127,12 @@ and unit_propagate ({current_decision_level= d; _} as f) ucs =
       make_assignment l i f d ucs'
 
 let add_clause clause
-    ( { frequency (* ; assignments= a *)
-      ; watched_literals
-      ; unwatched
-      ; clauses
-      ; cached_assignments= c
-      ; _ } as f ) =
+    ( {frequency; watched_literals; unwatched; clauses; cached_assignments= c; _}
+      as f ) =
   let frequency' =
     let open Iter in
     Frequency.Map.incr_iter
       ( Clause.to_iter clause
-      (* |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)) ) *)
       |> filter (fun l -> not (Assignment.Map.Cached.mem (Literal.var l) c)) )
       frequency
   in
@@ -204,22 +199,6 @@ let forget_clauses ({database= db; watched_literals; clauses; _} as f) =
     Database.delete_half db watched_literals clauses
   in
   {f with database= db'; watched_literals= watched_literals'; clauses= clauses'}
-
-(* let remove_clause watched_clause ({watched_literals; clauses; _} as f) = *)
-(*   (\* let open Iter in *\) *)
-(*   (\* let frequency' = *\) *)
-(*   (\*   Frequency.Map.decr_iter *\) *)
-(*   (\*     ( Clause.to_iter clause *\) *)
-(*   (\*     |> filter (fun l -> not (Assignment.Map.mem (Literal.var l) a)) ) *\) *)
-(*   (\*     frequency *\) *)
-(*   (\* in *\) *)
-(*   let watched_literals' = *)
-(*     Watched.Clause.unwatch watched_clause watched_literals *)
-(*   in *)
-(*   let clause = Watched.Clause.to_clause watched_clause in *)
-(*   let clauses' = Watched.Clause.Map.remove clause clauses in *)
-(*   (\* {f with frequency= frequency'; watched_literals= watched_literals'} *\) *)
-(*   {f with watched_literals= watched_literals'; clauses= clauses'} *)
 
 let backtrack
     { assignments= a

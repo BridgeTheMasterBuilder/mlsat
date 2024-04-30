@@ -50,7 +50,6 @@ module Map = struct
     let clear m =
       fill m 0 (length m) Literal.invalid ;
       m
-    (*TODO unsafe*)
 
     let make n = make (n + 1) Literal.invalid
 
@@ -65,14 +64,6 @@ module Map = struct
     let[@inline] value l m =
       Asm.Assignment.value (Literal.to_int l) (Literal.Array.to_int_array m)
       |> Tribool.of_int
-
-    (* let value l m = *)
-    (*   let l' = *)
-    (*     unsafe_get m (Literal.var l |> Variable.to_int) |> Literal.to_int *)
-    (*   in *)
-    (*   let l = Literal.to_int l in *)
-    (*   let v = if l < 0 then -l' else l' in *)
-    (*   Tribool.of_int v *)
   end
 end
 

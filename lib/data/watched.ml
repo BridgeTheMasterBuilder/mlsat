@@ -45,7 +45,7 @@ module Literal = struct
 
     let remove l n m =
       update m ~k:l ~f:(fun _ -> function
-        | Some s -> Some (ClauseSet.remove n s) (* TODO *) | None -> None ) ;
+        | Some s -> Some (ClauseSet.remove n s) | None -> None ) ;
       m
 
     let show m =
@@ -133,7 +133,6 @@ module Clause = struct
 
   let watch c clause watched_literals =
     let size = Clause.size clause in
-    (* TODO is this better? *)
     Clause.to_iter clause
     |> Iter.map (fun l -> (l, Assignment.Map.Cached.value l c))
     |> Iter.filter (fun (_, v) -> Tribool.is_nonfalse v)

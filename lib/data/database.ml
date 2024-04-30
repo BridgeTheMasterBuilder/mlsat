@@ -50,7 +50,6 @@ let new_id ({id; _} as db) =
   let id' = id + 1 in
   (id, {db with id= id'})
 
-(* TODO Need to check if these clauses are the reason for unit propagation *)
 let delete_half ({database; trace; _} as db) watched_literals clauses =
   Logs.debug (fun m -> m "Simplifying formula") ;
   let half_length = Vector.length database / 2 in

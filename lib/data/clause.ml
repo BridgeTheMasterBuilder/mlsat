@@ -4,7 +4,7 @@ type t = int * Literal.t array
 
 type clause = t
 
-let _lbd (_, _c) _a = 0
+(* let _lbd (_, _c) _a = 0 *)
 
 let equal (id1, _) (id2, _) = id1 = id2
 

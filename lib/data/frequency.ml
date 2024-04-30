@@ -11,23 +11,13 @@ module Map = struct
 
   type v = float
 
-  let decay {m; increase; decay_factor} =
+  let decay ({m; increase; decay_factor} as t) =
     let increase' = increase *. (1.0 /. decay_factor) in
     match Float.classify increase' with
     | FP_infinite ->
-        let m' =
-          (* fold *)
-          (*   (fun l _ m' -> *)
-          (*     update l *)
-          (*       (function *)
-          (*         | Some count -> Some (count /. increase) | None -> None ) *)
-          (*       m' ) *)
-          (*   m m *)
-          m
-        in
-        {m= m'; increase= 1.0; decay_factor}
+        {t with increase= 1.0}
     | _ ->
-        {m; increase= increase'; decay_factor}
+        {t with increase= increase'}
 
   let pop_exn m = pop m |> Option.get_exn_or "POP"
 
