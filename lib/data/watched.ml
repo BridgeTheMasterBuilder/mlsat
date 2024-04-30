@@ -104,47 +104,32 @@ module Clause = struct
     in
     if Tribool.is_true other_watched_literal_truth_value then NoChange
     else
-      let result =
-        let open Iter in
-        (*   Clause.to_iter clause |> cycle *)
-        (*   (\* |> drop (index - 1) *\) *)
-        (*   |> take size *)
-        (*   |> find_mapi (fun i l' -> *)
-        (*          if *)
-        (*            Tribool.is_false (Assignment.Map.Cached.value l' c) *)
-        (*            || L.equal l' other_watched_literal *)
-        (*          then None *)
-        (*          else Some (index + i, l') ) *)
-        (* in *)
-        0 -- (size - 1)
-        |> find_map (fun i ->
-               (* let index' = (index + i) mod size in *)
-               let index' =
-                 let index' = index + i in
-                 if index' >= size then index' - size else index'
-               in
-               let clause = Clause.to_array clause in
-               let l' = Array.unsafe_get clause index' in
-               if
-                 Tribool.is_false (Assignment.Map.Cached.value l' c)
-                 || L.equal l' other_watched_literal
-               then None
-               else Some (index', l') )
-      in
-      match result with
-      | None ->
-          if Tribool.is_false other_watched_literal_truth_value then
-            Falsified clause
-          else Unit (other_watched_literal, clause)
-      | Some (index', new_watched_literal) ->
-          watched_clause.index <- index' ;
-          watched_clause.watched_literals <-
-            (other_watched_literal, new_watched_literal) ;
-          let watched_literals' =
-            Literal.Map.remove l watched_clause watched_literals
-            |> Literal.Map.add new_watched_literal watched_clause
+      let exception Found of int * L.t in
+      try
+        for i = 0 to size - 1 do
+          let index' =
+            let index' = index + i in
+            if index' >= size then index' - size else index'
           in
-          WatchedLiteralChange (watched_clause, watched_literals')
+          let clause = Clause.to_array clause in
+          let l' = Array.unsafe_get clause index' in
+          if
+            Tribool.is_nonfalse (Assignment.Map.Cached.value l' c)
+            && not (L.equal l' other_watched_literal)
+          then raise_notrace (Found (index', l'))
+        done ;
+        if Tribool.is_false other_watched_literal_truth_value then
+          Falsified clause
+        else Unit (other_watched_literal, clause)
+      with Found (index', new_watched_literal) ->
+        watched_clause.index <- index' ;
+        watched_clause.watched_literals <-
+          (other_watched_literal, new_watched_literal) ;
+        let watched_literals' =
+          Literal.Map.remove l watched_clause watched_literals
+          |> Literal.Map.add new_watched_literal watched_clause
+        in
+        WatchedLiteralChange (watched_clause, watched_literals')
 
   let watch c clause watched_literals =
     let size = Clause.size clause in

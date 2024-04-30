@@ -62,8 +62,7 @@ module Map = struct
       M.iter a (fun l ass -> unsafe_set m (Variable.to_int l) (literal ass)) ;
       m
 
-    (* let[@inline] value l m = *)
-    let[@inline never] value l m =
+    let[@inline] value l m =
       Asm.Assignment.value (Literal.to_int l) (Literal.Array.to_int_array m)
       |> Tribool.of_int
 
