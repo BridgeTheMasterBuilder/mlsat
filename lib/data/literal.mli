@@ -8,6 +8,10 @@ module List : sig
   val of_int_list : int list -> t list
 end
 
+module Array : sig
+  val to_int_array : t array -> int array
+end
+
 val invalid : t
 
 val compare : t -> t -> int

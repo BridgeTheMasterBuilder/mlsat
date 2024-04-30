@@ -62,29 +62,18 @@ module Map = struct
       M.iter a (fun l ass -> unsafe_set m (Variable.to_int l) (literal ass)) ;
       m
 
-    let value l m =
-      let l' =
-        unsafe_get m (Literal.var l |> Variable.to_int) |> Literal.to_int
-      in
-      let l = Literal.to_int l in
-      (* (Asm.Assignment.value [@inlined]) l l' |> ignore ; *)
-      (* Tribool.of_int (l * l') *)
-      (* let v = if l < 0 then -l' else l' in *)
-      let v = if l < 0 then -l' else l' in
-      (* let lsign = l lsr 62 in *)
-      (* (\* let l'zero = Bool.to_int (l' = 0) in *\) *)
-      (* (\* let l'zero = Bool.to_int (l' = 0) in *\) *)
-      (* let l'zero = Bool.to_int (l' = 0) in *)
-      (* let mask = 1 lsl (61 + l'zero + (l'zero lor lsign)) in *)
-      (* let v = l' lxor mask in *)
-      (*   (\* if l <> 0 && l' = 0 then 0 (\\* l' *\\) *\) *)
-      (*   (\* else if l <= 0 && l' < 0 then 1 (\\* -l' *\\) *\) *)
-      (*   (\* else if (l <= 0 && l' > 0) (\\* -l' *\\) || (l > 0 && l' < 0) (\\* l' *\\) then -1 *\) *)
-      (*   (\* else if l > 0 && l' > 0 then 1 (\\* l' *\\) *\) *)
-      (*   (\* else 2 (\\* l' *\\) *\) *)
-      (* in *)
-      (* let v = l * l' in *)
-      Tribool.of_int v
+    (* let[@inline] value l m = *)
+    let[@inline never] value l m =
+      Asm.Assignment.value (Literal.to_int l) (Literal.Array.to_int_array m)
+      |> Tribool.of_int
+
+    (* let value l m = *)
+    (*   let l' = *)
+    (*     unsafe_get m (Literal.var l |> Variable.to_int) |> Literal.to_int *)
+    (*   in *)
+    (*   let l = Literal.to_int l in *)
+    (*   let v = if l < 0 then -l' else l' in *)
+    (*   Tribool.of_int v *)
   end
 end
 

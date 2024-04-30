@@ -71,7 +71,7 @@ let rec make_assignment l ass
   let update_watched_literals l
       ( {assignments= a; watched_literals; unwatched; cached_assignments= c; _}
         as f ) ucs' =
-    let update_watcher l wc watched_literals' unwatched ucs'' =
+    let[@inline] update_watcher l wc watched_literals' unwatched ucs'' =
       match Watched.Clause.update l c wc watched_literals' with
       | WatchedLiteralChange (_, watched_literals') ->
           ( watched_literals'
@@ -99,9 +99,9 @@ let rec make_assignment l ass
         let f' =
           {f with watched_literals= watched_literals'; unwatched= unwatched'}
         in
-        (unit_propagate [@tailcall]) f' ucs''
+        unit_propagate f' ucs''
     | None ->
-        (unit_propagate [@tailcall]) f ucs'
+        unit_propagate f ucs'
   in
   let a' = Assignment.Map.add (Literal.var l) ass a in
   let c' = Assignment.Map.Cached.add (Literal.var l) ass c in
