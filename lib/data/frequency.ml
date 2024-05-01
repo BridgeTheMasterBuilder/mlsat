@@ -11,7 +11,7 @@ module Map = struct
 
   type v = float
 
-  let decay ({m; increase; decay_factor} as t) =
+  let decay ({increase; decay_factor; _} as t) =
     let increase' = increase *. (1.0 /. decay_factor) in
     match Float.classify increase' with
     | FP_infinite ->

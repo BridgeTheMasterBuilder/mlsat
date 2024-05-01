@@ -69,8 +69,7 @@ let decision_level {current_decision_level= d; _} = d
 let rec make_assignment l ass
     ({assignments= a; trail= t; cached_assignments= c; _} as f) d ucs =
   let update_watched_literals l
-      ( {assignments= a; watched_literals; unwatched; cached_assignments= c; _}
-        as f ) ucs' =
+      ({watched_literals; unwatched; cached_assignments= c; _} as f) ucs' =
     let[@inline] update_watcher l wc watched_literals' unwatched ucs'' =
       match Watched.Clause.update l c wc watched_literals' with
       | WatchedLiteralChange (_, watched_literals') ->
@@ -236,7 +235,7 @@ let backtrack
 
 let choose_literal {frequency; _} = Frequency.Map.min_exn frequency
 
-let is_empty ({frequency; assignments= a; cached_assignments= c; _} as f) =
+let is_empty ({frequency; cached_assignments= c; _} as f) =
   let frequency' = Frequency.Map.flush_assigned c frequency in
   let f' = {f with frequency= frequency'} in
   let open Either in
