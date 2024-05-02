@@ -119,10 +119,7 @@ and unit_propagate ({current_decision_level= d; _} as f) ucs =
   | None ->
       f
   | Some ((l, uc), ucs') ->
-      let i =
-        Assignment.Implication
-          {literal= l; implicant= Clause.to_array uc; level= d}
-      in
+      let i = Assignment.Implication {literal= l; implicant= uc; level= d} in
       make_assignment l i f d ucs'
 
 let add_clause clause
@@ -172,7 +169,7 @@ let analyze_conflict
               else
                 let q'' =
                   VariableWorkqueue.push_iter
-                    (Array.to_iter ls' |> map Literal.var)
+                    (Clause.to_iter ls' |> map Literal.var)
                     q'
                 in
                 aux q'' c )
@@ -311,7 +308,7 @@ let eliminate_pure_literals ({frequency; _} as f) =
          else
            let i =
              Assignment.Implication
-               {literal= l; implicant= Array.empty; level= 0}
+               {literal= l; implicant= Clause.empty; level= 0}
            in
            let frequency'' = Frequency.Map.remove_literal l frequency in
            let f' = {f' with frequency= frequency''} in

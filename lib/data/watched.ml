@@ -111,8 +111,7 @@ module Clause = struct
             let index' = index + i in
             if index' >= size then index' - size else index'
           in
-          let clause = Clause.to_array clause in
-          let l' = Array.unsafe_get clause index' in
+          let l' = Clause.unsafe_get clause index' in
           if
             Tribool.is_nonfalse (Assignment.Map.Cached.value l' c)
             && not (L.equal l' other_watched_literal)

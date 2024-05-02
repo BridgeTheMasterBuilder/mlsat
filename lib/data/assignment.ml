@@ -1,6 +1,6 @@
 type t =
   | Decision of {literal: Literal.t; level: int}
-  | Implication of {literal: Literal.t; level: int; implicant: Literal.t array}
+  | Implication of {literal: Literal.t; level: int; implicant: Clause.t}
 
 type assignment = t
 
@@ -80,11 +80,6 @@ let compare ass1 ass2 =
       -Int.compare d1 d2
 
 let level = function Decision {level; _} | Implication {level; _} -> level
-
-module Clause = struct
-  let show c =
-    Array.fold (fun s l -> Printf.sprintf "%s%s " s (Literal.show l)) "" c
-end
 
 let show = function
   | Decision {literal; level} ->

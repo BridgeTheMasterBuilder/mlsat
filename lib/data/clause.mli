@@ -2,6 +2,8 @@ type t
 
 type clause = t
 
+val empty : t
+
 val equal : t -> t -> bool
 
 val hash : t -> int
@@ -17,6 +19,8 @@ val size : t -> int
 val to_array : t -> Literal.t array
 
 val to_iter : t -> Literal.t Iter.iter
+
+val unsafe_get : t -> int -> Literal.t
 
 module Set : sig
   type elt = clause
