@@ -1,0 +1,8 @@
+(library
+ (name data)
+ (libraries containers containers-data iter psq logs logs.fmt asm)
+ ; (preprocess
+ ;  (pps ppx_deriving.show))
+ ; (instrumentation
+ ;  (backend bisect_ppx))
+ (flags :standard -open Containers))

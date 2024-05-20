@@ -1,0 +1,17 @@
+(library
+ (name asm)
+ (foreign_archives asm)
+ ; (foreign_stubs (language cxx) (names assignment))
+)
+
+(data_only_dirs asm)
+
+(rule
+ (deps (source_tree asm))
+ (targets libasm.a dllasm.so)
+ (action
+ (no-infer
+  (progn
+   (chdir asm (run make -s))
+   (copy asm/asm.a libasm.a)
+   (copy asm/asm.so dllasm.so)))))
