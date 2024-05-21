@@ -1,4 +1,4 @@
-type t [@@immediate]
+type t
 
 module Map : Map.S with type key = t
 

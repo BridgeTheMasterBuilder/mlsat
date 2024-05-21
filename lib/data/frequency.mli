@@ -9,7 +9,7 @@ module Map : sig
 
   (* val decr_iter : k Iter.iter -> t -> t *)
 
-  val flush_assigned : Assignment.Map.Cached.t -> t -> t
+  val flush_assigned : Assignment.Map.t -> t -> t
 
   val incr_iter : k Iter.iter -> t -> t
 

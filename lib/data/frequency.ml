@@ -21,12 +21,11 @@ module Map = struct
 
   let pop_exn m = pop m |> Option.get_exn_or "POP"
 
-  let flush_assigned c ({m; _} as t) =
+  let flush_assigned a ({m; _} as t) =
     let rec aux m' =
       match min m' with
       | Some (l, _) ->
-          if Assignment.Map.Cached.mem (Literal.var l) c then
-            aux (pop_exn m' |> snd)
+          if Assignment.Map.mem (Literal.var l) a then aux (pop_exn m' |> snd)
           else {t with m= m'}
       | None ->
           {t with m= m'}

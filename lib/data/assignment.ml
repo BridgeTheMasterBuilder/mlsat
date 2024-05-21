@@ -33,38 +33,6 @@ module Map = struct
       let l' = find (Literal.var l) a |> literal in
       Tribool.of_bool (Literal.same_polarity l l')
     with Not_found -> Tribool.unknown
-
-  module Cached = struct
-    type uncached = t
-
-    include Array
-
-    type key = Variable.t
-
-    type t = Literal.t array
-
-    let add l ass m =
-      unsafe_set m (Variable.to_int l) (literal ass) ;
-      m
-
-    let clear m =
-      fill m 0 (length m) Literal.invalid ;
-      m
-
-    let make n = make (n + 1) Literal.invalid
-
-    let mem l m =
-      not (Literal.equal (unsafe_get m (Variable.to_int l)) Literal.invalid)
-
-    let refresh m a =
-      clear m |> ignore ;
-      M.iter a (fun l ass -> unsafe_set m (Variable.to_int l) (literal ass)) ;
-      m
-
-    let[@inline] value l m =
-      Asm.Assignment.value (Literal.to_int l) (Literal.Array.to_int_array m)
-      |> Tribool.of_int
-  end
 end
 
 let compare ass1 ass2 =

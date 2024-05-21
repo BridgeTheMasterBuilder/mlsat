@@ -4,6 +4,8 @@ type t = int * Literal.t array
 
 type clause = t
 
+let compare (id1, _) (id2, _) = Int.compare id1 id2
+
 let empty = (0, empty)
 
 let equal (id1, _) (id2, _) = id1 = id2
@@ -25,23 +27,16 @@ let to_array (_, c) = c
 
 let to_iter (_, c) = to_iter c
 
-let unsafe_get (_, c) idx = unsafe_get c idx
-
 module Set = struct
-  include CCHashSet.Make (struct
+  include Iter.Set.Make (struct
     type t = clause
 
-    let equal (id1, _) (id2, _) = id1 = id2
-
-    let hash (id, _) = id
+    let compare (id1, _) (id2, _) = Int.compare id1 id2
   end)
 
-  let add c s = insert s c ; s
+  let empty () = empty
 
-  (* TODO option? *)
-  let empty () = create 100
+  let fold f init s = fold f s init
 
-  let remove c s = remove s c ; s
-
-  let show s = fold (fun s c -> Printf.sprintf "%s:%s\n" s (show c)) "" s
+  let show s = fold (fun c s -> Printf.sprintf "%s:%s\n" s (show c)) "" s
 end

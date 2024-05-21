@@ -11,7 +11,7 @@ exception Timeout
 let emit_proof_of_unsatisfiability filename clauses =
   let out_filename = Filename.remove_extension filename ^ ".out" in
   let oc = open_out out_filename in
-  Vector.iter
+  CCFQueue.iter
     (fun c ->
       let open Database in
       match c with
@@ -28,8 +28,7 @@ let run filename config =
   match Cnf.of_list v c config clause_list with
   | None ->
       Option.iter
-        (fun filename ->
-          emit_proof_of_unsatisfiability filename (Vector.create ()) )
+        (fun filename -> emit_proof_of_unsatisfiability filename CCFQueue.empty)
         config.emit_proof ;
       Printf.printf "s UNSATISFIABLE\nc Learned 0 clauses\n"
   | Some formula -> (
@@ -55,5 +54,5 @@ let run filename config =
               (fun filename -> emit_proof_of_unsatisfiability filename trace)
               config.emit_proof ;
             Printf.printf "s UNSATISFIABLE\nc Learned %d clauses\n"
-              (Vector.length trace)
+              (CCFQueue.size trace)
       with Timeout -> print_endline "s UNKNOWN" )

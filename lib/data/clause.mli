@@ -2,6 +2,8 @@ type t
 
 type clause = t
 
+val compare : t -> t -> int
+
 val empty : t
 
 val equal : t -> t -> bool
@@ -20,8 +22,6 @@ val to_array : t -> Literal.t array
 
 val to_iter : t -> Literal.t Iter.iter
 
-val unsafe_get : t -> int -> Literal.t
-
 module Set : sig
   type elt = clause
 
@@ -31,7 +31,7 @@ module Set : sig
 
   val empty : unit -> t
 
-  val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
+  val fold : (elt -> 'a -> 'a) -> 'a -> t -> 'a
 
   val remove : elt -> t -> t
 

@@ -24,52 +24,44 @@ module type S = sig
   val singleton : elt -> t
 end
 
-module Make (E : CCHashSet.ELEMENT) : S with type elt = E.t = struct
-  module M = CCHashSet.Make (E)
+module Make (E : Set.OrderedType) : S with type elt = E.t = struct
+  module M = Iter.Set.Make (E)
 
   type elt = M.elt
 
   type elt_set = M.t
 
-  type t = {queue: elt CCDeque.t; seen: elt_set}
+  type t = {queue: elt CCFQueue.t; seen: elt_set}
 
   let empty () =
-    (* TODO option? *)
-    let seen = M.create 100 in
-    {queue= CCDeque.create (); seen}
+    let seen = M.empty in
+    {queue= CCFQueue.empty; seen}
 
-  let fold f init {queue; _} = CCDeque.fold f init queue
+  let fold f init {queue; _} = CCFQueue.fold f init queue
 
-  let is_empty {queue; _} = CCDeque.is_empty queue
+  let is_empty {queue; _} = CCFQueue.is_empty queue
 
   let of_iter iterator =
-    {queue= CCDeque.of_iter iterator; seen= M.of_iter iterator}
+    {queue= CCFQueue.of_iter iterator; seen= M.of_iter iterator}
 
   let pop ({queue; _} as w) =
     let open Option.Infix in
-    let+ queue' = CCDeque.take_front_opt queue in
-    (queue', w)
+    let+ elt, queue' = CCFQueue.take_front queue in
+    (elt, {w with queue= queue'})
 
-  let pop_exn ({queue; _} as w) = (CCDeque.take_front queue, w)
+  let pop_exn ({queue; _} as w) =
+    let elt, queue' = CCFQueue.take_front_exn queue in
+    (elt, {w with queue= queue'})
 
   let push x {queue; seen} =
-    let already_seen = M.mem seen x in
-    { queue=
-        (if already_seen then queue else (CCDeque.push_back queue x ; queue))
-    ; seen= (M.insert seen x ; seen) }
+    { queue= (if M.mem x seen then queue else CCFQueue.snoc queue x)
+    ; seen= M.add x seen }
 
   let push_iter iterator {queue; seen} =
     let open Iter in
-    let unseen = filter (fun x -> not M.(mem seen x)) iterator in
-    CCDeque.add_iter_back queue unseen ;
-    { queue
-    ; seen=
-        M.(
-          union_mut ~into:seen (of_iter unseen) ;
-          seen ) }
+    let unseen = filter (fun x -> not M.(mem x seen)) iterator in
+    { queue= CCFQueue.add_iter_back queue unseen
+    ; seen= M.(union seen (of_iter unseen)) }
 
-  let singleton x =
-    let queue = CCDeque.create () in
-    CCDeque.push_back queue x ;
-    {queue; seen= M.singleton x}
+  let singleton x = {queue= CCFQueue.singleton x; seen= M.singleton x}
 end

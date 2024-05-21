@@ -24,26 +24,6 @@ module Map : sig
   val size : t -> int
 
   val value : Literal.t -> t -> Tribool.t
-
-  module Cached : sig
-    type uncached = t
-
-    type key = Variable.t
-
-    type t
-
-    val add : key -> assignment -> t -> t
-
-    val clear : t -> t
-
-    val make : int -> t
-
-    val mem : key -> t -> bool
-
-    val refresh : t -> uncached -> t
-
-    val value : Literal.t -> t -> Tribool.t
-  end
 end
 
 val compare : t -> t -> int
