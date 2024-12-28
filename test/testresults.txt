@@ -1,0 +1,27 @@
+[4m[37mProblem set: AIM - Artificially generated Random-3-SAT (satisfiable)
+(B[m[1m[37mRunning 48 tests
+(B[m[1m[31mFATAL ERROR
+(B[m[4m[37mProblem set: AIM - Artificially generated Random-3-SAT (unsatisfiable)
+(B[m[1m[37mRunning 24 tests
+(B[m[1m[31mFATAL ERROR
+(B[m[4m[37mProblem set: All Interval Series (satisfiable)
+(B[m[1m[37mRunning 4 tests
+(B[m[1m[31mFATAL ERROR
+(B[m[4m[37mProblem set: SAT Competition Beijing (satisfiable?)
+(B[m[1m[37mRunning 16 tests
+(B[m[1m[31mFATAL ERROR
+(B[m[4m[37mProblem set: BF: Circuit fault analysis: bridge fault (unsatisfiable)
+(B[m[1m[37mRunning 4 tests
+(B[m[1m[31mFATAL ERROR
+(B[m[4m[37mProblem set: Planning, blocksworld (satisfiable)
+(B[m[1m[37mRunning 7 tests
+(B[m[1m[31mFATAL ERROR
+(B[m[4m[37mProblem set: SAT-encoded bounded model checking intances (satisfiable)
+(B[m[1m[37mRunning 13 tests
+(B[m[1m[31mFATAL ERROR
+(B[m[4m[37mProblem set: Backbone-minimal Sub-instances (satisfiable)
+(B[m[1m[37mRunning 500 tests
+(B[m[1m[31mFATAL ERROR
+(B[m[4m[37mProblem set: Random-3-SAT Instances with Controlled Backbone Size (satisfiable)
+(B[m[1m[37mRunning 40000 tests
+(B[m
