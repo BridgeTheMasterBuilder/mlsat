@@ -9,8 +9,6 @@ module Map = struct
 
   type nonrec t = {m: t; increase: float; decay_factor: float}
 
-  type v = float
-
   let decay ({increase; decay_factor; _} as t) =
     let increase' = increase *. (1.0 /. decay_factor) in
     match Float.classify increase' with

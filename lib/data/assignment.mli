@@ -28,7 +28,7 @@ module Map : sig
   module Cached : sig
     type uncached = t
 
-    type key = Variable.t
+    type key := Variable.t
 
     type t
 

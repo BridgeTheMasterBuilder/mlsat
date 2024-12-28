@@ -69,8 +69,6 @@ module Clause = struct
 
     type t = watched_clause M.t
 
-    type key = Clause.t
-
     let add c wc m = add m c wc ; m
 
     let make n = create n

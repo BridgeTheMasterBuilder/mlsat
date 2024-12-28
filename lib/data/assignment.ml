@@ -39,7 +39,7 @@ module Map = struct
 
     include Array
 
-    type key = Variable.t
+    (* type key = Variable.t *)
 
     type t = Literal.t array
 

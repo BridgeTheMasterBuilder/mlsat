@@ -1,6 +1,6 @@
 type t
 
-type clause = t
+type clause := t
 
 val empty : t
 

@@ -3,7 +3,7 @@ module Map : sig
 
   type k = Literal.t
 
-  type v = float
+  type v := float
 
   val decay : t -> t
 

@@ -32,7 +32,7 @@ module Clause : sig
   module Map : sig
     type t
 
-    type key = Clause.t
+    type key := Clause.t
 
     val add : key -> watched_clause -> t -> t
 
